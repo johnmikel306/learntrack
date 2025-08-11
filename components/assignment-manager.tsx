@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -35,32 +35,28 @@ interface Assignment {
 }
 
 export default function AssignmentManager() {
-  const [assignments, setAssignments] = useState<Assignment[]>([
-    {
-      id: "1",
-      title: "Algebra Practice Set 1",
-      subject: "Mathematics",
-      topic: "Algebra",
-      students: ["Sarah Johnson", "Mike Chen", "Emma Davis"],
-      dueDate: new Date(2024, 11, 25),
-      creationDate: new Date(2024, 11, 10),
-      questionCount: 10,
-      status: "active",
-      completionRate: 67,
-    },
-    {
-      id: "2",
-      title: "Physics Mechanics Quiz",
-      subject: "Physics",
-      topic: "Mechanics",
-      students: ["John Smith", "Lisa Wang"],
-      dueDate: new Date(2024, 11, 28),
-      creationDate: new Date(2024, 11, 12),
-      questionCount: 15,
-      status: "scheduled",
-      completionRate: 0,
-    },
-  ])
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
+  const [assignments, setAssignments] = useState<Assignment[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const run = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const res = await fetch(`${API_BASE}/assignments`)
+        if (!res.ok) throw new Error(await res.text())
+        const data = await res.json()
+        setAssignments(data)
+      } catch (e: any) {
+        setError(e.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+    run()
+  }, [])
 
   const [isCreatingAssignment, setIsCreatingAssignment] = useState(false)
   const [newAssignment, setNewAssignment] = useState({

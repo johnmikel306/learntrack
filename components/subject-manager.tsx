@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,6 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { toast } from "@/components/ui/use-toast"
 
 interface Subject {
   id: string
@@ -24,11 +25,30 @@ interface Subject {
 }
 
 export default function SubjectManager() {
-  const [subjects, setSubjects] = useState<Subject[]>([
-    { id: "1", name: "Mathematics", topics: ["Algebra", "Geometry", "Calculus"], questionCount: 45 },
-    { id: "2", name: "Physics", topics: ["Mechanics", "Thermodynamics", "Optics"], questionCount: 32 },
-    { id: "3", name: "Chemistry", topics: ["Organic", "Inorganic", "Physical"], questionCount: 28 },
-  ])
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
+  const [subjects, setSubjects] = useState<Subject[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Load subjects from FastAPI
+  useEffect(() => {
+    const loadSubjects = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const res = await fetch(`${API_BASE}/subjects`)
+        if (!res.ok) throw new Error(await res.text())
+        const data = await res.json()
+        setSubjects(data)
+      } catch (e: any) {
+        setError(e.message)
+        toast({ title: "Failed to load subjects", description: e.message })
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadSubjects()
+  }, [])
   const [newSubject, setNewSubject] = useState("")
   const [newTopic, setNewTopic] = useState("")
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null)
@@ -130,7 +150,7 @@ export default function SubjectManager() {
               <div className="mb-3">
                 <div className="flex flex-wrap gap-2">
                   {subject.topics.map((topic, index) => (
-                    <Badge key={index} variant="outline">
+                    <Badge key={`${subject.id}-topic-${topic}`} variant="outline">
                       {topic}
                     </Badge>
                   ))}

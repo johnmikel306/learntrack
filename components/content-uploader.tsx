@@ -83,39 +83,48 @@ export default function ContentUploader({ uploadedFiles, setUploadedFiles }: Con
     setIsUploading(true)
     setUploadProgress(0)
 
-    // Simulate upload progress
-    for (let i = 0; i <= 100; i += 10) {
-      setUploadProgress(i)
-      await new Promise((resolve) => setTimeout(resolve, 200))
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
+      const res = await fetch(`${API_BASE}/files/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: newFile.file.name,
+          subject: newFile.subject,
+          topic: newFile.topic,
+          size: newFile.file.size,
+          uploadthing_url: "",
+        }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      const data = await res.json()
+
+      const uploadedFile: UploadedFile = {
+        id: data.file_id,
+        name: data.filename,
+        subject: newFile.subject,
+        topic: newFile.topic,
+        uploadDate: new Date(),
+        status: data.status,
+        questionCount: 0,
+        size: `${(newFile.file.size / 1024 / 1024).toFixed(1)} MB`,
+        type: newFile.file.type,
+      }
+
+      setUploadedFiles([uploadedFile, ...uploadedFiles])
+      setNewFile({ subject: "", topic: "", file: null })
+
+      // Trigger processing; ignore errors for UX
+      try {
+        await fetch(`${API_BASE}/files/${uploadedFile.id}/process`, { method: "POST" })
+      } catch {}
+    } catch (e: any) {
+      // Keep UI consistent; bubble error to console
+      console.error(e)
+    } finally {
+      setIsUploading(false)
+      setUploadProgress(0)
     }
-
-    const uploadedFile: UploadedFile = {
-      id: Date.now().toString(),
-      name: newFile.file.name,
-      subject: newFile.subject,
-      topic: newFile.topic,
-      uploadDate: new Date(),
-      status: "processing",
-      questionCount: 0,
-      size: `${(newFile.file.size / 1024 / 1024).toFixed(1)} MB`,
-      type: newFile.file.type,
-    }
-
-    setUploadedFiles([...uploadedFiles, uploadedFile])
-    setNewFile({ subject: "", topic: "", file: null })
-    setIsUploading(false)
-    setUploadProgress(0)
-
-    // Simulate processing
-    setTimeout(() => {
-      setUploadedFiles((prev) =>
-        prev.map((file) =>
-          file.id === uploadedFile.id
-            ? { ...file, status: "processed", questionCount: Math.floor(Math.random() * 20) + 5 }
-            : file,
-        ),
-      )
-    }, 3000)
   }
 
   const getFileIcon = (fileName: string) => {

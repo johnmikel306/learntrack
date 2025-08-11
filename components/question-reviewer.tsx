@@ -282,7 +282,7 @@ export default function QuestionReviewer({ generatedQuestions, setGeneratedQuest
                                           </SelectTrigger>
                                           <SelectContent>
                                             {editedQuestion?.options?.map((option, optIndex) => (
-                                              <SelectItem key={optIndex} value={option}>
+                                              <SelectItem key={`edit-option-${optIndex}-${option}`} value={option}>
                                                 {option}
                                               </SelectItem>
                                             ))}

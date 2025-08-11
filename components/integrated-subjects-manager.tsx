@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BookOpen, Brain, CheckCircle } from "lucide-react"
 import QuestionBank from "@/components/question-bank"
@@ -8,57 +8,31 @@ import AIQuestionGenerator from "@/components/ai-question-generator"
 import QuestionReviewer from "@/components/question-reviewer"
 
 export default function IntegratedSubjectsManager() {
-  const [activeTab, setActiveTab] = useState("bank")
-  const [uploadedFiles, setUploadedFiles] = useState([
-    {
-      id: "1",
-      name: "Algebra Fundamentals.pdf",
-      subject: "Mathematics",
-      topic: "Algebra",
-      uploadDate: new Date(2024, 11, 20),
-      status: "processed",
-      questionCount: 15,
-    },
-    {
-      id: "2",
-      name: "Physics Mechanics Slides.pptx",
-      subject: "Physics",
-      topic: "Mechanics",
-      uploadDate: new Date(2024, 11, 22),
-      status: "processing",
-      questionCount: 0,
-    },
-  ])
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [uploadedFiles, setUploadedFiles] = useState([] as any[])
+  const [generatedQuestions, setGeneratedQuestions] = useState([] as any[])
 
-  const [generatedQuestions, setGeneratedQuestions] = useState([
-    {
-      id: "1",
-      sourceFile: "Algebra Fundamentals.pdf",
-      subject: "Mathematics",
-      topic: "Algebra",
-      questions: [
-        {
-          id: "q1",
-          question: "What is the solution to the equation 2x + 5 = 13?",
-          type: "multiple-choice",
-          options: ["x = 3", "x = 4", "x = 5", "x = 6"],
-          correctAnswer: "x = 4",
-          confidence: 0.95,
-          status: "pending",
-        },
-        {
-          id: "q2",
-          question: "Linear equations have a constant rate of change.",
-          type: "true-false",
-          correctAnswer: "true",
-          confidence: 0.88,
-          status: "pending",
-        },
-      ],
-      generatedDate: new Date(2024, 11, 20),
-      status: "pending-review",
-    },
-  ])
+  useEffect(() => {
+    const run = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const res = await fetch(`${API_BASE}/files`)
+        if (!res.ok) throw new Error(await res.text())
+        const files = await res.json()
+        setUploadedFiles(files)
+      } catch (e: any) {
+        setError(e.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+    run()
+  }, [])
+
+  const [activeTab, setActiveTab] = useState("bank")
 
   const pendingReviewCount = generatedQuestions.reduce(
     (acc, batch) => acc + batch.questions.filter((q) => q.status === "pending").length,

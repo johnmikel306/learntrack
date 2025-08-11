@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/dialog"
 import { Slider } from "@/components/ui/slider"
 
+import { toast } from "@/components/ui/use-toast"
+
 interface UploadedFile {
   id: string
   name: string
@@ -51,15 +53,17 @@ interface QuestionBatch {
 
 interface QuestionGeneratorProps {
   uploadedFiles: UploadedFile[]
-  generatedQuestions: QuestionBatch[]
-  setGeneratedQuestions: (questions: QuestionBatch[]) => void
 }
 
-export default function QuestionGenerator({
-  uploadedFiles,
-  generatedQuestions,
-  setGeneratedQuestions,
-}: QuestionGeneratorProps) {
+export default function QuestionGenerator({ uploadedFiles }: QuestionGeneratorProps) {
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
+  const [vendor, setVendor] = useState<"openai" | "anthropic">("openai")
+  const [model, setModel] = useState<string>("gpt-4o-mini")
+  const vendorModels: Record<string, string[]> = {
+    openai: ["gpt-4o", "gpt-4o-mini", "gpt-4.1"],
+    anthropic: ["claude-3-5-sonnet", "claude-3-opus", "claude-3-haiku"],
+  }
+
   const [selectedFile, setSelectedFile] = useState("")
   const [generationSettings, setGenerationSettings] = useState({
     questionTypes: {
@@ -80,54 +84,19 @@ export default function QuestionGenerator({
   const generateQuestions = async () => {
     if (!selectedFile) return
 
-    setIsGenerating(true)
-
-    // Simulate AI question generation
-    await new Promise((resolve) => setTimeout(resolve, 3000))
-
-    const selectedFileData = uploadedFiles.find((f) => f.id === selectedFile)
-    if (!selectedFileData) return
-
-    const mockQuestions: GeneratedQuestion[] = [
-      {
-        id: `q${Date.now()}_1`,
-        question: "What is the primary concept discussed in the uploaded material?",
-        type: "multiple-choice",
-        options: ["Linear equations", "Quadratic functions", "Polynomial operations", "Matrix algebra"],
-        correctAnswer: "Linear equations",
-        confidence: 0.92,
-        status: "pending",
-      },
-      {
-        id: `q${Date.now()}_2`,
-        question: "The material covers advanced mathematical concepts.",
-        type: "true-false",
-        correctAnswer: "false",
-        confidence: 0.85,
-        status: "pending",
-      },
-      {
-        id: `q${Date.now()}_3`,
-        question: "Explain the main theorem presented in the document.",
-        type: "short-answer",
-        correctAnswer:
-          "The fundamental theorem of algebra states that every polynomial equation has at least one complex root.",
-        confidence: 0.78,
-        status: "pending",
-      },
-    ]
-
-    const newBatch: QuestionBatch = {
-      id: Date.now().toString(),
-      sourceFile: selectedFileData.name,
-      subject: selectedFileData.subject,
-      topic: selectedFileData.topic,
-      questions: mockQuestions.slice(0, generationSettings.questionCount),
-      generatedDate: new Date(),
-      status: "pending-review",
+    try {
+      setIsGenerating(true)
+      const res = await fetch(`${API_BASE}/files/${selectedFile}/process`, { method: "POST" })
+      if (!res.ok) throw new Error(await res.text())
+      toast({ title: "Questions generated successfully" })
+      // Upstream state can fetch batches/questions again or show in review
+    } catch (e: any) {
+      toast({ title: "Generation failed", description: e.message })
+    } finally {
+      setIsGenerating(false)
     }
 
-    setGeneratedQuestions([...generatedQuestions, newBatch])
+    // No mock fallback: rely on backend to create question batches and display them elsewhere
     setIsGenerating(false)
     setSelectedFile("")
   }
@@ -193,13 +162,41 @@ export default function QuestionGenerator({
                     <Label className="text-base font-medium">Custom AI Prompt</Label>
                     <Textarea
                       value={generationSettings.customPrompt}
-                      onChange={(e) => setGenerationSettings((prev) => ({ ...prev, customPrompt: e.target.value }))}
+                      onChange={(e) => setGenerationSettings((prev) => ({ ...prev, customPrompt: (e.target as HTMLTextAreaElement).value }))}
                       placeholder="e.g., 'Generate questions that test conceptual understanding rather than memorization'"
                       rows={4}
                     />
-                    <p className="text-sm text-gray-500 mt-1">
-                      Provide specific instructions for the AI question generation
-                    </p>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <Label className="text-base font-medium">LLM Vendor</Label>
+                  <Select value={vendor} onValueChange={(v: any) => setVendor(v)}>
+                    <SelectTrigger className="mt-2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="openai">OpenAI</SelectItem>
+                      <SelectItem value="anthropic">Anthropic</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-base font-medium">Model</Label>
+                  <Select value={model} onValueChange={setModel}>
+                    <SelectTrigger className="mt-2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vendorModels[vendor].map((m) => (
+                        <SelectItem key={m} value={m}>
+                          {m}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
                   </div>
 
                   <div className="flex justify-end">
@@ -341,46 +338,16 @@ export default function QuestionGenerator({
       </Card>
 
       <Card>
+
+          {/* Since generation batches come from backend, omit local history when server is unavailable */}
+          <div className="text-sm text-gray-500">History is loaded from the backend; none to display here.</div>
+
         <CardHeader>
           <CardTitle>Generation History</CardTitle>
-          <CardDescription>Previously generated question batches</CardDescription>
+          <CardDescription>Previously generated question batches (shown elsewhere)</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {generatedQuestions.map((batch) => (
-              <div key={batch.id} className="border rounded-lg p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <FileText className="h-4 w-4 text-blue-600" />
-                      <h3 className="font-semibold">{batch.sourceFile}</h3>
-                      <Badge variant="outline">{batch.status}</Badge>
-                    </div>
-                    <div className="text-sm text-gray-600 mb-2">
-                      {batch.subject} • {batch.topic} • Generated: {batch.generatedDate.toLocaleDateString()}
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <Badge variant="outline">{batch.questions.length} questions</Badge>
-                      <Badge className="bg-green-100 text-green-800">
-                        {batch.questions.filter((q) => q.status === "approved").length} approved
-                      </Badge>
-                      <Badge className="bg-yellow-100 text-yellow-800">
-                        {batch.questions.filter((q) => q.status === "pending").length} pending
-                      </Badge>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    View Questions
-                  </Button>
-                </div>
-              </div>
-            ))}
-            {generatedQuestions.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                No questions generated yet. Select a file and generate your first batch!
-              </div>
-            )}
-          </div>
+          <div className="text-sm text-gray-500">This component no longer maintains local history. Use the Question Bank to review backend-generated questions.</div>
         </CardContent>
       </Card>
     </div>

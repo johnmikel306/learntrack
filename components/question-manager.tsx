@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { toast } from "@/components/ui/use-toast"
 
 interface Question {
   id: string
@@ -33,31 +34,30 @@ interface Question {
 }
 
 export default function QuestionManager() {
-  const [questions, setQuestions] = useState<Question[]>([
-    {
-      id: "1",
-      subject: "Mathematics",
-      topic: "Algebra",
-      question: "Solve for x: 2x + 5 = 13",
-      type: "multiple-choice",
-      options: ["x = 3", "x = 4", "x = 5", "x = 6"],
-      correctAnswer: "x = 4",
-      difficulty: "easy",
-      sourceFile: "Algebra Fundamentals.pdf",
-      aiGenerated: true,
-      confidence: 0.95,
-    },
-    {
-      id: "2",
-      subject: "Physics",
-      topic: "Mechanics",
-      question: "What is Newton's second law of motion?",
-      type: "short-answer",
-      correctAnswer: "F = ma",
-      difficulty: "medium",
-      aiGenerated: false,
-    },
-  ])
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
+  const [questions, setQuestions] = useState<Question[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Load questions from FastAPI
+  useEffect(() => {
+    const loadQuestions = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const res = await fetch(`${API_BASE}/questions`)
+        if (!res.ok) throw new Error(await res.text())
+        const data = await res.json()
+        setQuestions(data)
+      } catch (e: any) {
+        setError(e.message)
+        toast({ title: "Failed to load questions", description: e.message })
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadQuestions()
+  }, [])
 
   const [isAddingQuestion, setIsAddingQuestion] = useState(false)
   const [newQuestion, setNewQuestion] = useState({
@@ -215,7 +215,7 @@ export default function QuestionManager() {
                     <div className="space-y-2">
                       {newQuestion.options.map((option, index) => (
                         <Input
-                          key={index}
+                          key={`option-input-${index}`}
                           value={option}
                           onChange={(e) => {
                             const newOptions = [...newQuestion.options]
@@ -243,7 +243,7 @@ export default function QuestionManager() {
                         {newQuestion.options
                           .filter((opt) => opt.trim())
                           .map((option, index) => (
-                            <SelectItem key={index} value={option}>
+                            <SelectItem key={`correct-answer-${index}-${option}`} value={option}>
                               {option}
                             </SelectItem>
                           ))}

@@ -4,11 +4,12 @@ import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, Plus, BookOpen, Users, Calendar, BarChart3, TrendingUp, Target } from "lucide-react"
+import { ArrowLeft, Plus, BookOpen, Users, Calendar, BarChart3, TrendingUp, Target, Settings } from "lucide-react"
 import AssignmentManager from "@/components/assignment-manager"
 import ProgressReports from "@/components/progress-reports"
 import StudentManager from "@/components/student-manager"
 import IntegratedSubjectsManager from "@/components/integrated-subjects-manager"
+import SettingsManager from "@/components/settings-manager"
 
 interface TutorDashboardProps {
   onBack: () => void
@@ -32,11 +33,12 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="subjects">Subjects & Questions</TabsTrigger>
             <TabsTrigger value="students">Student Management</TabsTrigger>
             <TabsTrigger value="assignments">Assignments</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -157,6 +159,10 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
 
           <TabsContent value="assignments">
             <AssignmentManager />
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <SettingsManager onBack={onBack} />
           </TabsContent>
         </Tabs>
       </div>

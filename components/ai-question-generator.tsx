@@ -71,7 +71,7 @@ export default function AIQuestionGenerator({
   setGeneratedQuestions,
 }: AIQuestionGeneratorProps) {
   const [prompt, setPrompt] = useState("")
-  const [selectedMaterial, setSelectedMaterial] = useState("")
+  const [selectedMaterial, setSelectedMaterial] = useState("none")
   const [newFiles, setNewFiles] = useState<File[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -184,59 +184,28 @@ export default function AIQuestionGenerator({
       setNewFiles([])
     }
 
-    // Simulate AI question generation
-    await new Promise((resolve) => setTimeout(resolve, 3000))
-
-    const mockQuestions: GeneratedQuestion[] = [
-      {
-        id: `q${Date.now()}_1`,
-        question: `Based on the prompt: "${prompt.substring(0, 50)}..." - What is the primary concept?`,
-        type: "multiple-choice",
-        options: ["Linear equations", "Quadratic functions", "Polynomial operations", "Matrix algebra"],
-        correctAnswer: "Linear equations",
-        confidence: 0.92,
-        status: "pending",
-      },
-      {
-        id: `q${Date.now()}_2`,
-        question: "The generated content covers advanced mathematical concepts.",
-        type: "true-false",
-        correctAnswer: "false",
-        confidence: 0.85,
-        status: "pending",
-      },
-      {
-        id: `q${Date.now()}_3`,
-        question: "Explain the main principle discussed in the provided context.",
-        type: "short-answer",
-        correctAnswer:
-          "The fundamental principle relates to the systematic approach to problem-solving in the given domain.",
-        confidence: 0.78,
-        status: "pending",
-      },
-    ]
-
-    const sourceFile = selectedMaterial
-      ? uploadedFiles.find((f) => f.id === selectedMaterial)?.name
-      : uploadedNewFiles[0]?.name
-
-    const newBatch: QuestionBatch = {
-      id: Date.now().toString(),
-      sourceFile,
-      sourcePrompt: prompt,
-      subject: generationSettings.subject,
-      topic: generationSettings.topic,
-      questions: mockQuestions.slice(0, generationSettings.questionCount),
-      generatedDate: new Date(),
-      status: "pending-review",
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
+      const res = await fetch(`${API_BASE}/questions/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: generationSettings.subject,
+          topic: generationSettings.topic,
+          prompt,
+          count: generationSettings.questionCount,
+          types: Object.keys(generationSettings.questionTypes).filter((k) => (generationSettings.questionTypes as any)[k]),
+        }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      toast({ title: "Generation request submitted" })
+    } catch (e: any) {
+      toast({ title: "Generation failed", description: e.message })
+    } finally {
+      setIsGenerating(false)
+      setPrompt("")
+      setSelectedMaterial("")
     }
-
-    setGeneratedQuestions([...generatedQuestions, newBatch])
-    setIsGenerating(false)
-
-    // Reset form
-    setPrompt("")
-    setSelectedMaterial("")
     setGenerationSettings((prev) => ({ ...prev, subject: "", topic: "" }))
   }
 
@@ -498,7 +467,7 @@ export default function AIQuestionGenerator({
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Files to upload:</Label>
                   {newFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                    <div key={`new-file-${file.name}-${index}`} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
                       <div className="flex items-center gap-2">
                         {getFileIcon(file.name)}
                         <span className="text-sm">{file.name}</span>

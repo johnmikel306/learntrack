@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { toast } from "@/components/ui/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -87,97 +88,68 @@ export default function StudentManager() {
   const ALL = "all"
   const [filterSubject, setFilterSubject] = useState(ALL)
   const [filterStatus, setFilterStatus] = useState(ALL)
+
+  // All data must come from FastAPI
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
+    })
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(text || `Request failed: ${res.status}`)
+    }
+    return res.json()
+  }
   const [filterGrade, setFilterGrade] = useState(ALL)
 
-  const [students, setStudents] = useState<Student[]>([
-    {
-      id: "1",
-      name: "Sarah Johnson",
-      email: "sarah.johnson@email.com",
-      phone: "+1 (555) 123-4567",
-      grade: "Grade 10",
-      subjects: ["Mathematics", "Physics"],
-      enrollmentDate: new Date(2024, 8, 15),
-      status: "active",
-      parentEmail: "parent.johnson@email.com",
-      parentPhone: "+1 (555) 123-4568",
-      averageScore: 88,
-      completionRate: 92,
-      totalAssignments: 25,
-      completedAssignments: 23,
-      lastActivity: new Date(2024, 11, 22),
-      notes: "Excellent student, shows great improvement in algebra",
-    },
-    {
-      id: "2",
-      name: "Mike Chen",
-      email: "mike.chen@email.com",
-      grade: "Grade 11",
-      subjects: ["Mathematics", "Chemistry"],
-      enrollmentDate: new Date(2024, 9, 1),
-      status: "active",
-      parentEmail: "parent.chen@email.com",
-      averageScore: 94,
-      completionRate: 96,
-      totalAssignments: 20,
-      completedAssignments: 19,
-      lastActivity: new Date(2024, 11, 23),
-    },
-    {
-      id: "3",
-      name: "Emma Davis",
-      email: "emma.davis@email.com",
-      grade: "Grade 9",
-      subjects: ["Physics", "Chemistry"],
-      enrollmentDate: new Date(2024, 9, 10),
-      status: "active",
-      averageScore: 82,
-      completionRate: 85,
-      totalAssignments: 18,
-      completedAssignments: 15,
-      lastActivity: new Date(2024, 11, 20),
-    },
-    {
-      id: "4",
-      name: "John Smith",
-      email: "john.smith@email.com",
-      grade: "Grade 12",
-      subjects: ["Mathematics", "Physics", "Chemistry"],
-      enrollmentDate: new Date(2024, 8, 1),
-      status: "inactive",
-      averageScore: 76,
-      completionRate: 68,
-      totalAssignments: 30,
-      completedAssignments: 20,
-      lastActivity: new Date(2024, 11, 10),
-    },
-  ])
-
-  const [groups, setGroups] = useState<StudentGroup[]>([
-    {
-      id: "1",
-      name: "Advanced Mathematics",
-      description: "Students excelling in mathematics",
-      studentIds: ["1", "2"],
-      subjects: ["Mathematics"],
-      createdDate: new Date(2024, 10, 1),
-      color: "blue",
-    },
-    {
-      id: "2",
-      name: "Science Foundation",
-      description: "Basic science concepts group",
-      studentIds: ["2", "3"],
-      subjects: ["Physics", "Chemistry"],
-      createdDate: new Date(2024, 10, 15),
-      color: "green",
-    },
-  ])
+  const [students, setStudents] = useState<Student[]>([])
+  const [groups, setGroups] = useState<StudentGroup[]>([])
 
   // Modal states
   const [isAddingStudent, setIsAddingStudent] = useState(false)
   const [isEditingStudent, setIsEditingStudent] = useState<string | null>(null)
   const [isCreatingGroup, setIsCreatingGroup] = useState(false)
+  const [contactOpen, setContactOpen] = useState(false)
+  const [contactDraft, setContactDraft] = useState<{ channel: "email" | "sms"; toEmail?: string; toPhone?: string; subject?: string; body: string }>({ channel: "email", body: "" })
+
+  const openContactModal = (student: Student) => {
+    setSelectedStudentForDetails(student)
+    setContactDraft({
+      channel: student.parentEmail ? "email" : "sms",
+      toEmail: student.parentEmail,
+      toPhone: student.parentPhone,
+      subject: `Update about ${student.name}`,
+      body: `Hello${student.parentEmail ? "" : ""},\n\nI wanted to share an update about ${student.name}'s recent progress...`,
+    })
+    setContactOpen(true)
+  }
+
+  const sendContactMessage = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/communications/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          student_id: selectedStudentForDetails?.id,
+          to_email: contactDraft.channel === "email" ? contactDraft.toEmail : undefined,
+          to_phone: contactDraft.channel === "sms" ? contactDraft.toPhone : undefined,
+          channel: contactDraft.channel,
+          subject: contactDraft.subject,
+          body: contactDraft.body,
+        }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      setContactOpen(false)
+      toast({ title: "Message sent", description: "Your message has been queued for delivery." })
+    } catch (e: any) {
+      toast({ title: "Failed to send", description: e.message })
+    }
+  }
   const [isEditingGroup, setIsEditingGroup] = useState<StudentGroup | null>(null)
 
   // Form states
@@ -202,6 +174,29 @@ export default function StudentManager() {
     color: "blue",
   })
 
+  // Initial load from FastAPI
+  useEffect(() => {
+    const run = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const [studentsRes, groupsRes] = await Promise.all([
+          apiFetch<Student[]>(`/students`),
+          apiFetch<StudentGroup[]>(`/students/groups`),
+        ])
+        setStudents(studentsRes)
+        setGroups(groupsRes)
+      } catch (e: any) {
+        setError(e.message)
+        toast({ title: "Server unavailable", description: e.message })
+      } finally {
+        setLoading(false)
+      }
+    }
+    run()
+  }, [])
+
+
   const subjects = ["Mathematics", "Physics", "Chemistry"]
   const groupColors = ["blue", "green", "purple", "orange", "red", "pink"]
   const grades = ["Grade 9", "Grade 10", "Grade 11", "Grade 12"]
@@ -217,22 +212,20 @@ export default function StudentManager() {
     return matchesSearch && matchesSubject && matchesStatus && matchesGrade
   })
 
-  // Student management functions
-  const addStudent = () => {
-    if (newStudent.name && newStudent.email) {
-      const student: Student = {
-        id: Date.now().toString(),
-        ...newStudent,
-        enrollmentDate: new Date(),
-        status: "active",
-        averageScore: 0,
-        completionRate: 0,
-        totalAssignments: 0,
-        completedAssignments: 0,
-      }
-      setStudents([...students, student])
+  // Student management functions (FastAPI only)
+  const addStudent = async () => {
+    if (!(newStudent.name && newStudent.email)) return
+    try {
+      const created = await apiFetch<Student>(`/students`, {
+        method: "POST",
+        body: JSON.stringify(newStudent),
+      })
+      setStudents((prev) => [created, ...prev])
       resetNewStudent()
       setIsAddingStudent(false)
+      toast({ title: "Student created" })
+    } catch (e: any) {
+      toast({ title: "Failed to create student", description: e.message })
     }
   }
 
@@ -241,22 +234,31 @@ export default function StudentManager() {
     setIsEditingStudent(student.id)
   }
 
-  const saveEditedStudent = () => {
-    if (editingStudentData) {
-      setStudents(students.map((s) => (s.id === editingStudentData.id ? editingStudentData : s)))
+  const saveEditedStudent = async () => {
+    if (!editingStudentData) return
+    try {
+      const updated = await apiFetch<Student>(`/students/${editingStudentData.id}`, {
+        method: "PUT",
+        body: JSON.stringify(editingStudentData),
+      })
+      setStudents((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
       setIsEditingStudent(null)
       setEditingStudentData(null)
+      toast({ title: "Student updated" })
+    } catch (e: any) {
+      toast({ title: "Failed to update student", description: e.message })
     }
   }
 
-  const deleteStudent = (studentId: string) => {
-    setStudents(students.filter((s) => s.id !== studentId))
-    setGroups(
-      groups.map((group) => ({
-        ...group,
-        studentIds: group.studentIds.filter((id) => id !== studentId),
-      })),
-    )
+  const deleteStudent = async (studentId: string) => {
+    try {
+      await apiFetch(`/students/${studentId}`, { method: "DELETE" })
+      setStudents((prev) => prev.filter((s) => s.id !== studentId))
+      setGroups((prev) => prev.map((g) => ({ ...g, studentIds: g.studentIds.filter((id) => id !== studentId) })))
+      toast({ title: "Student deleted" })
+    } catch (e: any) {
+      toast({ title: "Failed to delete student", description: e.message })
+    }
   }
 
   const resetNewStudent = () => {
@@ -683,6 +685,10 @@ export default function StudentManager() {
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => startEditingStudent(student)}>
                             <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => openContactModal(student)}>
+                            <Mail className="h-4 w-4 mr-1" />
+                            Contact Parent
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -1343,6 +1349,58 @@ export default function StudentManager() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Contact Parent Modal */}
+      <Dialog open={contactOpen} onOpenChange={setContactOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Contact Parent/Guardian</DialogTitle>
+            <DialogDescription>Send a quick update about the student's progress or behavior.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Channel</Label>
+                <Select value={contactDraft.channel} onValueChange={(v: any) => setContactDraft((d) => ({ ...d, channel: v }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="email">Email</SelectItem>
+                    <SelectItem value="sms">SMS</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {contactDraft.channel === "email" ? (
+                <div>
+                  <Label>To Email</Label>
+                  <Input value={contactDraft.toEmail || ""} onChange={(e) => setContactDraft((d) => ({ ...d, toEmail: e.target.value }))} />
+                </div>
+              ) : (
+                <div>
+                  <Label>To Phone</Label>
+                  <Input value={contactDraft.toPhone || ""} onChange={(e) => setContactDraft((d) => ({ ...d, toPhone: e.target.value }))} />
+                </div>
+              )}
+            </div>
+            {contactDraft.channel === "email" && (
+              <div>
+                <Label>Subject</Label>
+                <Input value={contactDraft.subject || ""} onChange={(e) => setContactDraft((d) => ({ ...d, subject: e.target.value }))} />
+              </div>
+            )}
+            <div>
+              <Label>Message</Label>
+              <Textarea rows={6} value={contactDraft.body} onChange={(e) => setContactDraft((d) => ({ ...d, body: e.target.value }))} />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setContactOpen(false)}>Cancel</Button>
+              <Button onClick={sendContactMessage} disabled={contactDraft.channel === "email" ? !contactDraft.toEmail : !contactDraft.toPhone}>Send Message</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </div>
   )
 }

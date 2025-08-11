@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -38,7 +38,32 @@ interface Question {
 }
 
 export default function StudentDashboard({ onBack }: StudentDashboardProps) {
-  const [assignments] = useState<Assignment[]>([
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
+  const [assignments, setAssignments] = useState<Assignment[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Load assignments from FastAPI
+  useEffect(() => {
+    const loadAssignments = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const res = await fetch(`${API_BASE}/assignments/student`)
+        if (!res.ok) throw new Error(await res.text())
+        const data = await res.json()
+        setAssignments(data)
+      } catch (e: any) {
+        setError(e.message)
+        toast("Failed to load assignments: " + e.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadAssignments()
+  }, [])
+
+  const mockAssignments = [
     {
       id: "1",
       title: "Algebra Practice Set 1",
@@ -70,38 +95,18 @@ export default function StudentDashboard({ onBack }: StudentDashboardProps) {
       status: "completed",
       score: 85,
     },
-  ])
+  ]
+
+  // Use API data if available, fallback to mock for demo
+  const displayAssignments = assignments.length > 0 ? assignments : mockAssignments
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState("")
   const [showingQuestion, setShowingQuestion] = useState(false)
   const [isReviewing, setIsReviewing] = useState(false)
 
-  const activeAssignmentQuestions: Question[] = [
-    {
-      id: "q1",
-      question: "Solve for x: 2x + 5 = 13",
-      type: "multiple-choice",
-      options: ["x = 3", "x = 4", "x = 5", "x = 6"],
-      userAnswer: "x = 4",
-      isCorrect: true,
-    },
-    {
-      id: "q2",
-      question: "What is the powerhouse of the cell?",
-      type: "short-answer",
-      userAnswer: "Mitochondria",
-      isCorrect: true,
-    },
-    {
-      id: "q3",
-      question: "Is the Earth flat?",
-      type: "multiple-choice",
-      options: ["Yes", "No"],
-      userAnswer: "Yes",
-      isCorrect: false,
-    },
-  ]
+  // Questions should come from backend; empty default here
+  const activeAssignmentQuestions: Question[] = []
 
   const startAssignment = (assignmentId: string) => {
     // In a real app, you'd fetch the questions for the assignment

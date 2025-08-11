@@ -1,65 +1,52 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FileText, Brain, Clock } from "lucide-react"
 import ContentUploader from "@/components/content-uploader"
 import QuestionGenerator from "@/components/question-generator"
 import QuestionReviewer from "@/components/question-reviewer"
+import { toast } from "@/components/ui/use-toast"
 
 export default function ContentManager() {
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
   const [activeTab, setActiveTab] = useState("upload")
-  const [uploadedFiles, setUploadedFiles] = useState([
-    {
-      id: "1",
-      name: "Algebra Fundamentals.pdf",
-      subject: "Mathematics",
-      topic: "Algebra",
-      uploadDate: new Date(2024, 11, 20),
-      status: "processed",
-      questionCount: 15,
-    },
-    {
-      id: "2",
-      name: "Physics Mechanics Slides.pptx",
-      subject: "Physics",
-      topic: "Mechanics",
-      uploadDate: new Date(2024, 11, 22),
-      status: "processing",
-      questionCount: 0,
-    },
-  ])
+  const [uploadedFiles, setUploadedFiles] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const [generatedQuestions, setGeneratedQuestions] = useState([
-    {
-      id: "1",
-      sourceFile: "Algebra Fundamentals.pdf",
-      subject: "Mathematics",
-      topic: "Algebra",
-      questions: [
-        {
-          id: "q1",
-          question: "What is the solution to the equation 2x + 5 = 13?",
-          type: "multiple-choice",
-          options: ["x = 3", "x = 4", "x = 5", "x = 6"],
-          correctAnswer: "x = 4",
-          confidence: 0.95,
-          status: "pending",
-        },
-        {
-          id: "q2",
-          question: "Linear equations have a constant rate of change.",
-          type: "true-false",
-          correctAnswer: "true",
-          confidence: 0.88,
-          status: "pending",
-        },
-      ],
-      generatedDate: new Date(2024, 11, 20),
-      status: "pending-review",
-    },
-  ])
+  const [generatedQuestions, setGeneratedQuestions] = useState([])
+
+  // Load data from FastAPI
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const [filesRes, questionsRes] = await Promise.all([
+          fetch(`${API_BASE}/files`),
+          fetch(`${API_BASE}/questions`)
+        ])
+
+        if (filesRes.ok) {
+          const files = await filesRes.json()
+          setUploadedFiles(files)
+        }
+
+        if (questionsRes.ok) {
+          const questions = await questionsRes.json()
+          setGeneratedQuestions(questions)
+        }
+      } catch (e: any) {
+        setError(e.message)
+        toast({ title: "Failed to load data", description: e.message })
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadData()
+  }, [])
 
   return (
     <div className="space-y-6">
