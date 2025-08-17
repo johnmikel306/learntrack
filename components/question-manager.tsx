@@ -59,6 +59,18 @@ export default function QuestionManager() {
     loadQuestions()
   }, [])
 
+  async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
+    })
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(text || `Request failed: ${res.status}`)
+    }
+    return res.json()
+  }
+
   const [isAddingQuestion, setIsAddingQuestion] = useState(false)
   const [newQuestion, setNewQuestion] = useState({
     subject: "",
@@ -77,29 +89,50 @@ export default function QuestionManager() {
     Chemistry: ["Organic", "Inorganic", "Physical"],
   }
 
-  const addQuestion = () => {
+  const addQuestion = async () => {
     if (newQuestion.question.trim() && newQuestion.subject && newQuestion.topic) {
-      const question: Question = {
-        id: Date.now().toString(),
-        ...newQuestion,
-        options: newQuestion.type === "multiple-choice" ? newQuestion.options.filter((opt) => opt.trim()) : undefined,
+      try {
+        const questionData = {
+          text: newQuestion.question,
+          type: newQuestion.type === "multiple-choice" ? "multiple_choice" : newQuestion.type.replace("-", "_"),
+          options: newQuestion.type === "multiple-choice" ? newQuestion.options.filter((opt) => opt.trim()) : undefined,
+          correctAnswer: newQuestion.correctAnswer,
+          subject: newQuestion.subject,
+          topic: newQuestion.topic,
+          difficulty: newQuestion.difficulty
+        }
+
+        const created = await apiFetch<Question>(`/questions`, {
+          method: "POST",
+          body: JSON.stringify(questionData),
+        })
+
+        setQuestions([...questions, created])
+        setNewQuestion({
+          subject: "",
+          topic: "",
+          question: "",
+          type: "multiple-choice",
+          options: ["", "", "", ""],
+          correctAnswer: "",
+          difficulty: "medium",
+        })
+        setIsAddingQuestion(false)
+        toast({ title: "Question created successfully" })
+      } catch (e: any) {
+        toast({ title: "Failed to create question", description: e.message })
       }
-      setQuestions([...questions, question])
-      setNewQuestion({
-        subject: "",
-        topic: "",
-        question: "",
-        type: "multiple-choice",
-        options: ["", "", "", ""],
-        correctAnswer: "",
-        difficulty: "medium",
-      })
-      setIsAddingQuestion(false)
     }
   }
 
-  const deleteQuestion = (questionId: string) => {
-    setQuestions(questions.filter((q) => q.id !== questionId))
+  const deleteQuestion = async (questionId: string) => {
+    try {
+      await apiFetch(`/questions/${questionId}`, { method: "DELETE" })
+      setQuestions(questions.filter((q) => q.id !== questionId))
+      toast({ title: "Question deleted successfully" })
+    } catch (e: any) {
+      toast({ title: "Failed to delete question", description: e.message })
+    }
   }
 
   return (

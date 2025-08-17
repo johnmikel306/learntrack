@@ -49,39 +49,79 @@ export default function SubjectManager() {
     }
     loadSubjects()
   }, [])
+
+  async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
+    })
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(text || `Request failed: ${res.status}`)
+    }
+    return res.json()
+  }
   const [newSubject, setNewSubject] = useState("")
   const [newTopic, setNewTopic] = useState("")
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null)
   const [isAddingSubject, setIsAddingSubject] = useState(false)
 
-  const addSubject = () => {
+  const addSubject = async () => {
     if (newSubject.trim()) {
-      const subject: Subject = {
-        id: Date.now().toString(),
-        name: newSubject,
-        topics: [],
-        questionCount: 0,
+      try {
+        const subjectData = {
+          name: newSubject,
+          description: `Subject: ${newSubject}`,
+          topics: []
+        }
+        const created = await apiFetch<Subject>(`/subjects`, {
+          method: "POST",
+          body: JSON.stringify(subjectData),
+        })
+        setSubjects([...subjects, created])
+        setNewSubject("")
+        setIsAddingSubject(false)
+        toast({ title: "Subject created successfully" })
+      } catch (e: any) {
+        toast({ title: "Failed to create subject", description: e.message })
       }
-      setSubjects([...subjects, subject])
-      setNewSubject("")
-      setIsAddingSubject(false)
     }
   }
 
-  const addTopic = (subjectId: string) => {
+  const addTopic = async (subjectId: string) => {
     if (newTopic.trim()) {
-      setSubjects(
-        subjects.map((subject) =>
-          subject.id === subjectId ? { ...subject, topics: [...subject.topics, newTopic] } : subject,
-        ),
-      )
-      setNewTopic("")
-      setSelectedSubject(null)
+      try {
+        const subject = subjects.find(s => s.id === subjectId)
+        if (!subject) return
+
+        const updatedTopics = [...subject.topics, newTopic]
+        await apiFetch(`/subjects/${subjectId}/topics`, {
+          method: "POST",
+          body: JSON.stringify({ topic: newTopic }),
+        })
+
+        setSubjects(
+          subjects.map((s) =>
+            s.id === subjectId ? { ...s, topics: updatedTopics } : s,
+          ),
+        )
+        setNewTopic("")
+        setSelectedSubject(null)
+        toast({ title: "Topic added successfully" })
+      } catch (e: any) {
+        toast({ title: "Failed to add topic", description: e.message })
+      }
     }
   }
 
-  const deleteSubject = (subjectId: string) => {
-    setSubjects(subjects.filter((subject) => subject.id !== subjectId))
+  const deleteSubject = async (subjectId: string) => {
+    try {
+      await apiFetch(`/subjects/${subjectId}`, { method: "DELETE" })
+      setSubjects(subjects.filter((subject) => subject.id !== subjectId))
+      toast({ title: "Subject deleted successfully" })
+    } catch (e: any) {
+      toast({ title: "Failed to delete subject", description: e.message })
+    }
   }
 
   return (

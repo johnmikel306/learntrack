@@ -19,6 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
+import { toast } from "@/components/ui/use-toast"
 import { format } from "date-fns"
 
 interface Assignment {
@@ -58,6 +59,18 @@ export default function AssignmentManager() {
     run()
   }, [])
 
+  async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
+    })
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(text || `Request failed: ${res.status}`)
+    }
+    return res.json()
+  }
+
   const [isCreatingAssignment, setIsCreatingAssignment] = useState(false)
   const [newAssignment, setNewAssignment] = useState({
     title: "",
@@ -94,25 +107,37 @@ export default function AssignmentManager() {
     Chemistry: ["Organic", "Inorganic", "Physical"],
   }
 
-  const createAssignment = () => {
+  const createAssignment = async () => {
     if (newAssignment.title && newAssignment.subject && newAssignment.topic && newAssignment.students.length > 0) {
-      const assignment: Assignment = {
-        id: Date.now().toString(),
-        ...newAssignment,
-        status: "scheduled",
-        completionRate: 0,
-        creationDate: new Date(),
+      try {
+        const assignmentData = {
+          title: newAssignment.title,
+          description: `Assignment for ${newAssignment.subject} - ${newAssignment.topic}`,
+          subject: newAssignment.subject,
+          dueDate: newAssignment.dueDate.toISOString(),
+          questionCount: newAssignment.questionCount,
+          studentIds: newAssignment.students
+        }
+
+        const created = await apiFetch<Assignment>(`/assignments`, {
+          method: "POST",
+          body: JSON.stringify(assignmentData),
+        })
+
+        setAssignments([...assignments, created])
+        setNewAssignment({
+          title: "",
+          subject: "",
+          topic: "",
+          students: [],
+          dueDate: new Date(),
+          questionCount: 10,
+        })
+        setIsCreatingAssignment(false)
+        toast({ title: "Assignment created successfully" })
+      } catch (e: any) {
+        toast({ title: "Failed to create assignment", description: e.message })
       }
-      setAssignments([...assignments, assignment])
-      setNewAssignment({
-        title: "",
-        subject: "",
-        topic: "",
-        students: [],
-        dueDate: new Date(),
-        questionCount: 10,
-      })
-      setIsCreatingAssignment(false)
     }
   }
 

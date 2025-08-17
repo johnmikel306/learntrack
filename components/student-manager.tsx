@@ -95,15 +95,43 @@ export default function StudentManager() {
   const [error, setError] = useState<string | null>(null)
 
   async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-    const res = await fetch(`${API_BASE}${path}`, {
-      ...init,
-      headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
-    })
-    if (!res.ok) {
-      const text = await res.text()
-      throw new Error(text || `Request failed: ${res.status}`)
+    try {
+      const res = await fetch(`${API_BASE}${path}`, {
+        ...init,
+        headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
+      })
+
+      if (!res.ok) {
+        let errorMessage = `Request failed: ${res.status} ${res.statusText}`
+
+        try {
+          const errorText = await res.text()
+          if (errorText) {
+            // Try to parse as JSON first
+            try {
+              const errorJson = JSON.parse(errorText)
+              errorMessage = errorJson.detail || errorJson.message || errorText
+            } catch {
+              // If not JSON, use the text directly
+              errorMessage = errorText
+            }
+          }
+        } catch {
+          // If we can't read the response body, use the status
+          errorMessage = `Request failed: ${res.status} ${res.statusText}`
+        }
+
+        throw new Error(errorMessage)
+      }
+
+      return res.json()
+    } catch (error) {
+      // Re-throw with additional context if it's a network error
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Network error: Unable to connect to the server. Please check if the backend is running.')
+      }
+      throw error
     }
-    return res.json()
   }
   const [filterGrade, setFilterGrade] = useState(ALL)
 
@@ -252,12 +280,43 @@ export default function StudentManager() {
 
   const deleteStudent = async (studentId: string) => {
     try {
-      await apiFetch(`/students/${studentId}`, { method: "DELETE" })
-      setStudents((prev) => prev.filter((s) => s.id !== studentId))
-      setGroups((prev) => prev.map((g) => ({ ...g, studentIds: g.studentIds.filter((id) => id !== studentId) })))
-      toast({ title: "Student deleted" })
+      // Validate studentId
+      if (!studentId) {
+        toast({ title: "Error", description: "Invalid student ID" })
+        return
+      }
+
+      // Find the student to get their name for confirmation
+      const student = students.find(s => s.id === studentId)
+      const studentName = student?.name || "Unknown Student"
+
+      // Call the API to delete the student
+      const response = await apiFetch(`/students/${studentId}`, { method: "DELETE" })
+
+      // Only update local state if the API call was successful
+      setStudents((prev) => {
+        const filtered = prev.filter((s) => s.id !== studentId)
+        console.log(`Removed student ${studentId} from local state. Remaining students:`, filtered.length)
+        return filtered
+      })
+
+      // Also remove from groups
+      setGroups((prev) => prev.map((g) => ({
+        ...g,
+        studentIds: g.studentIds.filter((id) => id !== studentId)
+      })))
+
+      toast({
+        title: "Student deleted",
+        description: `${studentName} has been successfully removed from the system.`
+      })
+
     } catch (e: any) {
-      toast({ title: "Failed to delete student", description: e.message })
+      console.error("Delete student error:", e)
+      toast({
+        title: "Failed to delete student",
+        description: e.message || "An unexpected error occurred while deleting the student."
+      })
     }
   }
 
