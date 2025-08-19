@@ -36,6 +36,10 @@ export default function QuestionBank() {
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [expandedSubjects, setExpandedSubjects] = useState<string[]>([])
+  const [expandedTopicsBySubject, setExpandedTopicsBySubject] = useState<Record<string, string[]>>({})
+  const [questionsByKey, setQuestionsByKey] = useState<Record<string, Question[]>>({})
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
 
   type QuestionForm = {
@@ -280,10 +284,6 @@ export default function QuestionBank() {
       toast({ title: "Failed to update", description: e.message })
     }
   }
-  const [error, setError] = useState<string | null>(null)
-  const [expandedSubjects, setExpandedSubjects] = useState<string[]>([])
-  const [expandedTopicsBySubject, setExpandedTopicsBySubject] = useState<Record<string, string[]>>({})
-  const [questionsByKey, setQuestionsByKey] = useState<Record<string, Question[]>>({})
 
   const filteredSubjects = useMemo(() => {
     if (!searchTerm) return subjects

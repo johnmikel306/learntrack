@@ -89,11 +89,16 @@ export default function ContentUploader({ uploadedFiles, setUploadedFiles }: Con
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          uploadthing_key: `mock_${Date.now()}_${newFile.file.name}`,
+          uploadthing_url: `https://uploadthing.com/mock/${Date.now()}`,
           filename: newFile.file.name,
-          subject: newFile.subject,
-          topic: newFile.topic,
+          content_type: newFile.file.type,
           size: newFile.file.size,
-          uploadthing_url: "",
+          subject_id: newFile.subject,
+          topic: newFile.topic,
+          ai_provider: "openai",
+          question_count: 10,
+          difficulty_level: "medium"
         }),
       })
       if (!res.ok) throw new Error(await res.text())
@@ -107,7 +112,7 @@ export default function ContentUploader({ uploadedFiles, setUploadedFiles }: Con
         uploadDate: new Date(),
         status: data.status,
         questionCount: 0,
-        size: `${(newFile.file.size / 1024 / 1024).toFixed(1)} MB`,
+        size: `${(data.size / 1024 / 1024).toFixed(1)} MB`,
         type: newFile.file.type,
       }
 

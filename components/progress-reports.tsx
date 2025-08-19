@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -9,7 +10,8 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { Download } from "lucide-react"
 import { unparse } from "papaparse"
 
-const studentPerformanceData = [
+// Default data for when API is not available
+const defaultStudentPerformanceData = [
   { name: "Sarah Johnson", math: 85, physics: 78, chemistry: 92 },
   { name: "Mike Chen", math: 92, physics: 88, chemistry: 85 },
   { name: "Emma Davis", math: 78, physics: 82, chemistry: 89 },
@@ -17,7 +19,7 @@ const studentPerformanceData = [
   { name: "Lisa Wang", math: 94, physics: 87, chemistry: 91 },
 ]
 
-const weeklyProgressData = [
+const defaultWeeklyProgressData = [
   { week: "Week 1", completed: 45, assigned: 50 },
   { week: "Week 2", completed: 52, assigned: 55 },
   { week: "Week 3", completed: 48, assigned: 50 },
@@ -48,6 +50,42 @@ const chartConfig = {
 }
 
 export default function ProgressReports() {
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
+  const [studentPerformanceData, setStudentPerformanceData] = useState<typeof defaultStudentPerformanceData>([])
+  const [weeklyProgressData, setWeeklyProgressData] = useState<typeof defaultWeeklyProgressData>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Load progress data from API
+  useEffect(() => {
+    const loadProgressData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        const res = await fetch(`${API_BASE}/progress/reports`)
+        if (!res.ok) {
+          throw new Error(`Failed to fetch progress reports: ${res.status} ${res.statusText}`)
+        }
+
+        const data = await res.json()
+        setStudentPerformanceData(data.student_performance || [])
+        setWeeklyProgressData(data.weekly_progress || [])
+
+      } catch (e: any) {
+        setError(e.message)
+        console.error("Failed to load progress data:", e.message)
+
+        // Fallback to default data when API fails
+        setStudentPerformanceData(defaultStudentPerformanceData)
+        setWeeklyProgressData(defaultWeeklyProgressData)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadProgressData()
+  }, [])
+
   const handleExport = () => {
     const csv = unparse(studentPerformanceData)
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
@@ -61,14 +99,47 @@ export default function ProgressReports() {
     document.body.removeChild(link)
   }
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Progress Reports</h2>
+            <p className="text-gray-600">Loading progress data...</p>
+          </div>
+        </div>
+        <div className="grid lg:grid-cols-2 gap-6">
+          <Card>
+            <CardContent className="p-6">
+              <div className="animate-pulse space-y-4">
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-64 bg-gray-200 rounded"></div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="animate-pulse space-y-4">
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-64 bg-gray-200 rounded"></div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Progress Reports</h2>
-          <p className="text-gray-600">Track student performance and engagement</p>
+          <p className="text-gray-600">
+            {error ? `Error loading data: ${error}` : "Track student performance and engagement"}
+          </p>
         </div>
-        <Button onClick={handleExport}>
+        <Button onClick={handleExport} disabled={studentPerformanceData.length === 0}>
           <Download className="h-4 w-4 mr-2" />
           Export Reports
         </Button>
@@ -126,7 +197,13 @@ export default function ProgressReports() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {studentPerformanceData.map((student, index) => (
+            {studentPerformanceData.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>No student performance data available.</p>
+                {error && <p className="text-sm mt-2">Please check your connection and try again.</p>}
+              </div>
+            ) : (
+              studentPerformanceData.map((student, index) => (
               <div key={`student-${student.name}-${index}`} className="border rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold">{student.name}</h3>
@@ -147,7 +224,8 @@ export default function ProgressReports() {
                   />
                 </div>
               </div>
-            ))}
+            ))
+            )}
           </div>
         </CardContent>
       </Card>

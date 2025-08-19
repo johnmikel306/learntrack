@@ -63,42 +63,8 @@ export default function StudentDashboard({ onBack }: StudentDashboardProps) {
     loadAssignments()
   }, [])
 
-  const mockAssignments = [
-    {
-      id: "1",
-      title: "Algebra Practice Set 1",
-      subject: "Mathematics",
-      topic: "Algebra",
-      dueDate: new Date(2024, 11, 25),
-      questionCount: 10,
-      completedQuestions: 7,
-      status: "in-progress",
-    },
-    {
-      id: "2",
-      title: "Physics Mechanics Quiz",
-      subject: "Physics",
-      topic: "Mechanics",
-      dueDate: new Date(2024, 11, 28),
-      questionCount: 15,
-      completedQuestions: 0,
-      status: "pending",
-    },
-    {
-      id: "3",
-      title: "Chemistry Basics",
-      subject: "Chemistry",
-      topic: "Organic",
-      dueDate: new Date(2024, 11, 20),
-      questionCount: 8,
-      completedQuestions: 8,
-      status: "completed",
-      score: 85,
-    },
-  ]
-
-  // Use API data if available, fallback to mock for demo
-  const displayAssignments = assignments.length > 0 ? assignments : mockAssignments
+  // All assignments now come from API
+  const displayAssignments = assignments
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState("")

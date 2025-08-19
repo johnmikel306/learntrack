@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -35,50 +35,89 @@ interface ParentDashboardProps {
   onBack: () => void
 }
 
-const weeklyProgressData = [
-  { date: "Dec 18", completed: 8, assigned: 10, score: 85 },
-  { date: "Dec 19", completed: 12, assigned: 12, score: 92 },
-  { date: "Dec 20", completed: 6, assigned: 8, score: 78 },
-  { date: "Dec 21", completed: 10, assigned: 10, score: 88 },
-  { date: "Dec 22", completed: 15, assigned: 15, score: 94 },
-  { date: "Dec 23", completed: 7, assigned: 10, score: 82 },
-  { date: "Dec 24", completed: 5, assigned: 8, score: 90 },
-]
+interface ParentDashboardProps {
+  onBack: () => void
+}
 
-const subjectPerformanceData = [
-  { subject: "Math", thisWeek: 88, lastWeek: 82 },
-  { subject: "Physics", thisWeek: 92, lastWeek: 89 },
-  { subject: "Chemistry", thisWeek: 85, lastWeek: 87 },
-]
+export default function ParentDashboard({ onBack }: ParentDashboardProps) {
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
+  const [progressData, setProgressData] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-const assignmentHistory = [
-  {
-    id: "1",
-    title: "Algebra Practice Set 1",
-    subject: "Mathematics",
-    status: "In Progress",
-    dueDate: "Dec 25, 2024",
-    progress: 70,
-    completed: 7,
-    total: 10,
-  },
-  {
-    id: "2",
-    title: "Chemistry Basics",
-    subject: "Chemistry",
-    status: "Completed",
-    completedDate: "Dec 20, 2024",
-    score: 85,
-  },
-  {
-    id: "3",
-    title: "Physics Mechanics Quiz",
-    subject: "Physics",
-    status: "Pending",
-    dueDate: "Dec 28, 2024",
-    questions: 15,
-  },
-]
+  // Load progress data from API
+  useEffect(() => {
+    const loadProgressData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const res = await fetch(`${API_BASE}/progress/parent`)
+        if (!res.ok) throw new Error(await res.text())
+        const data = await res.json()
+        setProgressData(data[0]) // Assuming first child for now
+      } catch (e: any) {
+        setError(e.message)
+        console.error("Failed to load progress data:", e.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadProgressData()
+  }, [])
+
+  // Default data structure for when API is not available
+  const defaultData = {
+    analytics: {
+      weekly_progress: [
+        { date: "Dec 18", completed: 8, assigned: 10, score: 85 },
+        { date: "Dec 19", completed: 12, assigned: 12, score: 92 },
+        { date: "Dec 20", completed: 6, assigned: 8, score: 78 },
+        { date: "Dec 21", completed: 10, assigned: 10, score: 88 },
+        { date: "Dec 22", completed: 15, assigned: 15, score: 94 },
+        { date: "Dec 23", completed: 7, assigned: 10, score: 82 },
+        { date: "Dec 24", completed: 5, assigned: 8, score: 90 },
+      ],
+      subject_performance: [
+        { subject: "Math", thisWeek: 88, lastWeek: 82 },
+        { subject: "Physics", thisWeek: 92, lastWeek: 89 },
+        { subject: "Chemistry", thisWeek: 85, lastWeek: 87 },
+      ]
+    },
+    recent_assignments: [
+      {
+        id: "1",
+        title: "Algebra Practice Set 1",
+        subject: "Mathematics",
+        status: "In Progress",
+        dueDate: "Dec 25, 2024",
+        progress: 70,
+        completed: 7,
+        total: 10,
+      },
+      {
+        id: "2",
+        title: "Chemistry Basics",
+        subject: "Chemistry",
+        status: "Completed",
+        completedDate: "Dec 20, 2024",
+        score: 85,
+      },
+      {
+        id: "3",
+        title: "Physics Mechanics Quiz",
+        subject: "Physics",
+        status: "Pending",
+        dueDate: "Dec 28, 2024",
+        questions: 15,
+      },
+    ]
+  }
+
+  // Use API data if available, fallback to default for demo
+  const currentData = progressData || defaultData
+  const weeklyProgressData = currentData.analytics?.weekly_progress || defaultData.analytics.weekly_progress
+  const subjectPerformanceData = currentData.analytics?.subject_performance || defaultData.analytics.subject_performance
+  const assignmentHistory = currentData.recent_assignments || defaultData.recent_assignments
 
 const chartConfig = {
   completed: {
@@ -103,9 +142,19 @@ const chartConfig = {
   },
 }
 
-export default function ParentDashboard({ onBack }: ParentDashboardProps) {
   const [selectedChild] = useState("Sarah Johnson")
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null)
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-4 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>Loading progress data...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">

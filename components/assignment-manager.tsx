@@ -91,21 +91,53 @@ export default function AssignmentManager() {
     searchTerm: "",
   })
 
-  const students = [
-    "Sarah Johnson",
-    "Mike Chen",
-    "Emma Davis",
-    "John Smith",
-    "Lisa Wang",
-    "Alex Brown",
-    "Sophie Wilson",
-  ]
-  const subjects = ["Mathematics", "Physics", "Chemistry"]
-  const topics = {
-    Mathematics: ["Algebra", "Geometry", "Calculus"],
-    Physics: ["Mechanics", "Thermodynamics", "Optics"],
-    Chemistry: ["Organic", "Inorganic", "Physical"],
-  }
+  const [students, setStudents] = useState<string[]>([])
+  const [subjects, setSubjects] = useState<any[]>([])
+  const [topics, setTopics] = useState<Record<string, string[]>>({})
+
+  // Load students and subjects from API
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Load subjects
+        const subjectsRes = await fetch(`${API_BASE}/subjects`)
+        if (subjectsRes.ok) {
+          const subjectsData = await subjectsRes.json()
+          setSubjects(subjectsData)
+
+          // Build topics map
+          const topicsMap: Record<string, string[]> = {}
+          subjectsData.forEach((subject: any) => {
+            topicsMap[subject.name] = subject.topics || []
+          })
+          setTopics(topicsMap)
+        }
+
+        // Load students from API
+        const studentsRes = await fetch(`${API_BASE}/students`)
+        if (studentsRes.ok) {
+          const studentsData = await studentsRes.json()
+          // Extract student names for the dropdown
+          const studentNames = studentsData.map((student: any) => student.name)
+          setStudents(studentNames)
+        } else {
+          // Fallback to default data if API fails
+          setStudents([
+            "Sarah Johnson",
+            "Mike Chen",
+            "Emma Davis",
+            "John Smith",
+            "Lisa Wang",
+            "Alex Brown",
+            "Sophie Wilson",
+          ])
+        }
+      } catch (e) {
+        console.error("Failed to load data:", e)
+      }
+    }
+    loadData()
+  }, [])
 
   const createAssignment = async () => {
     if (newAssignment.title && newAssignment.subject && newAssignment.topic && newAssignment.students.length > 0) {
@@ -254,8 +286,8 @@ export default function AssignmentManager() {
                         </SelectTrigger>
                         <SelectContent>
                           {subjects.map((subject) => (
-                            <SelectItem key={subject} value={subject}>
-                              {subject}
+                            <SelectItem key={subject.id || subject.name} value={subject.name}>
+                              {subject.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
