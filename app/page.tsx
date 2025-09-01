@@ -27,9 +27,20 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header Navigation */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Header Navigation - Enhanced with Academic Credibility */}
+      <header className="relative bg-white border-b border-gray-100 sticky top-0 z-50">
+        {/* Subtle Academic Pattern in Header - MIT-inspired clean institutional look */}
+        <div className="absolute inset-0 opacity-[0.015]">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `
+              linear-gradient(90deg, #6366f1 0.5px, transparent 0.5px),
+              linear-gradient(180deg, #6366f1 0.5px, transparent 0.5px)
+            `,
+            backgroundSize: '40px 40px'
+          }}></div>
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <div className="flex items-center space-x-2">
@@ -72,9 +83,39 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="bg-gradient-to-b from-gray-50 to-white py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      {/* Hero Section - Enhanced with Academic Background Pattern */}
+      <section className="relative bg-gradient-to-b from-gray-50 to-white py-20 overflow-hidden">
+        {/* Academic Background Pattern - Inspired by Harvard's institutional design */}
+        <div className="absolute inset-0 opacity-[0.03]">
+          {/* Geometric Grid Pattern */}
+          <div className="absolute inset-0" style={{
+            backgroundImage: `
+              linear-gradient(90deg, #6366f1 1px, transparent 1px),
+              linear-gradient(180deg, #6366f1 1px, transparent 1px)
+            `,
+            backgroundSize: '60px 60px'
+          }}></div>
+
+          {/* Subtle Academic Icons Pattern - Inspired by Khan Academy's friendly approach */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="grid grid-cols-12 gap-16 opacity-50 transform rotate-12">
+              {Array.from({ length: 48 }).map((_, i) => (
+                <div key={i} className="w-8 h-8 text-purple-600">
+                  {i % 4 === 0 && <BookOpen className="w-full h-full" />}
+                  {i % 4 === 1 && <GraduationCap className="w-full h-full" />}
+                  {i % 4 === 2 && <Brain className="w-full h-full" />}
+                  {i % 4 === 3 && <Target className="w-full h-full" />}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Coursera-inspired Subtle Gradient Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-50/20 via-transparent to-blue-50/20"></div>
+        </div>
+
+        {/* Content Container */}
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           {/* Trust Badge */}
           <div className="inline-flex items-center space-x-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-8">
             <Star className="h-4 w-4" />
