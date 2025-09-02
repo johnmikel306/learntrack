@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, TrendingUp, Clock, CheckCircle, AlertCircle, Calendar, Mail } from "lucide-react"
+import { TrendingUp, Clock, CheckCircle, AlertCircle, Calendar, Mail, ArrowLeft } from "lucide-react"
+
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart"
 import {
@@ -523,25 +524,25 @@ const chartConfig = {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
 
-      <Dialog open={selectedAssignment !== null} onOpenChange={(open) => !open && setSelectedAssignment(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{selectedAssignment?.title}</DialogTitle>
-            <DialogDescription>
-              {selectedAssignment?.subject} • Completed: {selectedAssignment?.completedDate}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p>
-              Final Score: <strong>{selectedAssignment?.score}%</strong>
-            </p>
-            <p>A more detailed breakdown of the assignment results would be displayed here.</p>
-            <Button onClick={() => setSelectedAssignment(null)}>Close</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        <Dialog open={selectedAssignment !== null} onOpenChange={(open) => !open && setSelectedAssignment(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{selectedAssignment?.title}</DialogTitle>
+              <DialogDescription>
+                {selectedAssignment?.subject} • Completed: {selectedAssignment?.completedDate}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p>
+                Final Score: <strong>{selectedAssignment?.score}%</strong>
+              </p>
+              <p>A more detailed breakdown of the assignment results would be displayed here.</p>
+              <Button onClick={() => setSelectedAssignment(null)}>Close</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   )
 }

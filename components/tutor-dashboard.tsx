@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ArrowLeft, Plus, BookOpen, Users, Calendar, BarChart3, TrendingUp, Target, Settings } from "lucide-react"
+
 import AssignmentManager from "@/components/assignment-manager"
 import ProgressReports from "@/components/progress-reports"
 import StudentManager from "@/components/student-manager"
@@ -134,22 +135,22 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Avg. Score</CardTitle>
+                  <CardTitle className="text-sm font-medium">Average Score</CardTitle>
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{loading ? "..." : `${dashboardStats.avgScore}%`}</div>
-                  <p className="text-xs text-muted-foreground">Average score</p>
+                  <p className="text-xs text-muted-foreground">Class average</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Questions Answered</CardTitle>
-                  <BookOpen className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
+                  <Target className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{loading ? "..." : `${dashboardStats.completionRate}%`}</div>
-                  <p className="text-xs text-muted-foreground">Completion rate</p>
+                  <p className="text-xs text-muted-foreground">This month</p>
                 </CardContent>
               </Card>
             </div>

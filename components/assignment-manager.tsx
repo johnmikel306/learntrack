@@ -40,8 +40,16 @@ export default function AssignmentManager() {
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
+
+  // Hydration guard
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
+    if (!mounted) return
+
     const run = async () => {
       try {
         setLoading(true)
@@ -57,7 +65,7 @@ export default function AssignmentManager() {
       }
     }
     run()
-  }, [])
+  }, [mounted])
 
   async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await fetch(`${API_BASE}${path}`, {
@@ -77,7 +85,7 @@ export default function AssignmentManager() {
     subject: "",
     topic: "",
     students: [] as string[],
-    dueDate: new Date(),
+    dueDate: null as Date | null,
     questionCount: 10,
   })
 
@@ -140,7 +148,7 @@ export default function AssignmentManager() {
   }, [])
 
   const createAssignment = async () => {
-    if (newAssignment.title && newAssignment.subject && newAssignment.topic && newAssignment.students.length > 0) {
+    if (newAssignment.title && newAssignment.subject && newAssignment.topic && newAssignment.students.length > 0 && newAssignment.dueDate) {
       try {
         const assignmentData = {
           title: newAssignment.title,
@@ -162,7 +170,7 @@ export default function AssignmentManager() {
           subject: "",
           topic: "",
           students: [],
-          dueDate: new Date(),
+          dueDate: null,
           questionCount: 10,
         })
         setIsCreatingAssignment(false)
@@ -241,6 +249,29 @@ export default function AssignmentManager() {
 
     return true
   })
+
+  // Prevent hydration mismatch
+  if (!mounted) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Assignment Management</CardTitle>
+                <CardDescription>Loading assignments...</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-center py-8">
+              <div className="text-gray-500">Loading...</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -345,14 +376,14 @@ export default function AssignmentManager() {
                             className="w-full justify-start text-left font-normal bg-transparent"
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {format(newAssignment.dueDate, "PPP")}
+                            {newAssignment.dueDate ? format(newAssignment.dueDate, "PPP") : "Select date"}
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
                           <Calendar
                             mode="single"
-                            selected={newAssignment.dueDate}
-                            onSelect={(date) => date && setNewAssignment({ ...newAssignment, dueDate: date })}
+                            selected={newAssignment.dueDate || undefined}
+                            onSelect={(date) => setNewAssignment({ ...newAssignment, dueDate: date || null })}
                             initialFocus
                           />
                         </PopoverContent>
@@ -456,8 +487,8 @@ export default function AssignmentManager() {
                         {assignment.subject} • {assignment.topic}
                       </span>
                       <span>{assignment.questionCount} questions</span>
-                      <span>Due: {format(assignment.dueDate, "MMM dd, yyyy")}</span>
-                      <span>Created: {format(assignment.creationDate, "MMM dd, yyyy")}</span>
+                      <span>Due: {assignment.dueDate ? format(new Date(assignment.dueDate), "MMM dd, yyyy") : "No due date"}</span>
+                      <span>Created: {assignment.creationDate ? format(new Date(assignment.creationDate), "MMM dd, yyyy") : "Unknown"}</span>
                     </div>
                     <div className="flex items-center gap-2 mb-2">
                       <Users className="h-4 w-4" />

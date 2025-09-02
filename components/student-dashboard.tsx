@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft, BookOpen, Clock, CheckCircle, Star, Calendar, Trophy } from "lucide-react"
+
 import { format } from "date-fns"
 import { toast } from "sonner"
 
@@ -261,7 +262,7 @@ export default function StudentDashboard({ onBack }: StudentDashboardProps) {
                 <CardTitle>My Assignments</CardTitle>
                 <CardDescription>Complete your daily practice questions</CardDescription>
               </CardHeader>
-              <CardContent>
+            <CardContent>
                 <div className="space-y-4">
                   {assignments.map((assignment) => (
                     <div key={assignment.id} className="border rounded-lg p-4">
