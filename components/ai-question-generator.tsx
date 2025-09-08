@@ -523,63 +523,6 @@ export default function AIQuestionGenerator({
           </div>
         </CardContent>
       </Card>
-
-      {/* Generation History */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Generation History</CardTitle>
-          <CardDescription>Previously generated question batches</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {generatedQuestions.map((batch) => (
-              <div key={batch.id} className="border rounded-lg p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Brain className="h-4 w-4 text-purple-600" />
-                      <h3 className="font-semibold">AI Generated Questions</h3>
-                      <Badge variant="outline">{batch.status}</Badge>
-                    </div>
-                    <div className="text-sm text-gray-600 mb-2">
-                      <p className="font-medium">
-                        Prompt: "{batch.sourcePrompt ? batch.sourcePrompt.substring(0, 100) : "No prompt provided"}
-                        {batch.sourcePrompt && batch.sourcePrompt.length > 100 ? "..." : ""}"
-                      </p>
-                      <div className="flex items-center gap-4 mt-1">
-                        <span>
-                          {batch.subject} • {batch.topic}
-                        </span>
-                        <span>Generated: {format(batch.generatedDate, "MMM dd, yyyy 'at' HH:mm")}</span>
-                        {batch.sourceFile && <span>Material: {batch.sourceFile}</span>}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <Badge variant="outline">{batch.questions.length} questions</Badge>
-                      <Badge className="bg-green-100 text-green-800">
-                        {batch.questions.filter((q) => q.status === "approved").length} approved
-                      </Badge>
-                      <Badge className="bg-yellow-100 text-yellow-800">
-                        {batch.questions.filter((q) => q.status === "pending").length} pending
-                      </Badge>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    View Questions
-                  </Button>
-                </div>
-              </div>
-            ))}
-            {generatedQuestions.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <Brain className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p>No questions generated yet.</p>
-                <p className="text-sm">Enter a prompt above to generate your first batch of questions!</p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

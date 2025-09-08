@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useUser, SignInButton, UserButton } from "@clerk/nextjs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { BookOpen, Users, Eye, GraduationCap, Play, Check, BarChart3, MessageCircle, Star, TrendingUp, Clock, Award, Brain, Target } from "lucide-react"
@@ -12,6 +13,7 @@ type UserRole = "tutor" | "student" | "parent" | null
 
 export default function HomePage() {
   const [currentRole, setCurrentRole] = useState<UserRole>(null)
+  const { isSignedIn, user } = useUser()
 
   if (currentRole === "tutor") {
     return <TutorDashboard onBack={() => setCurrentRole(null)} />
@@ -72,12 +74,34 @@ export default function HomePage() {
 
             {/* Auth Buttons */}
             <div className="flex items-center space-x-4">
-              <button className="text-gray-600 hover:text-purple-600 transition-all duration-300 motion-reduce:transition-none hover:scale-105 motion-reduce:hover:scale-100 px-3 py-2 rounded-lg hover:bg-purple-50">
-                Sign In
-              </button>
-              <button className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all duration-300 hover:scale-105 hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:scale-100 transform hover:-translate-y-0.5 motion-reduce:hover:translate-y-0">
-                Get Started
-              </button>
+              {isSignedIn ? (
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm text-gray-600">
+                    Welcome, {user?.firstName || user?.emailAddresses[0]?.emailAddress}
+                  </span>
+                  <Button
+                    onClick={() => window.location.href = '/dashboard'}
+                    variant="outline"
+                    className="transition-all duration-300 hover:scale-105 motion-reduce:hover:scale-100"
+                  >
+                    Dashboard
+                  </Button>
+                  <UserButton afterSignOutUrl="/" />
+                </div>
+              ) : (
+                <>
+                  <SignInButton mode="modal">
+                    <button className="text-gray-600 hover:text-purple-600 transition-all duration-300 motion-reduce:transition-none hover:scale-105 motion-reduce:hover:scale-100 px-3 py-2 rounded-lg hover:bg-purple-50">
+                      Sign In
+                    </button>
+                  </SignInButton>
+                  <SignInButton mode="modal">
+                    <button className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all duration-300 hover:scale-105 hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:scale-100 transform hover:-translate-y-0.5 motion-reduce:hover:translate-y-0">
+                      Get Started
+                    </button>
+                  </SignInButton>
+                </>
+              )}
             </div>
           </div>
         </div>

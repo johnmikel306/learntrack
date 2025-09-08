@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useStudents, useCreateStudent, useMutation } from "@/hooks/use-api"
+import { useApiClient } from "@/lib/api-client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -89,54 +91,22 @@ export default function StudentManager() {
   const [filterSubject, setFilterSubject] = useState(ALL)
   const [filterStatus, setFilterStatus] = useState(ALL)
 
-  // All data must come from FastAPI
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // Use authenticated API hooks
+  const { data: studentsData, loading, error, refetch } = useStudents()
+  const { mutate: createStudentMutation } = useCreateStudent()
+  const apiClient = useApiClient()
 
-  async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-    try {
-      const res = await fetch(`${API_BASE}${path}`, {
-        ...init,
-        headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
-      })
-
-      if (!res.ok) {
-        let errorMessage = `Request failed: ${res.status} ${res.statusText}`
-
-        try {
-          const errorText = await res.text()
-          if (errorText) {
-            // Try to parse as JSON first
-            try {
-              const errorJson = JSON.parse(errorText)
-              errorMessage = errorJson.detail || errorJson.message || errorText
-            } catch {
-              // If not JSON, use the text directly
-              errorMessage = errorText
-            }
-          }
-        } catch {
-          // If we can't read the response body, use the status
-          errorMessage = `Request failed: ${res.status} ${res.statusText}`
-        }
-
-        throw new Error(errorMessage)
-      }
-
-      return res.json()
-    } catch (error) {
-      // Re-throw with additional context if it's a network error
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error('Network error: Unable to connect to the server. Please check if the backend is running.')
-      }
-      throw error
-    }
-  }
-  const [filterGrade, setFilterGrade] = useState(ALL)
-
+  // Local state for UI
   const [students, setStudents] = useState<Student[]>([])
   const [groups, setGroups] = useState<StudentGroup[]>([])
+  const [filterGrade, setFilterGrade] = useState(ALL)
+
+  // Update local state when API data changes
+  useEffect(() => {
+    if (studentsData) {
+      setStudents(studentsData)
+    }
+  }, [studentsData])
 
   // Modal states
   const [isAddingStudent, setIsAddingStudent] = useState(false)
@@ -159,21 +129,19 @@ export default function StudentManager() {
 
   const sendContactMessage = async () => {
     try {
-      const res = await fetch(`${API_BASE}/communications/send`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          student_id: selectedStudentForDetails?.id,
-          to_email: contactDraft.channel === "email" ? contactDraft.toEmail : undefined,
-          to_phone: contactDraft.channel === "sms" ? contactDraft.toPhone : undefined,
-          channel: contactDraft.channel,
-          subject: contactDraft.subject,
-          body: contactDraft.body,
-        }),
+      const response = await apiClient.post('/communications/send', {
+        student_id: selectedStudentForDetails?.id,
+        to_email: contactDraft.channel === "email" ? contactDraft.toEmail : undefined,
+        to_phone: contactDraft.channel === "sms" ? contactDraft.toPhone : undefined,
+        channel: contactDraft.channel,
+        subject: contactDraft.subject,
+        body: contactDraft.body,
       })
-      if (!res.ok) throw new Error(await res.text())
-      setContactOpen(false)
-      toast({ title: "Message sent", description: "Your message has been queued for delivery." })
+
+      if (response.data) {
+        setContactOpen(false)
+        toast({ title: "Message sent", description: "Your message has been queued for delivery." })
+      }
     } catch (e: any) {
       toast({ title: "Failed to send", description: e.message })
     }
@@ -202,26 +170,20 @@ export default function StudentManager() {
     color: "blue",
   })
 
-  // Initial load from FastAPI
+  // Load groups from API (students are loaded via useStudents hook)
   useEffect(() => {
-    const run = async () => {
+    const loadGroups = async () => {
       try {
-        setLoading(true)
-        setError(null)
-        const [studentsRes, groupsRes] = await Promise.all([
-          apiFetch<Student[]>(`/students`),
-          apiFetch<StudentGroup[]>(`/students/groups`),
-        ])
-        setStudents(studentsRes)
-        setGroups(groupsRes)
+        const response = await apiClient.get<StudentGroup[]>('/students/groups')
+        if (response.data) {
+          setGroups(response.data)
+        }
       } catch (e: any) {
-        setError(e.message)
-        toast({ title: "Server unavailable", description: e.message })
-      } finally {
-        setLoading(false)
+        console.error('Failed to load groups:', e)
+        // Groups are optional, so don't show error toast
       }
     }
-    run()
+    loadGroups()
   }, [])
 
 
@@ -240,18 +202,17 @@ export default function StudentManager() {
     return matchesSearch && matchesSubject && matchesStatus && matchesGrade
   })
 
-  // Student management functions (FastAPI only)
+  // Student management functions (Authenticated API)
   const addStudent = async () => {
     if (!(newStudent.name && newStudent.email)) return
     try {
-      const created = await apiFetch<Student>(`/students`, {
-        method: "POST",
-        body: JSON.stringify(newStudent),
-      })
-      setStudents((prev) => [created, ...prev])
-      resetNewStudent()
-      setIsAddingStudent(false)
-      toast({ title: "Student created" })
+      const created = await createStudentMutation(newStudent)
+      if (created) {
+        setStudents((prev) => [created, ...prev])
+        resetNewStudent()
+        setIsAddingStudent(false)
+        toast({ title: "Student created" })
+      }
     } catch (e: any) {
       toast({ title: "Failed to create student", description: e.message })
     }
@@ -265,14 +226,13 @@ export default function StudentManager() {
   const saveEditedStudent = async () => {
     if (!editingStudentData) return
     try {
-      const updated = await apiFetch<Student>(`/students/${editingStudentData.id}`, {
-        method: "PUT",
-        body: JSON.stringify(editingStudentData),
-      })
-      setStudents((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
-      setIsEditingStudent(null)
-      setEditingStudentData(null)
-      toast({ title: "Student updated" })
+      const response = await apiClient.put(`/students/${editingStudentData.id}`, editingStudentData)
+      if (response.data) {
+        setStudents((prev) => prev.map((s) => (s.id === response.data.id ? response.data : s)))
+        setIsEditingStudent(null)
+        setEditingStudentData(null)
+        toast({ title: "Student updated" })
+      }
     } catch (e: any) {
       toast({ title: "Failed to update student", description: e.message })
     }
@@ -291,7 +251,7 @@ export default function StudentManager() {
       const studentName = student?.name || "Unknown Student"
 
       // Call the API to delete the student
-      const response = await apiFetch(`/students/${studentId}`, { method: "DELETE" })
+      const response = await apiClient.delete(`/students/${studentId}`)
 
       // Only update local state if the API call was successful
       setStudents((prev) => {
