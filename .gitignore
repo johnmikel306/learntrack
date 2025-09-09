@@ -23,8 +23,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
-.env*.local
-.env
+.env*
 
 # vercel
 .vercel
@@ -41,6 +40,11 @@ backend/
 
 # Other common exclusions
 node_modules/
-.env.local
 .next/
+.turbo/
+.venv/
+__pycache__/
+*.pyc
+.env*
 dist/
+build/
