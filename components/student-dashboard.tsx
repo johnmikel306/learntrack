@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft, BookOpen, Clock, CheckCircle, Star, Calendar, Trophy } from "lucide-react"
 
+import { useApiClient } from '@/lib/api-client'
+
 import { format } from "date-fns"
 import { toast } from "sonner"
 
@@ -39,10 +41,12 @@ interface Question {
 }
 
 export default function StudentDashboard({ onBack }: StudentDashboardProps) {
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
+
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const client = useApiClient()
 
   // Load assignments from FastAPI
   useEffect(() => {
@@ -50,10 +54,9 @@ export default function StudentDashboard({ onBack }: StudentDashboardProps) {
       try {
         setLoading(true)
         setError(null)
-        const res = await fetch(`${API_BASE}/assignments/student`)
-        if (!res.ok) throw new Error(await res.text())
-        const data = await res.json()
-        setAssignments(data)
+        const res = await client.get<Assignment[]>('/assignments/student/')
+        if (res.error) throw new Error(res.error)
+        setAssignments(res.data || [])
       } catch (e: any) {
         setError(e.message)
         toast("Failed to load assignments: " + e.message)
@@ -71,6 +74,14 @@ export default function StudentDashboard({ onBack }: StudentDashboardProps) {
   const [selectedAnswer, setSelectedAnswer] = useState("")
   const [showingQuestion, setShowingQuestion] = useState(false)
   const [isReviewing, setIsReviewing] = useState(false)
+
+  // Placeholder data for student name
+  const studentName = "Jane Doe";
+
+  // Placeholder function for submitting an answer
+  const submitAnswer = () => {
+    handleNextQuestion();
+  };
 
   // Questions should come from backend; empty default here
   const activeAssignmentQuestions: Question[] = []

@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "@/components/ui/use-toast"
 
+import { useApiClient } from '@/lib/api-client'
+
 interface Subject {
   id: string
   name: string
@@ -28,6 +30,8 @@ export default function SubjectManager() {
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(false)
+  const client = useApiClient()
+
   const [error, setError] = useState<string | null>(null)
 
   // Load subjects from FastAPI
@@ -36,10 +40,9 @@ export default function SubjectManager() {
       try {
         setLoading(true)
         setError(null)
-        const res = await fetch(`${API_BASE}/subjects`)
-        if (!res.ok) throw new Error(await res.text())
-        const data = await res.json()
-        setSubjects(data)
+        const res = await client.get<Subject[]>('/subjects/')
+        if (res.error) throw new Error(res.error)
+        setSubjects(res.data || [])
       } catch (e: any) {
         setError(e.message)
         toast({ title: "Failed to load subjects", description: e.message })
@@ -50,17 +53,7 @@ export default function SubjectManager() {
     loadSubjects()
   }, [])
 
-  async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-    const res = await fetch(`${API_BASE}${path}`, {
-      ...init,
-      headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
-    })
-    if (!res.ok) {
-      const text = await res.text()
-      throw new Error(text || `Request failed: ${res.status}`)
-    }
-    return res.json()
-  }
+
   const [newSubject, setNewSubject] = useState("")
   const [newTopic, setNewTopic] = useState("")
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null)
@@ -74,10 +67,9 @@ export default function SubjectManager() {
           description: `Subject: ${newSubject}`,
           topics: []
         }
-        const created = await apiFetch<Subject>(`/subjects`, {
-          method: "POST",
-          body: JSON.stringify(subjectData),
-        })
+        const createdRes = await client.post<Subject>('/subjects/', subjectData)
+        const created = createdRes.data as Subject
+        if (!created) throw new Error(createdRes.error || 'Failed to create subject')
         setSubjects([...subjects, created])
         setNewSubject("")
         setIsAddingSubject(false)
@@ -95,10 +87,8 @@ export default function SubjectManager() {
         if (!subject) return
 
         const updatedTopics = [...subject.topics, newTopic]
-        await apiFetch(`/subjects/${subjectId}/topics`, {
-          method: "POST",
-          body: JSON.stringify({ topic: newTopic }),
-        })
+        const topicRes = await client.post(`/subjects/${subjectId}/topics`, { topic: newTopic })
+        if (topicRes.error) throw new Error(topicRes.error)
 
         setSubjects(
           subjects.map((s) =>
@@ -116,7 +106,8 @@ export default function SubjectManager() {
 
   const deleteSubject = async (subjectId: string) => {
     try {
-      await apiFetch(`/subjects/${subjectId}`, { method: "DELETE" })
+      const delRes = await client.delete(`/subjects/${subjectId}`)
+      if (delRes.error) throw new Error(delRes.error)
       setSubjects(subjects.filter((subject) => subject.id !== subjectId))
       toast({ title: "Subject deleted successfully" })
     } catch (e: any) {

@@ -22,6 +22,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "@/components/ui/use-toast"
 import { format } from "date-fns"
 
+import { useApiClient } from '@/lib/api-client'
+
 interface Assignment {
   id: string
   title: string
@@ -36,11 +38,13 @@ interface Assignment {
 }
 
 export default function AssignmentManager() {
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
+
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
+
+  const client = useApiClient()
 
   // Hydration guard
   useEffect(() => {
@@ -54,10 +58,9 @@ export default function AssignmentManager() {
       try {
         setLoading(true)
         setError(null)
-        const res = await fetch(`${API_BASE}/assignments`)
-        if (!res.ok) throw new Error(await res.text())
-        const data = await res.json()
-        setAssignments(data)
+        const res = await client.get<Assignment[]>('/assignments/')
+        if (res.error) throw new Error(res.error)
+        setAssignments(res.data || [])
       } catch (e: any) {
         setError(e.message)
       } finally {
@@ -67,17 +70,7 @@ export default function AssignmentManager() {
     run()
   }, [mounted])
 
-  async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-    const res = await fetch(`${API_BASE}${path}`, {
-      ...init,
-      headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
-    })
-    if (!res.ok) {
-      const text = await res.text()
-      throw new Error(text || `Request failed: ${res.status}`)
-    }
-    return res.json()
-  }
+
 
   const [isCreatingAssignment, setIsCreatingAssignment] = useState(false)
   const [newAssignment, setNewAssignment] = useState({
@@ -108,9 +101,9 @@ export default function AssignmentManager() {
     const loadData = async () => {
       try {
         // Load subjects
-        const subjectsRes = await fetch(`${API_BASE}/subjects`)
-        if (subjectsRes.ok) {
-          const subjectsData = await subjectsRes.json()
+        const subjectsRes = await client.get<any[]>('/subjects/')
+        if (!subjectsRes.error) {
+          const subjectsData = subjectsRes.data || []
           setSubjects(subjectsData)
 
           // Build topics map
@@ -122,9 +115,9 @@ export default function AssignmentManager() {
         }
 
         // Load students from API
-        const studentsRes = await fetch(`${API_BASE}/students`)
-        if (studentsRes.ok) {
-          const studentsData = await studentsRes.json()
+        const studentsRes = await client.get<any[]>('/students/')
+        if (!studentsRes.error) {
+          const studentsData = studentsRes.data || []
           // Extract student names for the dropdown
           const studentNames = studentsData.map((student: any) => student.name)
           setStudents(studentNames)
@@ -148,10 +141,9 @@ export default function AssignmentManager() {
           studentIds: newAssignment.students
         }
 
-        const created = await apiFetch<Assignment>(`/assignments`, {
-          method: "POST",
-          body: JSON.stringify(assignmentData),
-        })
+        const createdRes = await client.post<Assignment>('/assignments/', assignmentData)
+        const created = createdRes.data as Assignment
+        if (!created) throw new Error(createdRes.error || 'Failed to create assignment')
 
         setAssignments([...assignments, created])
         setNewAssignment({

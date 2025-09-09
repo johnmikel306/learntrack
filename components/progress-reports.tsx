@@ -10,6 +10,8 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { Download } from "lucide-react"
 import { unparse } from "papaparse"
 
+import { useApiClient } from '@/lib/api-client'
+
 // Initialize empty arrays for data that will be populated from the database
 const defaultStudentPerformanceData: StudentPerformance[] = []
 const defaultWeeklyProgressData: WeeklyProgress[] = []
@@ -52,10 +54,12 @@ const chartConfig = {
 }
 
 export default function ProgressReports() {
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
+
   const [studentPerformanceData, setStudentPerformanceData] = useState<typeof defaultStudentPerformanceData>([])
   const [weeklyProgressData, setWeeklyProgressData] = useState<typeof defaultWeeklyProgressData>([])
   const [loading, setLoading] = useState(false)
+  const client = useApiClient()
+
   const [error, setError] = useState<string | null>(null)
 
   // Load progress data from API
@@ -65,12 +69,12 @@ export default function ProgressReports() {
         setLoading(true)
         setError(null)
 
-        const res = await fetch(`${API_BASE}/progress/reports`)
-        if (!res.ok) {
-          throw new Error(`Failed to fetch progress reports: ${res.status} ${res.statusText}`)
+        const res = await client.get<any>('/progress/reports/')
+        if (res.error) {
+          throw new Error(res.error)
         }
 
-        const data = await res.json()
+        const data = res.data || {}
         setStudentPerformanceData(data.student_performance || [])
         setWeeklyProgressData(data.weekly_progress || [])
 

@@ -8,12 +8,16 @@ import ContentUploader from "@/components/content-uploader"
 import QuestionGenerator from "@/components/question-generator"
 import QuestionReviewer from "@/components/question-reviewer"
 import { toast } from "@/components/ui/use-toast"
+import { useApiClient } from '@/lib/api-client'
+
 
 export default function ContentManager() {
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
   const [activeTab, setActiveTab] = useState("upload")
   const [uploadedFiles, setUploadedFiles] = useState([])
   const [loading, setLoading] = useState(false)
+  const client = useApiClient()
+
   const [error, setError] = useState<string | null>(null)
 
   const [generatedQuestions, setGeneratedQuestions] = useState([])
@@ -25,18 +29,16 @@ export default function ContentManager() {
         setLoading(true)
         setError(null)
         const [filesRes, questionsRes] = await Promise.all([
-          fetch(`${API_BASE}/files`),
-          fetch(`${API_BASE}/questions`)
+          client.get<any[]>('/files/'),
+          client.get<any[]>('/questions/')
         ])
 
-        if (filesRes.ok) {
-          const files = await filesRes.json()
-          setUploadedFiles(files)
+        if (!filesRes.error) {
+          setUploadedFiles(filesRes.data || [])
         }
 
-        if (questionsRes.ok) {
-          const questions = await questionsRes.json()
-          setGeneratedQuestions(questions)
+        if (!questionsRes.error) {
+          setGeneratedQuestions(questionsRes.data || [])
         }
       } catch (e: any) {
         setError(e.message)

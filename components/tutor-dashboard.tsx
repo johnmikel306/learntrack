@@ -11,6 +11,23 @@ import ProgressReports from "@/components/progress-reports"
 import StudentManager from "@/components/student-manager"
 import IntegratedSubjectsManager from "@/components/integrated-subjects-manager"
 import SettingsManager from "@/components/settings-manager"
+import { useApiClient } from '@/lib/api-client'
+
+
+function formatTimeAgo(dateString: string) {
+  if (!dateString) return ""
+  const date = new Date(dateString)
+  const now = new Date()
+  const seconds = Math.round((now.getTime() - date.getTime()) / 1000)
+  if (seconds < 60) return `${seconds}s ago`
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.round(hours / 24)
+  return `${days}d ago`
+}
+
 
 interface TutorDashboardProps {
   onBack: () => void
@@ -25,8 +42,13 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
     avgScore: 0,
     completionRate: 0
   })
-  const [loading, setLoading] = useState(false)
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
+  const client = useApiClient()
+
+  const [loading, setLoading] = useState(false);
+
+
+  // Placeholder data for recent submissions
+  const recentSubmissions: any[] = [];
 
   // Load dashboard statistics from API
   useEffect(() => {
@@ -37,21 +59,19 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
         // In a real implementation, you'd have a dashboard stats endpoint
         // For now, we'll simulate with individual API calls
         const [subjectsRes, studentsRes] = await Promise.all([
-          fetch(`${API_BASE}/subjects`).catch(() => ({ ok: false })),
-          fetch(`${API_BASE}/students`).catch(() => ({ ok: false }))
+          client.get<any[]>('/subjects/'),
+          client.get<any[]>('/students/')
         ])
 
         let totalSubjects = 0
         let activeStudents = 0
 
-        if (subjectsRes.ok) {
-          const subjects = await subjectsRes.json()
-          totalSubjects = subjects.length
+        if (!subjectsRes.error && Array.isArray(subjectsRes.data)) {
+          totalSubjects = subjectsRes.data.length
         }
 
-        if (studentsRes.ok) {
-          const students = await studentsRes.json()
-          activeStudents = students.length
+        if (!studentsRes.error && Array.isArray(studentsRes.data)) {
+          activeStudents = studentsRes.data.length
         }
 
         setDashboardStats({
@@ -184,7 +204,6 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
                       ))
                     )}
                     </div>
-                  </div>
                 </CardContent>
               </Card>
 

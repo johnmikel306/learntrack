@@ -7,11 +7,15 @@ import QuestionBank from "@/components/question-bank"
 import AIQuestionGenerator from "@/components/ai-question-generator"
 import QuestionReviewer from "@/components/question-reviewer"
 
+import { useApiClient } from '@/lib/api-client'
+
 export default function IntegratedSubjectsManager() {
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [uploadedFiles, setUploadedFiles] = useState([] as any[])
+  const client = useApiClient()
+
   const [generatedQuestions, setGeneratedQuestions] = useState([] as any[])
 
   useEffect(() => {
@@ -19,10 +23,9 @@ export default function IntegratedSubjectsManager() {
       try {
         setLoading(true)
         setError(null)
-        const res = await fetch(`${API_BASE}/files`)
-        if (!res.ok) throw new Error(await res.text())
-        const files = await res.json()
-        setUploadedFiles(files)
+        const res = await client.get<any[]>('/files/')
+        if (res.error) throw new Error(res.error)
+        setUploadedFiles(res.data || [])
       } catch (e: any) {
         setError(e.message)
       } finally {

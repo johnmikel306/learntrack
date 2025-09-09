@@ -17,6 +17,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { toast } from "@/components/ui/use-toast"
 import { Plus, Edit, Trash2, BookOpen, Folder, FileQuestion, Search } from "lucide-react"
 
+import { useApiClient } from '@/lib/api-client'
+
 export type Subject = {
   id: string
   name: string
@@ -39,8 +41,10 @@ export default function QuestionBank() {
   const [error, setError] = useState<string | null>(null)
   const [expandedSubjects, setExpandedSubjects] = useState<string[]>([])
   const [expandedTopicsBySubject, setExpandedTopicsBySubject] = useState<Record<string, string[]>>({})
+  const client = useApiClient()
+
   const [questionsByKey, setQuestionsByKey] = useState<Record<string, Question[]>>({})
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
+
 
   type QuestionForm = {
     id?: string
@@ -62,15 +66,16 @@ export default function QuestionBank() {
   const keyFor = (subjectId: string, topic: string) => `${subjectId}|${topic}`
 
   async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-    const res = await fetch(`${API_BASE}${path}`, {
-      ...init,
-      headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
-    })
-    if (!res.ok) {
-      const text = await res.text()
-      throw new Error(text || `Request failed: ${res.status}`)
-    }
-    return res.json()
+    const method = (init?.method || 'GET').toUpperCase()
+    const body = init?.body ? JSON.parse(init.body as string) : undefined
+    let res
+    if (method === 'GET') res = await client.get<T>(path)
+    else if (method === 'POST') res = await client.post<T>(path, body)
+    else if (method === 'PUT') res = await client.put<T>(path, body)
+    else if (method === 'DELETE') res = await client.delete<T>(path)
+    else res = await client.get<T>(path)
+    if (res.error) throw new Error(res.error)
+    return res.data as T
   }
 
   async function loadSubjects() {

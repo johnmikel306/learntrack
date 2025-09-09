@@ -1,30 +1,21 @@
 "use client"
 
-import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { useUser, SignInButton, UserButton } from "@clerk/nextjs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { BookOpen, Users, Eye, GraduationCap, Play, Check, BarChart3, MessageCircle, Star, TrendingUp, Clock, Award, Brain, Target } from "lucide-react"
-import TutorDashboard from "@/components/tutor-dashboard"
-import StudentDashboard from "@/components/student-dashboard"
-import ParentDashboard from "@/components/parent-dashboard"
-
-type UserRole = "tutor" | "student" | "parent" | null
 
 export default function HomePage() {
-  const [currentRole, setCurrentRole] = useState<UserRole>(null)
   const { isSignedIn, user } = useUser()
+  const router = useRouter()
 
-  if (currentRole === "tutor") {
-    return <TutorDashboard onBack={() => setCurrentRole(null)} />
+  const handleGetStarted = () => {
+    router.push('/sign-up')
   }
 
-  if (currentRole === "student") {
-    return <StudentDashboard onBack={() => setCurrentRole(null)} />
-  }
-
-  if (currentRole === "parent") {
-    return <ParentDashboard onBack={() => setCurrentRole(null)} />
+  const handleSignIn = () => {
+    router.push('/sign-in')
   }
 
   return (
@@ -80,7 +71,7 @@ export default function HomePage() {
                     Welcome, {user?.firstName || user?.emailAddresses[0]?.emailAddress}
                   </span>
                   <Button
-                    onClick={() => window.location.href = '/dashboard'}
+                    onClick={() => router.push('/dashboard')}
                     variant="outline"
                     className="transition-all duration-300 hover:scale-105 motion-reduce:hover:scale-100"
                   >
@@ -90,16 +81,18 @@ export default function HomePage() {
                 </div>
               ) : (
                 <>
-                  <SignInButton mode="modal">
-                    <button className="text-gray-600 hover:text-purple-600 transition-all duration-300 motion-reduce:transition-none hover:scale-105 motion-reduce:hover:scale-100 px-3 py-2 rounded-lg hover:bg-purple-50">
-                      Sign In
-                    </button>
-                  </SignInButton>
-                  <SignInButton mode="modal">
-                    <button className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all duration-300 hover:scale-105 hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:scale-100 transform hover:-translate-y-0.5 motion-reduce:hover:translate-y-0">
-                      Get Started
-                    </button>
-                  </SignInButton>
+                  <button
+                    onClick={handleSignIn}
+                    className="text-gray-600 hover:text-purple-600 transition-all duration-300 motion-reduce:transition-none hover:scale-105 motion-reduce:hover:scale-100 px-3 py-2 rounded-lg hover:bg-purple-50"
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    onClick={handleGetStarted}
+                    className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all duration-300 hover:scale-105 hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:scale-100 transform hover:-translate-y-0.5 motion-reduce:hover:translate-y-0"
+                  >
+                    Get Started
+                  </button>
                 </>
               )}
             </div>
@@ -161,7 +154,10 @@ export default function HomePage() {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-            <button className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-200 hover:scale-105 hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:scale-100 flex items-center space-x-2">
+            <button
+              onClick={handleGetStarted}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-200 hover:scale-105 hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:scale-100 flex items-center space-x-2"
+            >
               <span>Start Free Trial</span>
               <span>→</span>
             </button>
@@ -355,12 +351,7 @@ export default function HomePage() {
                 </li>
               </ul>
 
-              <button
-                onClick={() => setCurrentRole("tutor")}
-                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-all duration-200 hover:scale-105 motion-reduce:transition-none motion-reduce:hover:scale-100"
-              >
-                View Tutor Dashboard
-              </button>
+
             </div>
 
             {/* Student Portal Card */}
@@ -390,12 +381,7 @@ export default function HomePage() {
                 </li>
               </ul>
 
-              <button
-                onClick={() => setCurrentRole("student")}
-                className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 hover:scale-105 motion-reduce:transition-none motion-reduce:hover:scale-100"
-              >
-                View Student Portal
-              </button>
+
             </div>
 
             {/* Parent Dashboard Card */}
@@ -425,12 +411,7 @@ export default function HomePage() {
                 </li>
               </ul>
 
-              <button
-                onClick={() => setCurrentRole("parent")}
-                className="w-full bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-purple-700 transition-all duration-200 hover:scale-105 motion-reduce:transition-none motion-reduce:hover:scale-100"
-              >
-                View Parent Dashboard
-              </button>
+
             </div>
           </div>
         </div>
@@ -495,7 +476,10 @@ export default function HomePage() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
-            <button className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-200 hover:scale-105 hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:scale-100 flex items-center space-x-2">
+            <button
+              onClick={handleGetStarted}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-200 hover:scale-105 hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:scale-100 flex items-center space-x-2"
+            >
               <span>Start Your Free Trial</span>
               <span>→</span>
             </button>

@@ -1,124 +1,125 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
-import { SignUp } from '@clerk/nextjs'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { BookOpen, Users, Eye, GraduationCap, ArrowLeft, AlertCircle } from 'lucide-react'
+import { BookOpen, Users, Eye, GraduationCap, Loader2, AlertCircle } from 'lucide-react'
 
-export default function Page() {
-  const [selectedRole, setSelectedRole] = useState<string | null>(null)
-  const [showClerkSignUp, setShowClerkSignUp] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+export default function RoleSetupPage() {
+  const { isLoaded, isSignedIn, user } = useUser()
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const { isLoaded, isSignedIn } = useUser()
-
-  // Check if role is already selected via URL params
-  const roleFromParams = searchParams.get('role')
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Redirect if already signed in
-    if (isLoaded && isSignedIn) {
-      router.push('/dashboard')
+    if (isLoaded) {
+      if (!isSignedIn) {
+        router.push('/sign-in')
+        return
+      }
+
+      const userRole = user?.publicMetadata?.role
+      if (userRole) {
+        router.push('/dashboard')
+        return
+      }
+    }
+  }, [isLoaded, isSignedIn, user, router])
+
+  useEffect(() => {
+    if (!isLoaded) return
+
+    if (!isSignedIn) {
+      router.push('/sign-in')
       return
     }
 
-    // Check for stored role on component mount
-    const storedRole = sessionStorage.getItem('selectedRole')
-    if (storedRole) {
-      setSelectedRole(storedRole)
-      setShowClerkSignUp(true)
-    } else if (roleFromParams) {
-      setSelectedRole(roleFromParams)
-      sessionStorage.setItem('selectedRole', roleFromParams)
-      setShowClerkSignUp(true)
+    // If user already has a role, redirect to dashboard
+    if (user?.publicMetadata?.role) {
+      router.push('/dashboard')
+      return
     }
-  }, [roleFromParams, isLoaded, isSignedIn, router])
+  }, [isLoaded, isSignedIn, user, router])
 
-  const handleRoleSelection = (role: string) => {
-    setSelectedRole(role)
+
+  const handleRoleSelection = async (role: 'tutor' | 'student' | 'parent') => {
+    if (!user) return
+
+    setIsUpdating(true)
     setError(null)
-    // Store the selected role in sessionStorage to use after Clerk sign-up
-    sessionStorage.setItem('selectedRole', role)
-    setShowClerkSignUp(true)
-  }
 
-  const handleBack = () => {
-    if (showClerkSignUp) {
-      setShowClerkSignUp(false)
-      setSelectedRole(null)
-      setError(null)
-      sessionStorage.removeItem('selectedRole')
-    } else {
-      router.push('/')
+    try {
+      const response = await fetch('/api/auth/callback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ role }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to assign role')
+      }
+
+      // Force user data refresh
+      await user.reload()
+
+      // Redirect to dashboard after successful role update
+      router.push('/dashboard')
+    } catch (error) {
+      console.error('Failed to update user role:', error)
+      setError(error instanceof Error ? error.message : 'Failed to assign role. Please try again.')
+      setIsUpdating(false)
     }
   }
 
-  // If showing Clerk sign-up component
-  if (showClerkSignUp || roleFromParams) {
-    const role = selectedRole || roleFromParams
+  // Show loading state while checking authentication
+  if (!isLoaded || !isSignedIn) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-pink-50">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <Button
-              variant="ghost"
-              onClick={handleBack}
-              className="mb-4"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Join LearnTrack</h1>
-            <p className="text-gray-600">
-              Create your {role} account to get started
-            </p>
-          </div>
-          <SignUp
-            appearance={{
-              elements: {
-                rootBox: "mx-auto",
-                card: "shadow-xl border-0",
-              }
-            }}
-          />
-          {error && (
-            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center text-red-700">
-              <AlertCircle className="h-4 w-4 mr-2" />
-              <span className="text-sm">{error}</span>
-            </div>
-          )}
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     )
   }
 
-  // Role selection screen
+  // Don't render if user already has a role (will redirect)
+  if (user?.publicMetadata?.role) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Redirecting to dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 flex items-center justify-center p-4">
       <div className="max-w-4xl w-full">
         {/* Header */}
         <div className="text-center mb-12">
-          <Button
-            variant="ghost"
-            onClick={handleBack}
-            className="mb-6"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Home
-          </Button>
           <div className="flex items-center justify-center mb-6">
             <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
               <GraduationCap className="h-7 w-7 text-white" />
             </div>
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Choose Your Role</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Complete Your Setup</h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Select your role to customize your LearnTrack experience and get started with the right tools for you.
+            We need to know your role to customize your LearnTrack experience and provide you with the right tools.
           </p>
+          {error && (
+            <div className="mt-6 max-w-md mx-auto p-3 bg-red-50 border border-red-200 rounded-lg flex items-center text-red-700">
+              <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+              <span className="text-sm">{error}</span>
+            </div>
+          )}
         </div>
 
         {/* Role Selection Cards */}
@@ -143,9 +144,17 @@ export default function Page() {
               </ul>
               <Button
                 onClick={() => handleRoleSelection('tutor')}
-                className="w-full bg-blue-600 hover:bg-blue-700"
+                disabled={isUpdating}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
               >
-                Continue as Tutor
+                {isUpdating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Setting up...
+                  </>
+                ) : (
+                  'I am a Tutor'
+                )}
               </Button>
             </CardContent>
           </Card>
@@ -170,9 +179,17 @@ export default function Page() {
               </ul>
               <Button
                 onClick={() => handleRoleSelection('student')}
-                className="w-full bg-green-600 hover:bg-green-700"
+                disabled={isUpdating}
+                className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50"
               >
-                Continue as Student
+                {isUpdating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Setting up...
+                  </>
+                ) : (
+                  'I am a Student'
+                )}
               </Button>
             </CardContent>
           </Card>
@@ -197,9 +214,17 @@ export default function Page() {
               </ul>
               <Button
                 onClick={() => handleRoleSelection('parent')}
-                className="w-full bg-purple-600 hover:bg-purple-700"
+                disabled={isUpdating}
+                className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
               >
-                Continue as Parent
+                {isUpdating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Setting up...
+                  </>
+                ) : (
+                  'I am a Parent'
+                )}
               </Button>
             </CardContent>
           </Card>
@@ -208,13 +233,7 @@ export default function Page() {
         {/* Footer */}
         <div className="text-center mt-12">
           <p className="text-sm text-gray-500">
-            Already have an account?{' '}
-            <button
-              onClick={() => router.push('/sign-in')}
-              className="text-purple-600 hover:text-purple-700 font-medium"
-            >
-              Sign in here
-            </button>
+            Need help choosing? Contact our support team for guidance.
           </p>
         </div>
       </div>
