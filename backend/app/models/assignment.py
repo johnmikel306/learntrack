@@ -1,0 +1,130 @@
+"""
+Assignment models and schemas
+"""
+from datetime import datetime, date
+from typing import List, Optional, Dict
+from enum import Enum
+from pydantic import BaseModel, Field, validator, ConfigDict
+from bson import ObjectId
+
+from app.models.user import PyObjectId
+
+
+class AssignmentStatus(str, Enum):
+    """Assignment status"""
+    SCHEDULED = "scheduled"
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    ARCHIVED = "archived"
+
+
+class AssignmentType(str, Enum):
+    """Assignment types"""
+    PRACTICE = "practice"
+    QUIZ = "quiz"
+    EXAM = "exam"
+    HOMEWORK = "homework"
+
+
+class QuestionAssignment(BaseModel):
+    """Question within an assignment"""
+    question_id: str
+    points: int = 1
+    order: int = 0
+
+
+class AssignmentBase(BaseModel):
+    """Base assignment model"""
+    title: str
+    description: Optional[str] = None
+    subject_id: str
+    topic: str
+    assignment_type: AssignmentType = AssignmentType.PRACTICE
+    due_date: datetime
+    time_limit: Optional[int] = None  # in minutes
+    max_attempts: int = 1
+    shuffle_questions: bool = False
+    show_results_immediately: bool = True
+    tutor_id: str = Field(..., description="Tutor ID - references the tutor's Clerk user ID")
+
+
+class AssignmentCreate(AssignmentBase):
+    """Assignment creation model"""
+    student_ids: List[str]
+    question_ids: List[str]
+    
+    @validator('student_ids')
+    def validate_students(cls, v):
+        if not v:
+            raise ValueError('Assignment must have at least one student')
+        return v
+    
+    @validator('question_ids')
+    def validate_questions(cls, v):
+        if not v:
+            raise ValueError('Assignment must have at least one question')
+        return v
+
+
+class AssignmentUpdate(BaseModel):
+    """Assignment update model"""
+    title: Optional[str] = None
+    description: Optional[str] = None
+    due_date: Optional[datetime] = None
+    time_limit: Optional[int] = None
+    max_attempts: Optional[int] = None
+    shuffle_questions: Optional[bool] = None
+    show_results_immediately: Optional[bool] = None
+    status: Optional[AssignmentStatus] = None
+
+
+class AssignmentInDB(AssignmentBase):
+    """Assignment model as stored in database"""
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    tutor_id: str
+    student_ids: List[str]
+    questions: List[QuestionAssignment]
+    status: AssignmentStatus = AssignmentStatus.SCHEDULED
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    # Statistics
+    total_points: int = 0
+    completion_count: int = 0
+    average_score: Optional[float] = None
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+        json_encoders={ObjectId: str}
+    )
+
+
+class Assignment(AssignmentInDB):
+    """Assignment response model"""
+    pass
+
+
+class AssignmentWithProgress(Assignment):
+    """Assignment with student progress"""
+    student_progress: List[Dict] = []
+    completion_rate: float = 0.0
+
+
+class AssignmentForStudent(BaseModel):
+    """Assignment model for student view"""
+    id: str
+    title: str
+    description: Optional[str]
+    subject_name: str
+    topic: str
+    assignment_type: AssignmentType
+    due_date: datetime
+    time_limit: Optional[int]
+    max_attempts: int
+    total_points: int
+    question_count: int
+    status: str  # student-specific status
+    attempts_used: int = 0
+    best_score: Optional[float] = None
+    last_attempt: Optional[datetime] = None

@@ -1,0 +1,111 @@
+"""
+Application configuration using pydantic-settings and python-dotenv
+"""
+import os
+from typing import List, Optional
+from pydantic_settings import BaseSettings
+from pydantic import field_validator
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+
+class Settings(BaseSettings):
+    """Application settings"""
+    
+    # API Configuration
+    API_V1_STR: str = "/api/v1"
+    PROJECT_NAME: str = "LearnTrack MVP"
+    VERSION: str = "1.0.0"
+    DESCRIPTION: str = "Smart Assignment & Progress Monitoring API"
+    
+    # Environment
+    ENVIRONMENT: str = "development"
+    DEBUG: bool = True
+    SECRET_KEY: str = "your-secret-key-change-in-production"
+    
+    # Database
+    MONGODB_URL: str = "mongodb://localhost:27017"
+    DATABASE_NAME: str = "learntrack_mvp"
+    
+    # Clerk Configuration - Enhanced for Backend-First Auth
+    CLERK_SECRET_KEY: Optional[str] = None
+    CLERK_PUBLISHABLE_KEY: Optional[str] = None
+    # REQUIRED: Set to your Clerk instance issuer, e.g., https://clerk.your-app.clerk.accounts.dev
+    CLERK_JWT_ISSUER: Optional[str] = None
+    # REQUIRED: Audience should match your Clerk Backend Token Template (e.g., "fastapi")
+    CLERK_JWT_AUDIENCE: Optional[str] = None
+    # Optional: name of the Clerk token template the frontend should request
+    CLERK_TOKEN_TEMPLATE: str = "fastapi"
+
+    # Clerk Backend-Specific Settings
+    CLERK_WEBHOOK_SECRET: Optional[str] = None
+    CLERK_JWT_VERIFICATION_TIMEOUT: int = 10  # seconds
+    CLERK_JWKS_CACHE_TTL: int = 3600  # 1 hour in seconds
+    CLERK_ENABLE_DEVELOPMENT_MODE: bool = True  # Allow dev tokens in development
+    CLERK_FRONTEND_API: Optional[str] = None  # For frontend API calls
+    
+    # AI Provider Configuration
+    OPENAI_API_KEY: Optional[str] = None
+    ANTHROPIC_API_KEY: Optional[str] = None
+    GOOGLE_API_KEY: Optional[str] = None
+
+    # UploadThing Configuration
+    UPLOADTHING_SECRET: Optional[str] = None
+    UPLOADTHING_APP_ID: Optional[str] = None
+    
+    # CORS
+    BACKEND_CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+    ]
+    
+    # Logging
+    LOG_LEVEL: str = "INFO"
+    
+    # File Storage (UploadThing Configuration)
+    MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
+    ALLOWED_FILE_TYPES: List[str] = [
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "application/vnd.ms-powerpoint",
+        "text/plain",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ]
+    
+    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v):
+        if isinstance(v, str) and not v.startswith("["):
+            return [i.strip() for i in v.split(",")]
+        elif isinstance(v, (list, str)):
+            return v
+        raise ValueError(v)
+
+    @field_validator("CLERK_JWT_ISSUER")
+    @classmethod
+    def validate_clerk_issuer(cls, v, info):
+        if info.data.get("ENVIRONMENT") == "production":
+            if not v:
+                raise ValueError("CLERK_JWT_ISSUER is required in production")
+            if v == "https://clerk.dev":
+                raise ValueError("CLERK_JWT_ISSUER must be set to your specific Clerk instance URL")
+        return v
+
+    @field_validator("CLERK_JWT_AUDIENCE")
+    @classmethod
+    def validate_clerk_audience(cls, v, info):
+        if info.data.get("ENVIRONMENT") == "production" and not v:
+            raise ValueError("CLERK_JWT_AUDIENCE is required in production")
+        return v
+    
+    class Config:
+        case_sensitive = True
+        env_file = ".env"
+
+
+# Global settings instance
+settings = Settings()

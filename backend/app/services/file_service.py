@@ -1,0 +1,324 @@
+"""
+File processing service for UploadThing integration
+"""
+import asyncio
+import httpx
+from typing import List, Optional
+from datetime import datetime
+from motor.motor_asyncio import AsyncIOMotorDatabase
+import structlog
+
+from app.models.file import (
+    UploadedFile, FileMetadataRequest, FileProcessingResult,
+    FileStatus, FileType, UploadThingFileCreate, UploadThingFileUpdate
+)
+from app.services.ai.ai_manager import AIManager
+from app.services.question_service import QuestionService
+from app.core.exceptions import FileProcessingError, ValidationError, NotFoundError, DatabaseException
+from app.core.config import settings
+from app.core.utils import to_object_id
+
+logger = structlog.get_logger()
+
+
+class FileService:
+    """Service for handling UploadThing file processing"""
+
+    def __init__(self, database: AsyncIOMotorDatabase):
+        self.db = database
+        self.collection = database.files
+        self.http_client = httpx.AsyncClient()
+    
+    async def register_file_metadata(
+        self,
+        request: FileMetadataRequest,
+        uploaded_by: str
+    ) -> UploadedFile:
+        """Register file metadata after UploadThing upload"""
+        try:
+            # Validate file type
+            if request.content_type not in settings.ALLOWED_FILE_TYPES:
+                raise ValidationError(f"File type {request.content_type} not allowed")
+
+            # Validate file size
+            if request.size > settings.MAX_FILE_SIZE:
+                raise ValidationError(f"File size exceeds maximum of {settings.MAX_FILE_SIZE} bytes")
+
+            # Create file record
+            file_data = UploadThingFileCreate(
+                uploadthing_key=request.uploadthing_key,
+                uploadthing_url=request.uploadthing_url,
+                filename=request.filename,
+                content_type=request.content_type,
+                size=request.size,
+                uploaded_by=uploaded_by,
+                subject_id=request.subject_id,
+                topic=request.topic
+            )
+
+            # Insert into database
+            file_dict = file_data.dict()
+            file_dict["created_at"] = datetime.utcnow()
+            file_dict["updated_at"] = datetime.utcnow()
+            file_dict["status"] = FileStatus.UPLOADED
+
+            result = await self.collection.insert_one(file_dict)
+            file_dict["_id"] = result.inserted_id
+
+            uploaded_file = UploadedFile(**file_dict)
+
+            logger.info("File metadata registered",
+                file_id=str(result.inserted_id),
+                filename=request.filename,
+                uploadthing_key=request.uploadthing_key
+            )
+            return uploaded_file
+
+        except Exception as e:
+            if isinstance(e, (ValidationError, FileProcessingError)):
+                raise
+            logger.error("File metadata registration failed", error=str(e), filename=request.filename)
+            raise FileProcessingError(f"File metadata registration failed: {str(e)}")
+    
+    async def get_file(self, file_id: str, user_id: str) -> Optional[UploadedFile]:
+        """Get file by ID with user authorization"""
+        try:
+            oid = to_object_id(file_id)
+            file = await self.collection.find_one({"_id": oid})
+
+            if not file:
+                return None
+
+            # Check if user has access to this file
+            if file.get("uploaded_by") != user_id:
+                return None
+
+            return UploadedFile(**file)
+
+        except Exception as e:
+            logger.error("Failed to get file", file_id=file_id, error=str(e))
+            return None
+    
+    async def list_user_files(self, user_id: str) -> List[UploadedFile]:
+        """List files for a user"""
+        try:
+            cursor = self.collection.find({"uploaded_by": user_id}).sort("uploaded_at", -1)
+            files = []
+            async for file in cursor:
+                files.append(UploadedFile(**file))
+            return files
+        except Exception as e:
+            logger.error("Failed to list user files", user_id=user_id, error=str(e))
+            return []
+    
+    async def delete_file(self, file_id: str, user_id: str) -> bool:
+        """Delete file with user authorization"""
+        try:
+            file = await self.get_file(file_id, user_id)
+            if not file:
+                return False
+
+            # Soft delete - mark as deleted
+            oid = to_object_id(file_id)
+            result = await self.collection.update_one(
+                {"_id": oid, "uploaded_by": user_id},
+                {"$set": {"status": "deleted", "updated_at": datetime.utcnow()}}
+            )
+
+            return result.matched_count > 0
+
+        except Exception as e:
+            logger.error("Failed to delete file", file_id=file_id, error=str(e))
+            return False
+    
+    async def process_file_for_questions(
+        self,
+        file_id: str,
+        user_id: str,
+        question_count: int = 10,
+        difficulty_level: str = "medium",
+        ai_provider: str = "openai",
+        question_service: Optional[QuestionService] = None
+    ) -> FileProcessingResult:
+        """Process file to generate questions"""
+        try:
+            # Get file
+            file = await self.get_file(file_id, user_id)
+            if not file:
+                raise FileProcessingError("File not found or access denied", file_id)
+
+            # Update file status to processing
+            await self._update_file_status(file_id, {
+                "status": FileStatus.PROCESSING,
+                "processing_started_at": datetime.utcnow(),
+                "ai_provider_used": ai_provider
+            })
+
+            start_time = datetime.utcnow()
+
+            # Download and extract text from UploadThing file
+            text_content = await self._download_and_extract_text(file, ai_manager)
+
+            # Get AI settings and create manager
+            from app.services.settings_service import SettingsService
+            settings_service = SettingsService(self.db)
+            current_settings = await settings_service.get_settings()
+            ai_settings = {
+                "providers": current_settings.ai.providers,
+                "default_provider": current_settings.ai.default_provider
+            }
+            ai_manager = AIManager(ai_settings)
+
+            # Generate questions using AI
+            questions = await ai_manager.generate_questions(
+                text_content=text_content,
+                subject=file.subject_id,
+                topic=file.topic,
+                question_count=question_count,
+                provider_name=ai_provider
+            )
+
+            # Save questions to database if question_service provided
+            saved_count = 0
+            if question_service and questions:
+                for question in questions:
+                    try:
+                        await question_service.create_question(question, user_id)
+                        saved_count += 1
+                    except Exception as e:
+                        logger.warning("Failed to save question", error=str(e))
+
+            processing_time = (datetime.utcnow() - start_time).total_seconds()
+
+            # Update file status to processed
+            await self._update_file_status(file_id, {
+                "status": FileStatus.PROCESSED,
+                "processing_completed_at": datetime.utcnow(),
+                "extracted_text": text_content[:1000],  # Store first 1000 chars
+                "generated_questions_count": len(questions),
+                "processing_time": processing_time
+            })
+
+            logger.info("File processed successfully",
+                file_id=file_id,
+                questions_generated=len(questions),
+                questions_saved=saved_count,
+                processing_time=processing_time
+            )
+
+            return FileProcessingResult(
+                file_id=file_id,
+                status=FileStatus.PROCESSED,
+                questions_generated=len(questions),
+                processing_time=processing_time
+            )
+
+        except Exception as e:
+            # Update file status to error
+            await self._update_file_status(file_id, {
+                "status": FileStatus.ERROR,
+                "error_message": str(e)
+            })
+
+            logger.error("File processing failed", file_id=file_id, error=str(e))
+
+            return FileProcessingResult(
+                file_id=file_id,
+                status=FileStatus.ERROR,
+                error_message=str(e)
+            )
+    
+    async def _download_and_extract_text(self, file: UploadedFile, ai_manager: Optional[AIManager] = None) -> str:
+        """Download file from UploadThing and extract text content"""
+        try:
+            # Download file content from UploadThing
+            response = await self.http_client.get(str(file.uploadthing_url))
+            response.raise_for_status()
+
+            file_content = response.content
+
+            if file.content_type == FileType.TXT:
+                # Plain text file
+                return file_content.decode('utf-8')
+
+            elif file.content_type in [FileType.PDF, FileType.DOCX, FileType.DOC, FileType.PPTX, FileType.PPT]:
+                # For binary files, we'll use AI to extract text
+                # In a real implementation, you might use specialized libraries like PyPDF2, python-docx, etc.
+                content_preview = str(file_content[:4000])  # First 4000 bytes as string
+
+                if ai_manager:
+                    extracted_text = await ai_manager.extract_text_from_content(
+                        content_preview,
+                        file.content_type
+                    )
+                else:
+                    # Fallback to global instance if no manager provided
+                    from app.services.ai.ai_manager import ai_manager as global_ai_manager
+                    extracted_text = await global_ai_manager.extract_text_from_content(
+                        content_preview,
+                        file.content_type
+                    )
+
+                return extracted_text
+
+            else:
+                raise FileProcessingError(f"Unsupported file type: {file.content_type}")
+
+        except Exception as e:
+            logger.error("Text extraction failed", file_id=str(file.id), error=str(e))
+            raise FileProcessingError(f"Text extraction failed: {str(e)}", str(file.id))
+
+    async def _update_file_status(self, file_id: str, updates: dict) -> bool:
+        """Update file status in database"""
+        try:
+            updates["updated_at"] = datetime.utcnow()
+            oid = to_object_id(file_id)
+            result = await self.collection.update_one(
+                {"_id": oid},
+                {"$set": updates}
+            )
+            return result.matched_count > 0
+        except Exception as e:
+            logger.error("Failed to update file status", file_id=file_id, error=str(e))
+            return False
+    
+    async def get_processing_status(self, file_id: str, user_id: str) -> FileProcessingResult:
+        """Get file processing status"""
+        file = await self.get_file(file_id, user_id)
+        if not file:
+            raise FileProcessingError("File not found or access denied", file_id)
+
+        return FileProcessingResult(
+            file_id=file_id,
+            status=file.status,
+            questions_generated=file.generated_questions_count or 0,
+            processing_time=file.processing_time,
+            error_message=file.error_message
+        )
+
+    async def get_storage_stats(self) -> dict:
+        """Get storage statistics"""
+        try:
+            total_files = await self.collection.count_documents({"status": {"$ne": "deleted"}})
+
+            # Get total size
+            pipeline = [
+                {"$match": {"status": {"$ne": "deleted"}}},
+                {"$group": {"_id": None, "total_size": {"$sum": "$size"}}}
+            ]
+
+            result = await self.collection.aggregate(pipeline).to_list(1)
+            total_size = result[0]["total_size"] if result else 0
+
+            return {
+                "total_files": total_files,
+                "total_size_bytes": total_size,
+                "total_size_mb": round(total_size / (1024 * 1024), 2)
+            }
+        except Exception as e:
+            logger.error("Failed to get storage stats", error=str(e))
+            return {"total_files": 0, "total_size_bytes": 0, "total_size_mb": 0}
+
+    async def close(self):
+        """Close HTTP client"""
+        await self.http_client.aclose()

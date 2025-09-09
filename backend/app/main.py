@@ -1,0 +1,120 @@
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+import structlog
+from datetime import datetime
+
+from app.core.database import database
+from app.core.config import settings
+from app.models.responses import HealthResponse
+from app.core.exceptions import (
+    LearnTrackException,
+    learntrack_exception_handler,
+    http_exception_handler,
+    validation_exception_handler,
+    general_exception_handler
+)
+
+logger = structlog.get_logger()
+
+app = FastAPI(
+    title="LearnTrack API",
+    version="1.0.0",
+    description="""
+    ## LearnTrack - Smart Assignment & Progress Monitoring API
+
+    This API provides comprehensive functionality for managing educational content, students, assignments, and AI-powered question generation.
+
+    ### Key Features:
+    * **Student Management**: Create, update, and manage student profiles and groups
+    * **Subject & Content Management**: Organize subjects, topics, and educational materials
+    * **AI Question Generation**: Generate questions using multiple AI providers (OpenAI, Anthropic, Google)
+    * **Assignment Tracking**: Create and monitor student assignments and progress
+    * **File Management**: Upload and process educational documents
+    * **Settings Management**: Configure AI providers and system settings
+
+    ### No Authentication:
+    All endpoints are publicly accessible without authentication.
+
+    ### Getting Started:
+    1. Use the "Try it out" feature below to test endpoints
+    2. Start with `/health` to verify the API is running
+    3. Explore student management with `/api/v1/students/`
+    4. Try AI question generation with `/api/v1/questions/generate`
+    """,
+    contact={
+        "name": "LearnTrack Support",
+        "email": "support@learntrack.example.com",
+    },
+    license_info={
+        "name": "MIT License",
+        "url": "https://opensource.org/licenses/MIT",
+    },
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+)
+
+# Register exception handlers
+app.add_exception_handler(LearnTrackException, learntrack_exception_handler)
+app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, general_exception_handler)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Database lifecycle events
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database connection on startup"""
+    try:
+        await database.connect_to_database()
+        logger.info("FastAPI application started successfully")
+    except Exception as e:
+        logger.error("Failed to start FastAPI application", error=str(e))
+        raise
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Close database connection on shutdown"""
+    try:
+        await database.close_database_connection()
+        logger.info("FastAPI application shutdown successfully")
+    except Exception as e:
+        logger.error("Error during FastAPI application shutdown", error=str(e))
+
+# Include routers
+from app.api.v1 import api_router
+app.include_router(api_router, prefix="/api/v1")
+
+# Authentication removed - no user role endpoint needed
+
+from app.models.responses import HealthResponse
+from datetime import datetime
+
+@app.get("/health", response_model=HealthResponse, tags=["Health"])
+def health():
+    """
+    Health check endpoint to verify API status.
+
+    Returns the current health status of the API service.
+    This endpoint can be used for monitoring and load balancer health checks.
+    """
+    return HealthResponse(
+        status="healthy",
+        service="learntrack-api",
+        version="1.0.0",
+        timestamp=datetime.utcnow().isoformat() + "Z"
+    )
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
