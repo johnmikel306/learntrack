@@ -10,21 +10,23 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { Download } from "lucide-react"
 import { unparse } from "papaparse"
 
-// Default data for when API is not available
-const defaultStudentPerformanceData = [
-  { name: "Sarah Johnson", math: 85, physics: 78, chemistry: 92 },
-  { name: "Mike Chen", math: 92, physics: 88, chemistry: 85 },
-  { name: "Emma Davis", math: 78, physics: 82, chemistry: 89 },
-  { name: "John Smith", math: 88, physics: 95, chemistry: 76 },
-  { name: "Lisa Wang", math: 94, physics: 87, chemistry: 91 },
-]
+// Initialize empty arrays for data that will be populated from the database
+const defaultStudentPerformanceData: StudentPerformance[] = []
+const defaultWeeklyProgressData: WeeklyProgress[] = []
 
-const defaultWeeklyProgressData = [
-  { week: "Week 1", completed: 45, assigned: 50 },
-  { week: "Week 2", completed: 52, assigned: 55 },
-  { week: "Week 3", completed: 48, assigned: 50 },
-  { week: "Week 4", completed: 58, assigned: 60 },
-]
+// Type definitions for better type safety
+interface StudentPerformance {
+  name: string
+  math: number
+  physics: number
+  chemistry: number
+}
+
+interface WeeklyProgress {
+  week: string
+  completed: number
+  assigned: number
+}
 
 const chartConfig = {
   math: {

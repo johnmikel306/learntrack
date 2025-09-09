@@ -209,7 +209,9 @@ export default function StudentDashboard({ onBack }: StudentDashboardProps) {
             </Button>
             <h1 className="text-3xl font-bold text-gray-900">Student Dashboard</h1>
           </div>
-          <div className="text-sm text-gray-500">Welcome back, Sarah!</div>
+          <div className="text-sm text-gray-500">
+            {loading ? "Welcome back!" : `Welcome back, ${studentName}!`}
+          </div>
         </div>
 
         <div className="grid md:grid-cols-4 gap-6 mb-8">

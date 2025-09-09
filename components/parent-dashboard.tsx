@@ -143,7 +143,23 @@ const chartConfig = {
   },
 }
 
-  const [selectedChild] = useState("Sarah Johnson")
+  const [selectedChild, setSelectedChild] = useState("")
+
+  // Load selected child from API
+  useEffect(() => {
+    const loadSelectedChild = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/children/selected`)
+        if (!res.ok) throw new Error(await res.text())
+        const data = await res.json()
+        setSelectedChild(data.name)
+      } catch (e: any) {
+        console.error("Failed to load selected child:", e.message)
+        // Could set a default or show error state
+      }
+    }
+    loadSelectedChild()
+  }, [])
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null)
 
   if (loading) {

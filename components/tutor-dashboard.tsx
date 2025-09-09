@@ -163,23 +163,26 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Sarah completed Math - Algebra</p>
-                        <p className="text-sm text-gray-500">Score: 85% • 2 hours ago</p>
+                    {loading ? (
+                      <div className="animate-pulse space-y-4">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="h-12 bg-gray-100 rounded"></div>
+                        ))}
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">John submitted Physics - Mechanics</p>
-                        <p className="text-sm text-gray-500">Score: 92% • 4 hours ago</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Emma completed Chemistry - Organic</p>
-                        <p className="text-sm text-gray-500">Score: 78% • 6 hours ago</p>
-                      </div>
+                    ) : (
+                      recentSubmissions.map((submission) => (
+                        <div key={submission._id} className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">
+                              {submission.studentName} {submission.status} {submission.subject} - {submission.topic}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              Score: {submission.percentage}% • {formatTimeAgo(submission.submittedAt)}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    )}
                     </div>
                   </div>
                 </CardContent>

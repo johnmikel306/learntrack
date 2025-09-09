@@ -128,17 +128,6 @@ export default function AssignmentManager() {
           // Extract student names for the dropdown
           const studentNames = studentsData.map((student: any) => student.name)
           setStudents(studentNames)
-        } else {
-          // Fallback to default data if API fails
-          setStudents([
-            "Sarah Johnson",
-            "Mike Chen",
-            "Emma Davis",
-            "John Smith",
-            "Lisa Wang",
-            "Alex Brown",
-            "Sophie Wilson",
-          ])
         }
       } catch (e) {
         console.error("Failed to load data:", e)
