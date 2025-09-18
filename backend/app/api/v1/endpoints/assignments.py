@@ -7,6 +7,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
 
 from app.core.database import get_database
+from app.core.enhanced_auth import require_tutor, require_authenticated_user, ClerkUserContext
 from app.models.assignment import Assignment, AssignmentCreate, AssignmentUpdate
 from app.services.assignment_service import AssignmentService
 from app.services.user_service import UserService
@@ -17,12 +18,13 @@ router = APIRouter()
 @router.post("/", response_model=Assignment)
 async def create_assignment(
     assignment_data: AssignmentCreate,
+    current_user: ClerkUserContext = Depends(require_tutor),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Create a new assignment (tutor only)"""
     try:
         assignment_service = AssignmentService(database)
-        assignment = await assignment_service.create_assignment(assignment_data, "default_tutor")
+        assignment = await assignment_service.create_assignment(assignment_data, current_user.clerk_id)
         return assignment
     except Exception as e:
         logger.error("Failed to create assignment", error=str(e))
@@ -32,38 +34,17 @@ async def create_assignment(
 async def get_assignments(
     subject_id: Optional[str] = Query(None, description="Filter by subject ID"),
     status: Optional[str] = Query(None, description="Filter by status"),
+    current_user: ClerkUserContext = Depends(require_tutor),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Get assignments for current user (tutor only)"""
     try:
-        # For development, get assignments directly from database
-        query = {}
-        if subject_id:
-            query["subject"] = subject_id
-        if status:
-            query["status"] = status
-
-        cursor = database.assignments.find(query)
-        assignments_data = await cursor.to_list(length=None)
-
-        # Return simplified assignment data without strict model validation
-        assignments = []
-        for assignment_data in assignments_data:
-            # Convert ObjectId to string for JSON serialization
-            assignment_data["id"] = str(assignment_data.pop("_id"))
-
-            # Convert ObjectId fields to strings
-            if "created_by" in assignment_data:
-                assignment_data["created_by"] = str(assignment_data["created_by"])
-            if "assigned_to" in assignment_data:
-                assignment_data["assigned_to"] = [str(sid) for sid in assignment_data["assigned_to"]]
-            if "questions" in assignment_data:
-                for question in assignment_data["questions"]:
-                    if "question_id" in question:
-                        question["question_id"] = str(question["question_id"])
-
-            assignments.append(assignment_data)
-
+        assignment_service = AssignmentService(database)
+        assignments = await assignment_service.get_assignments_for_tutor(
+            tutor_id=current_user.clerk_id,
+            subject_id=subject_id,
+            status=status
+        )
         return assignments
     except Exception as e:
         logger.error("Failed to get assignments", error=str(e))
@@ -72,12 +53,13 @@ async def get_assignments(
 @router.get("/{assignment_id}", response_model=Assignment)
 async def get_assignment(
     assignment_id: str = Path(..., description="Assignment ID"),
+    current_user: ClerkUserContext = Depends(require_authenticated_user),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Get assignment by ID"""
     try:
         assignment_service = AssignmentService(database)
-        assignment = await assignment_service.get_assignment_by_id(assignment_id)
+        assignment = await assignment_service.get_assignment_by_id(assignment_id, current_user)
         if not assignment:
             raise HTTPException(status_code=404, detail="Assignment not found")
         return assignment
@@ -91,12 +73,13 @@ async def get_assignment(
 async def update_assignment(
     assignment_update: AssignmentUpdate,
     assignment_id: str = Path(..., description="Assignment ID"),
+    current_user: ClerkUserContext = Depends(require_tutor),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Update assignment"""
     try:
         assignment_service = AssignmentService(database)
-        assignment = await assignment_service.update_assignment(assignment_id, assignment_update)
+        assignment = await assignment_service.update_assignment(assignment_id, assignment_update, current_user.clerk_id)
         if not assignment:
             raise HTTPException(status_code=404, detail="Assignment not found")
         return assignment
@@ -109,12 +92,13 @@ async def update_assignment(
 @router.delete("/{assignment_id}")
 async def delete_assignment(
     assignment_id: str = Path(..., description="Assignment ID"),
+    current_user: ClerkUserContext = Depends(require_tutor),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Delete assignment"""
     try:
         assignment_service = AssignmentService(database)
-        success = await assignment_service.delete_assignment(assignment_id)
+        success = await assignment_service.delete_assignment(assignment_id, current_user.clerk_id)
         if not success:
             raise HTTPException(status_code=404, detail="Assignment not found")
         return {"message": "Assignment deleted successfully"}
@@ -128,14 +112,20 @@ async def delete_assignment(
 async def get_student_assignments(
     student_id: str = Path(..., description="Student ID"),
     status: Optional[str] = Query(None, description="Filter by status"),
+    current_user: ClerkUserContext = Depends(require_authenticated_user),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Get assignments for a specific student"""
     try:
+        # Security check: ensure the current user can view this student's assignments
+        if current_user.role == "student" and current_user.clerk_id != student_id:
+            raise HTTPException(status_code=403, detail="Forbidden")
+        
         assignment_service = AssignmentService(database)
         assignments = await assignment_service.get_assignments_for_student(
             student_id=student_id,
-            status=status
+            status=status,
+            current_user=current_user
         )
         return assignments
     except Exception as e:

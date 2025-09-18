@@ -1,4 +1,9 @@
+"use client"
 
+import { ReactNode } from "react"
+import { Button } from "@/components/ui/button"
+import { ArrowLeft } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface DashboardLayoutProps {
   title: string

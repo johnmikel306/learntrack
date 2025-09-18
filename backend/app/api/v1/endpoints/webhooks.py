@@ -1,35 +1,72 @@
-from fastapi import APIRouter, Request, HTTPException
-from clerk_sdk.webhook import Webhook
-from app.core.config import settings
-from app.services.user_service import UserService
-from app.models.user import UserCreate
+import json
+from fastapi import APIRouter, Request, HTTPException, Depends
+from svix.webhooks import Webhook, WebhookVerificationError
+import structlog
 
+from app.core.config import settings
+from app.core.database import get_database
+from app.services.user_service import UserService
+from app.models.user import UserCreate, UserRole
+
+logger = structlog.get_logger()
 router = APIRouter()
 
 @router.post("/clerk")
-async def clerk_webhook(request: Request):
-    headers = request.headers
-    payload = await request.body()
+async def clerk_webhook(
+    request: Request,
+    db=Depends(get_database)
+):
+    """Handle Clerk webhook events for user creation and updates."""
     
+    # Verify the webhook signature
     try:
-        webhook = Webhook(settings.CLERK_WEBHOOK_SECRET)
-        evt = webhook.verify(payload, headers)
+        headers = request.headers
+        payload = await request.body()
+        svix_id = headers.get("svix-id")
+        svix_timestamp = headers.get("svix-timestamp")
+        svix_signature = headers.get("svix-signature")
+
+        if not all([svix_id, svix_timestamp, svix_signature]):
+            raise HTTPException(status_code=400, detail="Missing Svix headers")
+
+        wh = Webhook(settings.CLERK_WEBHOOK_SECRET)
+        evt = wh.verify(payload, headers)
+        
+    except WebhookVerificationError as e:
+        logger.error("Webhook verification failed", error=str(e))
+        raise HTTPException(status_code=400, detail="Invalid signature")
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Error verifying webhook") from e
+        logger.error("Webhook processing error", error=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
-    if evt["type"] == "user.created":
-        user_data = evt["data"]
-        email = user_data.get("email_addresses", [{}])[0].get("email_address")
-        if not email:
-            raise HTTPException(status_code=400, detail="Email is required")
-            
-        user_create = UserCreate(
-            clerk_id=user_data["id"],
-            email=email,
-            first_name=user_data.get("first_name"),
-            last_name=user_data.get("last_name"),
-            image_url=user_data.get("image_url"),
-        )
-        await UserService.create_user(user_create)
+    # Handle the event
+    event_type = evt["type"]
+    data = evt["data"]
+    
+    user_service = UserService(db)
 
-    return {"status": "ok"}
+    try:
+        if event_type == "user.created":
+            role_str = data.get("public_metadata", {}).get("role", "student")
+            user_create = UserCreate(
+                clerk_id=data["id"],
+                email=next(item["email_address"] for item in data["email_addresses"] if item["verification"]["status"] == "verified"),
+                name=f"{data.get('first_name', '')} {data.get('last_name', '')}".strip(),
+                role=UserRole(role_str),
+                tutor_id=data["id"] if role_str == "tutor" else None # Tutors are their own tenant
+            )
+            await user_service.create_user(user_create)
+            logger.info("User created from webhook", clerk_id=data["id"])
+
+        elif event_type == "user.updated":
+            # Implement user update logic if needed
+            logger.info("User updated event received (logic not implemented)", clerk_id=data["id"])
+            pass
+
+        return {"status": "success", "message": f"Handled event: {event_type}"}
+
+    except Exception as e:
+        logger.error("Error handling webhook event", event_type=event_type, error=str(e))
+        # Return a 200 to Clerk even if our internal processing fails,
+        # to prevent unnecessary retries for logic errors.
+        return {"status": "error", "message": "Failed to process event internally"}

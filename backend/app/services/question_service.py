@@ -202,3 +202,17 @@ class QuestionService:
         except Exception as e:
             logger.error("Failed to update average score", question_id=question_id, error=str(e))
             return False
+
+    async def get_text_content_from_file(self, file_id: str, tutor_id: str) -> Optional[str]:
+        """Get processed text content from a file, ensuring tutor ownership."""
+        try:
+            file_doc = await self.db.files.find_one({
+                "_id": to_object_id(file_id),
+                "tutor_id": tutor_id
+            })
+            if file_doc and file_doc.get("processed_content"):
+                return file_doc["processed_content"]
+            return None
+        except Exception as e:
+            logger.error("Failed to get text content from file", file_id=file_id, error=str(e))
+            raise DatabaseException(f"Failed to retrieve file content: {str(e)}")

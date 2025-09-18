@@ -15,9 +15,6 @@ from app.services.user_service import UserService
 logger = structlog.get_logger()
 router = APIRouter()
 
-# Mock tutor for development without real auth
-MOCK_TUTOR_ID = "user_2j5d1oZaP8cE7b6aF4gH3i2kL1m"
-
 @router.get("/", response_model=List[User])
 async def list_students_for_tutor(
     limit: int = Query(200, ge=1, le=500),
@@ -38,7 +35,7 @@ async def list_students_for_tutor(
 @router.post("/", response_model=User, status_code=status.HTTP_201_CREATED)
 async def create_student_for_tutor(
     payload: UserCreate,
-    # current_user: ClerkUserContext = Depends(require_tutor), # Uncomment when auth is ready
+    current_user: ClerkUserContext = Depends(require_tutor),
     db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """
@@ -49,8 +46,7 @@ async def create_student_for_tutor(
         
         # Ensure the role is 'student' and assign tutor_id
         payload.role = UserRole.STUDENT
-        # payload.tutor_id = current_user.clerk_id
-        payload.tutor_id = MOCK_TUTOR_ID
+        payload.tutor_id = current_user.clerk_id
 
         student = await user_service.create_user(payload)
         return student
@@ -61,7 +57,7 @@ async def create_student_for_tutor(
 @router.get("/{student_clerk_id}", response_model=User)
 async def get_student(
     student_clerk_id: str,
-    # current_user: ClerkUserContext = Depends(require_tutor), # Uncomment when auth is ready
+    current_user: ClerkUserContext = Depends(require_tutor),
     db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """
@@ -75,8 +71,7 @@ async def get_student(
             raise HTTPException(status_code=404, detail="Student not found")
         
         # Security Check: Ensure the student belongs to the requesting tutor
-        # if student.tutor_id != current_user.clerk_id:
-        if student.tutor_id != MOCK_TUTOR_ID:
+        if student.tutor_id != current_user.clerk_id:
             raise HTTPException(status_code=403, detail="Access forbidden: Student does not belong to this tutor.")
             
         return student
@@ -90,7 +85,7 @@ async def get_student(
 async def update_student(
     student_clerk_id: str,
     payload: UserUpdate,
-    # current_user: ClerkUserContext = Depends(require_tutor), # Uncomment when auth is ready
+    current_user: ClerkUserContext = Depends(require_tutor),
     db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """
@@ -99,10 +94,15 @@ async def update_student(
     try:
         user_service = UserService(db)
         # First, verify the student exists and belongs to the tutor
-        await get_student(student_clerk_id, db) # Uses the mock tutor ID for now
+        student_to_update = await user_service.get_by_clerk_id(student_clerk_id)
+        if not student_to_update or student_to_update.role != UserRole.STUDENT:
+            raise HTTPException(status_code=404, detail="Student not found")
+        
+        if student_to_update.tutor_id != current_user.clerk_id:
+            raise HTTPException(status_code=403, detail="Access forbidden: Student does not belong to this tutor.")
 
         # Prevent role changes via this endpoint
-        if payload.role and payload.role != UserRole.STUDENT:
+        if hasattr(payload, 'role') and payload.role and payload.role != UserRole.STUDENT:
             raise HTTPException(status_code=400, detail="Cannot change user role via this endpoint.")
 
         updated_student = await user_service.update_user(student_clerk_id, payload)

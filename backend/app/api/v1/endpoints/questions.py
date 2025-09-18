@@ -7,6 +7,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
 
 from app.core.database import get_database
+from app.core.enhanced_auth import require_tutor, require_authenticated_user, ClerkUserContext
 from app.models.question import (
     Question, QuestionCreate, QuestionUpdate, QuestionForStudent,
     QuestionGenerationRequest, QuestionGenerationResponse
@@ -21,13 +22,13 @@ router = APIRouter()
 @router.post("/", response_model=Question)
 async def create_question(
     question_data: QuestionCreate,
+    current_user: ClerkUserContext = Depends(require_tutor),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Create a new question"""
     try:
         question_service = QuestionService(database)
-        # For development, use a default tutor_id
-        question = await question_service.create_question(question_data, "default_tutor")
+        question = await question_service.create_question(question_data, current_user.clerk_id)
         return question
     except Exception as e:
         logger.error("Failed to create question", error=str(e))
@@ -38,44 +39,18 @@ async def get_questions(
     subject_id: Optional[str] = Query(None, description="Filter by subject ID"),
     topic: Optional[str] = Query(None, description="Filter by topic"),
     difficulty: Optional[str] = Query(None, description="Filter by difficulty"),
+    current_user: ClerkUserContext = Depends(require_tutor),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Get all questions with optional filters"""
     try:
         question_service = QuestionService(database)
-
-        if subject_id:
-            # Use the existing method for subject-specific queries
-            questions = await question_service.get_questions_by_subject(
-                subject_id=subject_id,
-                topic=topic,
-                difficulty=difficulty
-            )
-        else:
-            # For development, get all questions directly from database
-            cursor = database.questions.find({})
-            questions_data = await cursor.to_list(length=None)
-
-            # Convert to Question models with proper field mapping
-            questions = []
-            for question_data in questions_data:
-                # Convert ObjectId to string for the id field
-                question_data["id"] = str(question_data.pop("_id"))
-
-                # Ensure all required fields are present
-                if "tenant_id" not in question_data:
-                    question_data["tenant_id"] = "default_tenant"
-                if "tutor_id" not in question_data:
-                    question_data["tutor_id"] = "default_tutor"
-                if "options" not in question_data:
-                    question_data["options"] = []
-                if "status" not in question_data:
-                    question_data["status"] = "active"
-                if "ai_generated" not in question_data:
-                    question_data["ai_generated"] = False
-
-                questions.append(Question(**question_data))
-
+        questions = await question_service.get_questions_for_tutor(
+            tutor_id=current_user.clerk_id,
+            subject_id=subject_id,
+            topic=topic,
+            difficulty=difficulty
+        )
         return questions
     except Exception as e:
         logger.error("Failed to get questions", error=str(e))
@@ -84,12 +59,13 @@ async def get_questions(
 @router.get("/{question_id}", response_model=Question)
 async def get_question(
     question_id: str = Path(..., description="Question ID"),
+    current_user: ClerkUserContext = Depends(require_authenticated_user),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Get question by ID"""
     try:
         question_service = QuestionService(database)
-        question = await question_service.get_question_by_id(question_id)
+        question = await question_service.get_question_by_id(question_id, current_user)
         if not question:
             raise HTTPException(status_code=404, detail="Question not found")
         return question
@@ -102,6 +78,7 @@ async def get_question(
 @router.get("/{question_id}/student", response_model=QuestionForStudent)
 async def get_question_for_student(
     question_id: str = Path(..., description="Question ID"),
+    current_user: ClerkUserContext = Depends(require_authenticated_user),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Get question for student (without correct answers)"""
@@ -121,12 +98,13 @@ async def get_question_for_student(
 async def update_question(
     question_update: QuestionUpdate,
     question_id: str = Path(..., description="Question ID"),
+    current_user: ClerkUserContext = Depends(require_tutor),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Update question"""
     try:
         question_service = QuestionService(database)
-        question = await question_service.update_question(question_id, question_update, "default_tutor")
+        question = await question_service.update_question(question_id, question_update, current_user.clerk_id)
         if not question:
             raise HTTPException(status_code=404, detail="Question not found")
         return question
@@ -139,12 +117,13 @@ async def update_question(
 @router.delete("/{question_id}")
 async def delete_question(
     question_id: str = Path(..., description="Question ID"),
+    current_user: ClerkUserContext = Depends(require_tutor),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Delete question"""
     try:
         question_service = QuestionService(database)
-        success = await question_service.delete_question(question_id, "default_tutor")
+        success = await question_service.delete_question(question_id, current_user.clerk_id)
         if not success:
             raise HTTPException(status_code=404, detail="Question not found")
         return {"message": "Question deleted successfully"}
@@ -157,22 +136,20 @@ async def delete_question(
 @router.post("/generate", response_model=QuestionGenerationResponse)
 async def generate_questions(
     request: QuestionGenerationRequest,
+    current_user: ClerkUserContext = Depends(require_tutor),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Generate questions using AI"""
     try:
+        question_service = QuestionService(database)
         ai_manager = AIManager()
         
-        # Get text content from file if file_id provided
         text_content = None
         if request.file_id:
-            # Get file content from database
-            file_doc = await database.files.find_one({"_id": request.file_id})
-            if file_doc and file_doc.get("processed_content"):
-                text_content = file_doc["processed_content"]
+            text_content = await question_service.get_text_content_from_file(request.file_id, current_user.clerk_id)
         
         if not text_content:
-            raise HTTPException(status_code=400, detail="No text content provided")
+            raise HTTPException(status_code=400, detail="No text content provided or file not found")
 
         # Generate questions
         questions = await ai_manager.generate_questions(
