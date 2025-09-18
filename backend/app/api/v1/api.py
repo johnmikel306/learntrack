@@ -4,7 +4,7 @@ API v1 router
 from fastapi import APIRouter
 
 # Import working endpoints
-from app.api.v1.endpoints import questions, assignments, seeders, subjects, students, progress
+from app.api.v1.endpoints import questions, assignments, seeders, subjects, students, progress, webhooks, users
 # Still disabled due to formatting issues: settings, files, communications
 
 api_router = APIRouter()
@@ -16,6 +16,8 @@ api_router.include_router(subjects.router, prefix="/subjects", tags=["subjects"]
 api_router.include_router(students.router, prefix="/students", tags=["students"])
 api_router.include_router(seeders.router, prefix="/seeders", tags=["seeders"])
 api_router.include_router(progress.router, prefix="/progress", tags=["progress"])
+api_router.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
+api_router.include_router(users.router, prefix="/users", tags=["users"])
 
 # Still disabled due to formatting issues:
 # api_router.include_router(settings.router, prefix="/settings", tags=["settings"])

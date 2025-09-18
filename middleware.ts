@@ -4,6 +4,9 @@ import { NextResponse } from 'next/server';
 const isProtectedRoute = createRouteMatcher([
   '/dashboard(.*)',
   '/role-setup(.*)',
+  '/tutor-dashboard(.*)',
+  '/student-dashboard(.*)',
+  '/parent-dashboard(.*)',
 ]);
 
 export default clerkMiddleware((auth, req) => {
@@ -17,5 +20,5 @@ export default clerkMiddleware((auth, req) => {
 });
 
 export const config = {
-  matcher: ['/((?!.*\\..*|_next).*)', '/', '/(api|trpc)(.*)']
+  matcher: ['/((?!.*\..*|_next).*)', '/', '/(api|trpc)(.*)']
 };

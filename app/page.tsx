@@ -1,14 +1,56 @@
 "use client"
 
+import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useUser, SignInButton, UserButton } from "@clerk/nextjs"
+import { useUser, useAuth } from "@clerk/nextjs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { BookOpen, Users, Eye, GraduationCap, Play, Check, BarChart3, MessageCircle, Star, TrendingUp, Clock, Award, Brain, Target } from "lucide-react"
 
+async function getUserRole(getToken: () => Promise<string | null>): Promise<string | null> {
+  const token = await getToken();
+  if (!token) return null;
+
+  try {
+    const response = await fetch('/api/v1/users/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) return null;
+    const user = await response.json();
+    return user.role;
+  } catch (error) {
+    console.error('Error fetching user role:', error);
+    return null;
+  }
+}
+
 export default function HomePage() {
   const { isSignedIn, user } = useUser()
+  const { getToken } = useAuth();
   const router = useRouter()
+
+  useEffect(() => {
+    if (isSignedIn) {
+      getUserRole(getToken).then(role => {
+        if (role) {
+          switch (role) {
+            case 'tutor':
+              router.push('/tutor-dashboard');
+              break;
+            case 'student':
+              router.push('/student-dashboard');
+              break;
+            case 'parent':
+              router.push('/parent-dashboard');
+              break;
+            default:
+              router.push('/role-setup');
+              break;
+          }
+        }
+      });
+    }
+  }, [isSignedIn, getToken, router]);
 
   const handleGetStarted = () => {
     router.push('/sign-up')
