@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Flow Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: white;
+            color: black;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .dark {
+            background: #1a1a1a;
+            color: white;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        .success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .flow-step {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+        }
+    </style>
+</head>
+<body>
+    <h1>LearnTrack Complete Flow Test</h1>
+    <p>This page tests the complete authentication flow and theme system.</p>
+
+    <div class="test-section">
+        <h2>🎨 Theme System Tests</h2>
+        <button onclick="testThemeDefaults()">Test Theme Defaults</button>
+        <button onclick="testThemeToggle()">Test Theme Toggle</button>
+        <button onclick="clearThemeStorage()">Clear Theme Storage</button>
+        <div id="theme-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔐 Authentication Flow Tests</h2>
+        <div class="info">
+            <strong>Manual Testing Required:</strong> These tests require manual interaction with Clerk authentication.
+        </div>
+        
+        <div class="flow-step">
+            <h3>Test 1: Sign-up Flow</h3>
+            <ol>
+                <li>Click "Test Sign-up Flow" → Should go to role selection</li>
+                <li>Select a role → Should store in sessionStorage and go to sign-up</li>
+                <li>Complete Clerk sign-up → Should redirect to dashboard with correct role</li>
+            </ol>
+            <button onclick="testSignUpFlow()">Test Sign-up Flow</button>
+        </div>
+
+        <div class="flow-step">
+            <h3>Test 2: Sign-in Flow</h3>
+            <ol>
+                <li>Click "Test Sign-in Flow" → Should go to sign-in page</li>
+                <li>Complete Clerk sign-in → Should redirect to dashboard</li>
+                <li>Dashboard should show correct role-based interface</li>
+            </ol>
+            <button onclick="testSignInFlow()">Test Sign-in Flow</button>
+        </div>
+
+        <div class="flow-step">
+            <h3>Test 3: Direct Dashboard Access</h3>
+            <ol>
+                <li>Click "Test Dashboard Access" → Should redirect based on auth status</li>
+                <li>If not signed in → Should redirect to sign-in</li>
+                <li>If signed in → Should show appropriate dashboard</li>
+            </ol>
+            <button onclick="testDashboardAccess()">Test Dashboard Access</button>
+        </div>
+
+        <div id="auth-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 Backend API Tests</h2>
+        <button onclick="testBackendConnection()">Test Backend Connection</button>
+        <button onclick="testAPIEndpoints()">Test API Endpoints</button>
+        <div id="api-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📱 Responsive Design Tests</h2>
+        <button onclick="testResponsiveDesign()">Test Responsive Design</button>
+        <div id="responsive-results"></div>
+    </div>
+
+    <script>
+        function addResult(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            container.appendChild(div);
+        }
+
+        function clearResults(containerId) {
+            document.getElementById(containerId).innerHTML = '';
+        }
+
+        // Theme Tests
+        function testThemeDefaults() {
+            clearResults('theme-results');
+            
+            const htmlElement = document.documentElement;
+            const hasDarkClass = htmlElement.classList.contains('dark');
+            const themeStorage = localStorage.getItem('learntrack-theme');
+            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            addResult('theme-results', `HTML has 'dark' class: ${hasDarkClass}`, hasDarkClass ? 'error' : 'success');
+            addResult('theme-results', `localStorage 'learntrack-theme': ${themeStorage || 'null'}`, 'info');
+            addResult('theme-results', `System prefers dark: ${systemPrefersDark}`, 'info');
+            
+            const defaultsToLight = !hasDarkClass && (themeStorage === null || themeStorage === 'light');
+            addResult('theme-results', `✅ Theme defaults to light mode: ${defaultsToLight}`, defaultsToLight ? 'success' : 'error');
+        }
+
+        function testThemeToggle() {
+            const currentTheme = localStorage.getItem('learntrack-theme') || 'light';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            
+            localStorage.setItem('learntrack-theme', newTheme);
+            
+            if (newTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            
+            addResult('theme-results', `Theme toggled to: ${newTheme}`, 'success');
+            
+            // Toggle back after 2 seconds
+            setTimeout(() => {
+                localStorage.setItem('learntrack-theme', currentTheme);
+                if (currentTheme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+                addResult('theme-results', `Theme restored to: ${currentTheme}`, 'info');
+            }, 2000);
+        }
+
+        function clearThemeStorage() {
+            localStorage.removeItem('learntrack-theme');
+            localStorage.removeItem('theme');
+            document.documentElement.classList.remove('dark');
+            addResult('theme-results', 'Theme storage cleared, page will reload in 2 seconds...', 'info');
+            setTimeout(() => location.reload(), 2000);
+        }
+
+        // Authentication Flow Tests
+        function testSignUpFlow() {
+            addResult('auth-results', 'Redirecting to role selection page...', 'info');
+            window.open('http://localhost:3001/get-started', '_blank');
+        }
+
+        function testSignInFlow() {
+            addResult('auth-results', 'Redirecting to sign-in page...', 'info');
+            window.open('http://localhost:3001/sign-in', '_blank');
+        }
+
+        function testDashboardAccess() {
+            addResult('auth-results', 'Attempting to access dashboard...', 'info');
+            window.open('http://localhost:3001/dashboard', '_blank');
+        }
+
+        // Backend API Tests
+        async function testBackendConnection() {
+            clearResults('api-results');
+            try {
+                const response = await fetch('http://localhost:8000/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult('api-results', `✅ Backend connected: ${JSON.stringify(data)}`, 'success');
+                } else {
+                    addResult('api-results', `❌ Backend connection failed: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addResult('api-results', `❌ Backend connection error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAPIEndpoints() {
+            const endpoints = [
+                '/health',
+                '/api/v1/assignments',
+                '/api/v1/students',
+                '/api/v1/questions'
+            ];
+
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(`http://localhost:8000${endpoint}`);
+                    const status = response.ok ? 'success' : 'error';
+                    const icon = response.ok ? '✅' : '❌';
+                    addResult('api-results', `${icon} ${endpoint}: ${response.status}`, status);
+                } catch (error) {
+                    addResult('api-results', `❌ ${endpoint}: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        // Responsive Design Tests
+        function testResponsiveDesign() {
+            clearResults('responsive-results');
+            
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            
+            addResult('responsive-results', `Current viewport: ${viewportWidth}x${viewportHeight}`, 'info');
+            
+            if (viewportWidth >= 1024) {
+                addResult('responsive-results', '🖥️ Desktop view detected', 'success');
+            } else if (viewportWidth >= 768) {
+                addResult('responsive-results', '📱 Tablet view detected', 'success');
+            } else {
+                addResult('responsive-results', '📱 Mobile view detected', 'success');
+            }
+            
+            // Test if main app is responsive
+            addResult('responsive-results', 'Opening main app in new window for responsive testing...', 'info');
+            window.open('http://localhost:3001', '_blank');
+        }
+
+        // Run initial theme test on page load
+        window.addEventListener('load', () => {
+            testThemeDefaults();
+            addResult('theme-results', 'Page loaded with theme system active', 'info');
+        });
+    </script>
+</body>
+</html>

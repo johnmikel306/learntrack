@@ -10,9 +10,9 @@
     <script>
       (function() {
         try {
-          var stored = localStorage.getItem('theme');
-          var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          var theme = stored || (systemDark ? 'dark' : 'light');
+          var stored = localStorage.getItem('learntrack-theme');
+          // Default to light mode instead of system preference
+          var theme = stored || 'light';
           if (theme === 'dark') document.documentElement.classList.add('dark');
           else document.documentElement.classList.remove('dark');
         } catch (e) {}

@@ -1,59 +1,36 @@
 import { useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { useUser, useAuth } from "@clerk/clerk-react"
+import { useUser } from "@clerk/clerk-react"
+import { useApiClient } from "@/lib/api-client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { BookOpen, Users, Eye, GraduationCap, Play, Check, BarChart3, MessageCircle, Star, TrendingUp, Clock, Award, Brain, Target } from "lucide-react"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 
-async function getUserRole(getToken: () => Promise<string | null>): Promise<string | null> {
-  const token = await getToken();
-  if (!token) return null;
-
-  try {
-    const response = await fetch('/api/v1/users/me', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) return null;
-    const user = await response.json();
-    return user.role;
-  } catch (error) {
-    console.error('Error fetching user role:', error);
-    return null;
-  }
-}
+// Removed getUserRole function - we'll use Clerk metadata directly
 
 export default function HomePage() {
   const { isSignedIn, user } = useUser()
-  const { getToken } = useAuth();
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (isSignedIn) {
-      getUserRole(getToken).then(role => {
-        if (role) {
-          switch (role) {
-            case 'tutor':
-              navigate('/tutor-dashboard');
-              break;
-            case 'student':
-              navigate('/student-dashboard');
-              break;
-            case 'parent':
-              navigate('/parent-dashboard');
-              break;
-            default:
-              navigate('/role-setup');
-              break;
-          }
-        }
-      });
-    }
-  }, [isSignedIn, getToken, navigate]);
+    if (isSignedIn && user) {
+      // Check if user has a role set in Clerk metadata
+      const userRole = user.publicMetadata?.role as string
 
-  const handleGetStarted = () => {
-    navigate('/sign-up')
+      if (userRole) {
+        // User has a role, redirect to dashboard
+        navigate('/dashboard')
+      } else {
+        // User doesn't have a role, redirect to role setup
+        navigate('/role-setup')
+      }
+    }
+  }, [isSignedIn, user, navigate])
+
+  const handleSignUp = () => {
+    navigate('/get-started')
   }
 
   const handleSignIn = () => {
@@ -131,10 +108,10 @@ export default function HomePage() {
                     Sign In
                   </button>
                   <button
-                    onClick={handleGetStarted}
+                    onClick={handleSignUp}
                     className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all duration-300 hover:scale-105 hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:scale-100 transform hover:-translate-y-0.5 motion-reduce:hover:translate-y-0"
                   >
-                    Get Started
+                    Sign Up
                   </button>
                 </>
               )}
@@ -198,7 +175,7 @@ export default function HomePage() {
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
             <button
-              onClick={handleGetStarted}
+              onClick={handleSignUp}
               className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-200 hover:scale-105 hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:scale-100 flex items-center space-x-2"
             >
               <span>Start Free Trial</span>

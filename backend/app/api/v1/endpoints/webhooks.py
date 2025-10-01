@@ -47,7 +47,12 @@ async def clerk_webhook(
 
     try:
         if event_type == "user.created":
-            role_str = data.get("public_metadata", {}).get("role", "student")
+            # Check both public_metadata and unsafe_metadata for role
+            role_str = (
+                data.get("public_metadata", {}).get("role") or
+                data.get("unsafe_metadata", {}).get("role") or
+                "student"
+            )
             user_create = UserCreate(
                 clerk_id=data["id"],
                 email=next(item["email_address"] for item in data["email_addresses"] if item["verification"]["status"] == "verified"),

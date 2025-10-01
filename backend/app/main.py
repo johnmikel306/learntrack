@@ -34,14 +34,23 @@ app = FastAPI(
     * **File Management**: Upload and process educational documents
     * **Settings Management**: Configure AI providers and system settings
 
-    ### No Authentication:
-    All endpoints are publicly accessible without authentication.
+    ### Authentication:
+    Most endpoints require authentication via Clerk JWT tokens. Include the token in the Authorization header:
+    ```
+    Authorization: Bearer <your-clerk-jwt-token>
+    ```
+
+    ### Role-Based Access Control:
+    * **Tutors**: Full access to create assignments, manage students, and view all data
+    * **Students**: Access to their own assignments and progress
+    * **Parents**: Access to their children's progress and assignments
 
     ### Getting Started:
-    1. Use the "Try it out" feature below to test endpoints
-    2. Start with `/health` to verify the API is running
-    3. Explore student management with `/api/v1/students/`
-    4. Try AI question generation with `/api/v1/questions/generate`
+    1. Sign up/sign in through the frontend application to get a JWT token
+    2. Use the token in the Authorization header for protected endpoints
+    3. Start with `/health` to verify the API is running (no auth required)
+    4. Get your profile with `/api/v1/users/me` (auth required)
+    5. Explore role-specific endpoints based on your user role
     """,
     contact={
         "name": "LearnTrack Support",

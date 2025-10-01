@@ -15,7 +15,7 @@ cryptography
 
 # Environment and Configuration
 python-dotenv
-pydantic
+pydantic[email]
 pydantic-settings
 
 # AI Providers

@@ -19,7 +19,18 @@ export default function DashboardPage() {
       return
     }
 
-    const userRole = user?.publicMetadata?.role
+    const userRole = user?.publicMetadata?.role || user?.unsafeMetadata?.role
+
+    // If role is in unsafeMetadata but not in publicMetadata, move it
+    if (user?.unsafeMetadata?.role && !user?.publicMetadata?.role) {
+      user.update({
+        publicMetadata: {
+          ...user.publicMetadata,
+          role: user.unsafeMetadata.role
+        }
+      }).catch(console.error)
+    }
+
     if (!userRole) {
       setIsRedirecting(true)
       navigate('/role-setup')
@@ -39,8 +50,8 @@ export default function DashboardPage() {
     )
   }
 
-  // Get user role from metadata
-  const userRole = user?.publicMetadata?.role as string
+  // Get user role from metadata (check both public and unsafe metadata)
+  const userRole = (user?.publicMetadata?.role || user?.unsafeMetadata?.role) as string
 
   // Render appropriate dashboard based on role
   switch (userRole) {

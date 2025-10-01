@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  darkMode: ["class"],
+  darkMode: "class",
   content: [
     './pages/**/*.{ts,tsx}',
     './components/**/*.{ts,tsx}',
@@ -51,6 +51,13 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Custom colors inspired by the dashboard design
+        lamaSky: "#C3EBFA",
+        lamaSkyLight: "#EDF9FD",
+        lamaPurple: "#CFCEFF",
+        lamaPurpleLight: "#F1F0FF",
+        lamaYellow: "#FAE27C",
+        lamaYellowLight: "#FEFCE8",
       },
       borderRadius: {
         lg: "var(--radius)",

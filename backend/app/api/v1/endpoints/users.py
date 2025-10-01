@@ -1,31 +1,110 @@
 from fastapi import APIRouter, Depends, HTTPException
-# from app.services.user_service import UserService  # Commented out for React migration
-# from app.models.user import User, UserRole  # Commented out for React migration
-from app.core.auth import get_current_user
-# from clerk_sdk import Clerk  # Commented out for React migration
+from motor.motor_asyncio import AsyncIOMotorDatabase
+import structlog
+
+from app.core.database import get_database
+from app.core.enhanced_auth import require_authenticated_user, ClerkUserContext
+from app.services.user_service import UserService
+from app.models.user import User, UserRole
 from app.core.config import settings
 
+logger = structlog.get_logger()
 router = APIRouter()
-# clerk = Clerk(secret_key=settings.CLERK_SECRET_KEY)  # Commented out for React migration
 
 @router.get("/me")
-async def read_users_me(current_user: dict = Depends(get_current_user)):
-    """Get current user profile - MOCK for React migration"""
-    return {
-        "id": "mock_user_123",
-        "email": "demo@example.com",
-        "first_name": "Demo",
-        "last_name": "User",
-        "role": "tutor"
-    }
+async def read_users_me(
+    current_user: ClerkUserContext = Depends(require_authenticated_user),
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """Get current authenticated user profile from Clerk JWT token"""
+    try:
+        # Try to get user from database first
+        user_service = UserService(db)
+        db_user = await user_service.get_by_clerk_id(current_user.clerk_id)
 
-@router.put("/{user_id}/role")
-async def update_user_role(user_id: str, current_user: dict = Depends(get_current_user)):
-    """Update current user's role - MOCK for React migration"""
-    return {
-        "id": "mock_user_123",
-        "email": "demo@example.com",
-        "first_name": "Demo",
-        "last_name": "User",
-        "role": "tutor"
-    }
+        if db_user:
+            # Return user data from database
+            return {
+                "id": str(db_user.id),
+                "clerk_id": db_user.clerk_id,
+                "email": db_user.email,
+                "name": db_user.name,
+                "first_name": db_user.name.split()[0] if db_user.name else "",
+                "last_name": " ".join(db_user.name.split()[1:]) if len(db_user.name.split()) > 1 else "",
+                "role": db_user.role.value,
+                "tutor_id": db_user.tutor_id,
+                "created_at": db_user.created_at.isoformat() if db_user.created_at else None,
+                "updated_at": db_user.updated_at.isoformat() if db_user.updated_at else None
+            }
+        else:
+            # Return user data from Clerk JWT token if not in database yet
+            logger.warning("User not found in database, returning JWT data", clerk_id=current_user.clerk_id)
+            return {
+                "id": current_user.clerk_id,
+                "clerk_id": current_user.clerk_id,
+                "email": current_user.email,
+                "name": current_user.name,
+                "first_name": current_user.name.split()[0] if current_user.name else "",
+                "last_name": " ".join(current_user.name.split()[1:]) if len(current_user.name.split()) > 1 else "",
+                "role": current_user.role.value,
+                "tutor_id": current_user.tutor_id,
+                "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+                "last_sign_in": current_user.last_sign_in.isoformat() if current_user.last_sign_in else None
+            }
+    except Exception as e:
+        logger.error("Failed to get user profile", error=str(e), clerk_id=current_user.clerk_id)
+        raise HTTPException(status_code=500, detail="Failed to retrieve user profile")
+
+@router.put("/me/role")
+async def update_user_role(
+    role_data: dict,
+    current_user: ClerkUserContext = Depends(require_authenticated_user),
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """Update current user's role in the database"""
+    try:
+        # Validate role
+        role_str = role_data.get("role", "").lower()
+        if role_str not in ["tutor", "student", "parent"]:
+            raise HTTPException(status_code=400, detail="Invalid role. Must be 'tutor', 'student', or 'parent'")
+
+        role = UserRole(role_str)
+        user_service = UserService(db)
+
+        # Get or create user in database
+        db_user = await user_service.get_by_clerk_id(current_user.clerk_id)
+
+        if db_user:
+            # Update existing user's role
+            updated_user = await user_service.update_user_role(current_user.clerk_id, role)
+            if not updated_user:
+                raise HTTPException(status_code=404, detail="User not found")
+        else:
+            # Create new user with role
+            from app.models.user import UserCreate
+            user_create = UserCreate(
+                clerk_id=current_user.clerk_id,
+                email=current_user.email,
+                name=current_user.name,
+                role=role,
+                tutor_id=current_user.clerk_id if role == UserRole.TUTOR else None
+            )
+            updated_user = await user_service.create_user(user_create)
+
+        logger.info("User role updated", clerk_id=current_user.clerk_id, new_role=role_str)
+
+        return {
+            "id": str(updated_user.id),
+            "clerk_id": updated_user.clerk_id,
+            "email": updated_user.email,
+            "name": updated_user.name,
+            "role": updated_user.role.value,
+            "tutor_id": updated_user.tutor_id,
+            "message": f"Role updated to {role_str}"
+        }
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error("Failed to update user role", error=str(e), clerk_id=current_user.clerk_id)
+        raise HTTPException(status_code=500, detail="Failed to update user role")
