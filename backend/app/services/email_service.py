@@ -3,12 +3,17 @@ Email service using Plunk for sending transactional emails
 """
 from typing import Optional, Dict, Any, List
 import os
-from plunk import Plunk
 from datetime import datetime
 
 # Initialize Plunk client
 PLUNK_API_KEY = os.getenv("PLUNK_API_KEY", "")
-plunk = Plunk(PLUNK_API_KEY) if PLUNK_API_KEY else None
+
+# Try to import Plunk, but don't fail if not available
+try:
+    import plunk
+    plunk_client = plunk.Plunk(PLUNK_API_KEY) if PLUNK_API_KEY else None
+except (ImportError, AttributeError):
+    plunk_client = None
 
 
 class EmailService:
@@ -35,7 +40,7 @@ class EmailService:
         Returns:
             bool: True if email sent successfully
         """
-        if not plunk:
+        if not plunk_client:
             print(f"[EMAIL] Would send invitation to {to_email} (Plunk not configured)")
             return False
 
