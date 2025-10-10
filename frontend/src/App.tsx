@@ -15,6 +15,7 @@ import ChatWidget from './components/ChatWidget/ChatWidget'
 import TeacherOnboarding from './components/onboarding/TeacherOnboarding'
 import StudentOnboarding from './components/onboarding/StudentOnboarding'
 import ParentOnboarding from './components/onboarding/ParentOnboarding'
+import SettingsPage from './pages/SettingsPage'
 
 function App() {
   return (
@@ -92,6 +93,14 @@ function App() {
             element={
               <SignedIn>
                 <RoleSetupPage />
+              </SignedIn>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <SignedIn>
+                <SettingsPage />
               </SignedIn>
             }
           />

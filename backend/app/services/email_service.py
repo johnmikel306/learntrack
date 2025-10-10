@@ -88,12 +88,12 @@ class EmailService:
             </html>
             """
 
-            plunk.emails.send(
+            plunk_client.emails.send(
                 to=to_email,
                 subject=subject,
                 body=html_body
             )
-            
+
             print(f"[EMAIL] Invitation sent to {to_email}")
             return True
 
@@ -120,7 +120,7 @@ class EmailService:
         Returns:
             bool: True if email sent successfully
         """
-        if not plunk:
+        if not plunk_client:
             print(f"[EMAIL] Would send welcome email to {to_email} (Plunk not configured)")
             return False
 
@@ -210,12 +210,12 @@ class EmailService:
             </html>
             """
 
-            plunk.emails.send(
+            plunk_client.emails.send(
                 to=to_email,
                 subject=subject,
                 body=html_body
             )
-            
+
             print(f"[EMAIL] Welcome email sent to {to_email}")
             return True
 
@@ -246,7 +246,7 @@ class EmailService:
         Returns:
             bool: True if email sent successfully
         """
-        if not plunk:
+        if not plunk_client:
             print(f"[EMAIL] Would send assignment notification to {to_email} (Plunk not configured)")
             return False
 
@@ -292,12 +292,12 @@ class EmailService:
             </html>
             """
 
-            plunk.emails.send(
+            plunk_client.emails.send(
                 to=to_email,
                 subject=subject,
                 body=html_body
             )
-            
+
             print(f"[EMAIL] Assignment notification sent to {to_email}")
             return True
 
@@ -315,7 +315,7 @@ class EmailService:
         hours_remaining: int
     ) -> bool:
         """Send reminder about upcoming assignment deadline"""
-        if not plunk:
+        if not plunk_client:
             print(f"[EMAIL] Would send deadline reminder to {to_email} (Plunk not configured)")
             return False
 
@@ -369,12 +369,12 @@ class EmailService:
             </html>
             """
 
-            plunk.emails.send(
+            plunk_client.emails.send(
                 to=to_email,
                 subject=subject,
                 body=html_body
             )
-            
+
             print(f"[EMAIL] Deadline reminder sent to {to_email}")
             return True
 

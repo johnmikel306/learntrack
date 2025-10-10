@@ -28,6 +28,7 @@ import {
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { toast } from 'sonner'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 
@@ -118,14 +119,19 @@ export default function QuestionReviewer() {
       })
 
       if (response.ok) {
+        toast.success('Question approved', {
+          description: 'The question has been approved and added to your question bank'
+        })
         // Remove from pending list
         setQuestions(questions.filter(q => q.id !== questionId))
-        console.log('Question approved:', questionId)
       } else {
-        console.error('Failed to approve question')
+        throw new Error('Failed to approve question')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error approving question:', error)
+      toast.error('Failed to approve question', {
+        description: error.message || 'Please try again later'
+      })
     }
   }
 
@@ -145,14 +151,19 @@ export default function QuestionReviewer() {
       })
 
       if (response.ok) {
+        toast.success('Question rejected', {
+          description: 'The question has been rejected'
+        })
         // Remove from pending list
         setQuestions(questions.filter(q => q.id !== questionId))
-        console.log('Question rejected:', questionId)
       } else {
-        console.error('Failed to reject question')
+        throw new Error('Failed to reject question')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error rejecting question:', error)
+      toast.error('Failed to reject question', {
+        description: error.message || 'Please try again later'
+      })
     }
   }
 

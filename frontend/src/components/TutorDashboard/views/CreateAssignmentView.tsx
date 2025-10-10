@@ -1,0 +1,333 @@
+import { useState } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Calendar,
+  Users,
+  BookOpen,
+  Plus,
+  X,
+  Save,
+  ArrowLeft
+} from "lucide-react"
+import { useApiClient } from "@/lib/api-client"
+import { toast } from "sonner"
+import GroupSelector from '@/components/GroupSelector'
+import SubjectFilter from '@/components/SubjectFilter'
+
+export default function CreateAssignmentView() {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [assignmentType, setAssignmentType] = useState<'individual' | 'group' | 'subject'>('individual')
+  
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    dueDate: '',
+    subject: '',
+    topic: '',
+    selectedStudents: [] as string[],
+    selectedGroups: [] as string[],
+    selectedSubject: '',
+    selectedQuestions: [] as string[],
+  })
+
+  const client = useApiClient()
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    // Validation
+    if (!formData.title.trim()) {
+      toast.error('Please enter an assignment title')
+      return
+    }
+    
+    if (!formData.dueDate) {
+      toast.error('Please select a due date')
+      return
+    }
+
+    // Check if at least one target is selected
+    const hasTarget = 
+      (assignmentType === 'individual' && formData.selectedStudents.length > 0) ||
+      (assignmentType === 'group' && formData.selectedGroups.length > 0) ||
+      (assignmentType === 'subject' && formData.selectedSubject)
+
+    if (!hasTarget) {
+      toast.error('Please select at least one student, group, or subject')
+      return
+    }
+
+    if (formData.selectedQuestions.length === 0) {
+      toast.error('Please add at least one question')
+      return
+    }
+
+    try {
+      setIsSubmitting(true)
+
+      const payload = {
+        title: formData.title,
+        description: formData.description,
+        due_date: formData.dueDate,
+        subject_id: formData.subject,
+        topic: formData.topic,
+        questions: formData.selectedQuestions,
+        student_ids: assignmentType === 'individual' ? formData.selectedStudents : undefined,
+        group_ids: assignmentType === 'group' ? formData.selectedGroups : undefined,
+        subject_filter: assignmentType === 'subject' ? formData.selectedSubject : undefined,
+      }
+
+      const response = await client.post('/assignments/', payload)
+
+      if (response.error) {
+        throw new Error(response.error)
+      }
+
+      toast.success('Assignment created successfully!', {
+        description: `"${formData.title}" has been assigned to students`
+      })
+
+      // Reset form
+      setFormData({
+        title: '',
+        description: '',
+        dueDate: '',
+        subject: '',
+        topic: '',
+        selectedStudents: [],
+        selectedGroups: [],
+        selectedSubject: '',
+        selectedQuestions: [],
+      })
+    } catch (err: any) {
+      console.error('Failed to create assignment:', err)
+      toast.error('Failed to create assignment', {
+        description: err.message || 'Please check your input and try again'
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Create New Assignment
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Create and assign work to your students
+          </p>
+        </div>
+        <Button variant="outline">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Assignments
+        </Button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Basic Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Basic Information</CardTitle>
+            <CardDescription>
+              Enter the assignment details
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="title">
+                Assignment Title <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="title"
+                placeholder="e.g., Math Quiz 1"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                placeholder="Describe what students need to do..."
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={4}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="dueDate">
+                  Due Date <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="dueDate"
+                  type="date"
+                  value={formData.dueDate}
+                  onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                  min={new Date().toISOString().split('T')[0]}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="subject">Subject</Label>
+                <Input
+                  id="subject"
+                  placeholder="e.g., Mathematics"
+                  value={formData.subject}
+                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="topic">Topic</Label>
+                <Input
+                  id="topic"
+                  placeholder="e.g., Algebra"
+                  value={formData.topic}
+                  onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Assign To */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Assign To</CardTitle>
+            <CardDescription>
+              Choose who should receive this assignment
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs value={assignmentType} onValueChange={(value: any) => setAssignmentType(value)}>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="individual">
+                  <Users className="h-4 w-4 mr-2" />
+                  Individual Students
+                </TabsTrigger>
+                <TabsTrigger value="group">
+                  <Users className="h-4 w-4 mr-2" />
+                  Groups
+                </TabsTrigger>
+                <TabsTrigger value="subject">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  By Subject
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="individual" className="space-y-4">
+                <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    Select individual students to assign this work to
+                  </p>
+                  {/* TODO: Add student multi-select component */}
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    Student selector will be available soon
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="group" className="space-y-4">
+                <GroupSelector
+                  selectedGroups={formData.selectedGroups}
+                  onGroupsChange={(groups) => setFormData({ ...formData, selectedGroups: groups })}
+                />
+              </TabsContent>
+
+              <TabsContent value="subject" className="space-y-4">
+                <SubjectFilter
+                  selectedSubject={formData.selectedSubject}
+                  onSubjectChange={(subject) => setFormData({ ...formData, selectedSubject: subject })}
+                />
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+
+        {/* Questions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Questions</CardTitle>
+            <CardDescription>
+              Add questions from your question bank
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {formData.selectedQuestions.length} question(s) selected
+              </p>
+              <Button type="button" variant="outline" size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Questions
+              </Button>
+            </div>
+
+            {formData.selectedQuestions.length === 0 ? (
+              <div className="p-8 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg text-center">
+                <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  No questions added yet
+                </p>
+                <Button type="button" variant="outline">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Browse Question Bank
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {formData.selectedQuestions.map((questionId, index) => (
+                  <div
+                    key={questionId}
+                    className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
+                  >
+                    <span className="text-sm">Question {index + 1}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setFormData({
+                          ...formData,
+                          selectedQuestions: formData.selectedQuestions.filter(id => id !== questionId)
+                        })
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Actions */}
+        <div className="flex justify-end gap-4">
+          <Button type="button" variant="outline">
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            <Save className="h-4 w-4 mr-2" />
+            {isSubmitting ? 'Creating...' : 'Create Assignment'}
+          </Button>
+        </div>
+      </form>
+    </div>
+  )
+}
+

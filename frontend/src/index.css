@@ -80,48 +80,107 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Light mode - Neutral base with warm accents */
+    --background: 0 0% 100%; /* Pure white */
+    --foreground: 0 0% 9%; /* Near black for text */
+
+    /* Cards and surfaces */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --popover-foreground: 0 0% 9%;
+
+    /* Primary - Deep Burgundy #6F1D1B */
+    --primary: 2 63% 28%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Tan/Beige #BB9457 */
+    --secondary: 35 42% 54%;
+    --secondary-foreground: 0 0% 9%;
+
+    /* Accent - Medium Brown #99582A */
+    --accent: 25 57% 38%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Neutrals - Grays for UI elements */
+    --muted: 0 0% 96%; /* Light gray backgrounds */
+    --muted-foreground: 0 0% 45%; /* Medium gray text */
+    --border: 0 0% 90%; /* Light gray borders */
+    --input: 0 0% 96%; /* Input backgrounds */
+    --ring: 2 63% 28%; /* Focus ring uses primary */
+
+    /* Action colors */
+    --destructive: 0 84% 60%; /* Red for delete/danger */
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 76% 36%; /* Green for success */
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%; /* Orange for warnings */
+    --warning-foreground: 0 0% 100%;
+    --info: 221 83% 53%; /* Blue for info */
+    --info-foreground: 0 0% 100%;
+
     --radius: 0.5rem;
+
+    /* Sidebar specific - uses neutrals with accent highlights */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 9%;
+    --sidebar-primary: 2 63% 28%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 96%;
+    --sidebar-accent-foreground: 0 0% 9%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 2 63% 28%;
   }
 
   .dark {
-    --background: 215 25% 11%;
-    --foreground: 210 40% 98%;
-    --card: 215 25% 15%;
-    --card-foreground: 210 40% 98%;
-    --popover: 215 25% 15%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 215 20% 25%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 215 20% 25%;
-    --muted-foreground: 215 20% 70%;
-    --accent: 215 20% 25%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 50%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 215 20% 30%;
-    --input: 215 20% 25%;
-    --ring: 212.7 26.8% 83.9%;
+    /* Dark mode - Standard dark theme with warm accents */
+    --background: 0 0% 9%; /* Dark background */
+    --foreground: 0 0% 98%; /* Light text */
+
+    /* Cards and surfaces */
+    --card: 0 0% 13%; /* Slightly lighter than background */
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 13%;
+    --popover-foreground: 0 0% 98%;
+
+    /* Primary - Lighter burgundy for dark mode */
+    --primary: 2 63% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Lighter tan for dark mode */
+    --secondary: 35 42% 60%;
+    --secondary-foreground: 0 0% 9%;
+
+    /* Accent - Lighter brown for dark mode */
+    --accent: 25 57% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Neutrals - Dark grays */
+    --muted: 0 0% 15%; /* Dark gray backgrounds */
+    --muted-foreground: 0 0% 65%; /* Light gray text */
+    --border: 0 0% 20%; /* Dark gray borders */
+    --input: 0 0% 15%; /* Input backgrounds */
+    --ring: 2 63% 45%; /* Focus ring uses primary */
+
+    /* Action colors - slightly adjusted for dark mode */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 76% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 100%;
+    --info: 221 83% 60%;
+    --info-foreground: 0 0% 100%;
+
+    /* Sidebar specific */
+    --sidebar-background: 0 0% 11%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 2 63% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 2 63% 45%;
   }
 }
 

@@ -51,13 +51,18 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Custom colors inspired by the dashboard design
-        lamaSky: "#C3EBFA",
-        lamaSkyLight: "#EDF9FD",
-        lamaPurple: "#CFCEFF",
-        lamaPurpleLight: "#F1F0FF",
-        lamaYellow: "#FAE27C",
-        lamaYellowLight: "#FEFCE8",
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

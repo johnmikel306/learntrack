@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react"
-import { SidebarProvider } from "@/components/ui/sidebar"
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
+import { Separator } from "@/components/ui/separator"
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
 import { useApiClient } from "@/lib/api-client"
 import { toast } from "sonner"
-import { DashboardHeader } from "./DashboardHeader"
-import { DashboardSidebar } from "./DashboardSidebar"
+import { AppSidebar } from "./AppSidebar"
 import { OverviewView } from "./views/OverviewView"
 import { PlaceholderView } from "./views/PlaceholderView"
 import InvitationsView from "./views/InvitationsView"
@@ -13,7 +14,10 @@ import AssignmentManager from "@/components/assignment-manager"
 import IntegratedSubjectsManager from "@/components/integrated-subjects-manager"
 import QuestionReviewer from "@/components/question-reviewer"
 import MaterialManager from "@/components/MaterialManager"
+import ActiveAssignmentsView from "./views/ActiveAssignmentsView"
+import CreateAssignmentView from "./views/CreateAssignmentView"
 import { Users, FileText, BookOpen, Brain, Calendar, BarChart3 } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 interface TutorDashboardProps {
   onBack?: () => void
@@ -21,8 +25,8 @@ interface TutorDashboardProps {
 
 export default function TutorDashboard({ onBack }: TutorDashboardProps) {
   const [activeView, setActiveView] = useState("overview")
-  const [sidebarOpen, setSidebarOpen] = useState(true)
   const client = useApiClient()
+  const navigate = useNavigate()
 
   // Dashboard data state
   const [dashboardStats, setDashboardStats] = useState<any>(null)
@@ -107,10 +111,10 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
         )
 
       case "active-assignments":
-        return <AssignmentManager />
+        return <ActiveAssignmentsView />
 
       case "create-new":
-        return <AssignmentManager />
+        return <CreateAssignmentView />
 
       case "templates":
         return (
@@ -176,21 +180,66 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
     }
   }
 
+  // Handle settings navigation
+  const handleViewChange = (view: string) => {
+    if (view === "settings") {
+      navigate("/settings")
+    } else {
+      setActiveView(view)
+    }
+  }
+
+  // Get breadcrumb title
+  const getBreadcrumbTitle = () => {
+    const titles: Record<string, string> = {
+      "overview": "Dashboard",
+      "all-students": "All Students",
+      "invitations": "Invitations",
+      "groups": "Groups",
+      "relationships": "Relationships",
+      "ai-generator": "Question Generator",
+      "review-questions": "Review Questions",
+      "question-bank": "Question Bank",
+      "resources": "Materials",
+      "subjects": "Subjects",
+      "active-assignments": "Active Assignments",
+      "create-new": "Create Assignment",
+      "templates": "Templates",
+      "grading": "Grading",
+      "progress": "Progress",
+      "reports": "Reports",
+    }
+    return titles[activeView] || "Dashboard"
+  }
+
   return (
-    <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
-      <div className="min-h-screen flex w-full bg-slate-50 dark:bg-slate-950">
-        {/* Left Sidebar */}
-        <DashboardSidebar activeView={activeView} onViewChange={setActiveView} />
+    <SidebarProvider>
+      <AppSidebar activeView={activeView} onViewChange={handleViewChange} />
+      <SidebarInset>
+        {/* Header with breadcrumb */}
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem className="hidden md:block">
+                <BreadcrumbLink href="#">
+                  LearnTrack
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden md:block" />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{getBreadcrumbTitle()}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </header>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col">
-          {/* Top Header */}
-          <DashboardHeader onCreateAssignment={() => setActiveView("create-new")} />
-
-          {/* Dashboard Content */}
+        <div className="flex flex-1 flex-col gap-4 p-4">
           {renderView()}
         </div>
-      </div>
+      </SidebarInset>
     </SidebarProvider>
   )
 }
