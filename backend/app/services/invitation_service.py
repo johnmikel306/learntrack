@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from typing import Optional, List
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
+import os
 
 from app.models.invitation import (
     Invitation,
@@ -20,9 +21,13 @@ from app.models.invitation import (
 from app.models.user import UserRole, UserCreate, User
 from app.core.exceptions import NotFoundError, ValidationError, DatabaseException
 from app.services.user_service import UserService
+from app.services.email_service import email_service
 from bson import ObjectId
 
 logger = structlog.get_logger()
+
+# Get frontend URL from environment
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 
 def to_object_id(id_str: str) -> ObjectId:
@@ -105,8 +110,27 @@ class InvitationService:
                 role=invitation_data.role
             )
 
-            # Send invitation email (async, don't wait)
-            # await self._send_invitation_email(Invitation(**invitation_dict))
+            # Send invitation email
+            try:
+                # Get tutor info for email
+                tutor = await self.user_service.get_user_by_clerk_id(tutor_id)
+                tutor_name = tutor.name if tutor else "Your Teacher"
+
+                invitation_link = f"{FRONTEND_URL}/accept-invitation/{token}"
+
+                email_service.send_invitation_email(
+                    to_email=invitation_data.invitee_email,
+                    to_name=invitation_data.invitee_name or "there",
+                    from_name=tutor_name,
+                    role=invitation_data.role.value,
+                    invitation_link=invitation_link
+                )
+            except Exception as e:
+                logger.warning(
+                    "Failed to send invitation email",
+                    error=str(e),
+                    invitee_email=invitation_data.invitee_email
+                )
 
             return self._to_invitation_model(invitation_dict)
 

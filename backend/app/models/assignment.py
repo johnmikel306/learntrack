@@ -61,7 +61,7 @@ class AssignmentCreate(AssignmentBase):
             raise ValueError('Assignment must have at least one question')
         return v
 
-    @root_validator
+    @root_validator(skip_on_failure=True)
     def validate_assignment_targets(cls, values):
         """Ensure at least one target is specified"""
         student_ids = values.get('student_ids')

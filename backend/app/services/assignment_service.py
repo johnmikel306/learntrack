@@ -5,6 +5,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
+import os
 
 from app.models.assignment import (
     Assignment, AssignmentCreate, AssignmentUpdate, AssignmentInDB,
@@ -12,8 +13,12 @@ from app.models.assignment import (
 )
 from app.core.exceptions import NotFoundError, DatabaseException, ValidationError
 from app.core.utils import to_object_id
+from app.services.email_service import email_service
 
 logger = structlog.get_logger()
+
+# Get frontend URL from environment
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 
 class AssignmentService:
@@ -68,6 +73,40 @@ class AssignmentService:
                 group_count=len(group_ids),
                 is_group_assignment=assignment_dict["is_group_assignment"]
             )
+
+            # Send email notifications to students
+            try:
+                # Get tutor info
+                tutor = await self.db.users.find_one({"clerk_id": tutor_id})
+                tutor_name = tutor.get("name", "Your Teacher") if tutor else "Your Teacher"
+
+                assignment_link = f"{FRONTEND_URL}/assignments/{str(result.inserted_id)}"
+
+                # Send to each student
+                for student_id in student_ids:
+                    try:
+                        student = await self.db.users.find_one({"clerk_id": student_id})
+                        if student and student.get("email"):
+                            email_service.send_assignment_notification(
+                                to_email=student["email"],
+                                to_name=student.get("name", "Student"),
+                                assignment_title=assignment_data.title,
+                                teacher_name=tutor_name,
+                                due_date=assignment_data.due_date,
+                                assignment_link=assignment_link
+                            )
+                    except Exception as e:
+                        logger.warning(
+                            "Failed to send assignment notification",
+                            student_id=student_id,
+                            error=str(e)
+                        )
+            except Exception as e:
+                logger.warning(
+                    "Failed to send assignment notifications",
+                    error=str(e)
+                )
+
             return Assignment(**assignment_dict)
             
         except Exception as e:
