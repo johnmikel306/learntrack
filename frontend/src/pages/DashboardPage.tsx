@@ -1,7 +1,7 @@
 import { useUser } from '@clerk/clerk-react'
 import { useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import TutorDashboard from '@/components/TutorDashboard'
+import TutorDashboard from '@/components/TutorDashboard/index'
 import StudentDashboard from '@/components/StudentDashboard'
 import ParentDashboard from '@/components/ParentDashboard'
 

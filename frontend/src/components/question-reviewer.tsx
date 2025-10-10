@@ -1,12 +1,13 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useAuth } from '@clerk/clerk-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { 
-  CheckCircle, 
-  XCircle, 
+import {
+  CheckCircle,
+  XCircle,
   AlertTriangle,
   Eye,
   Edit,
@@ -29,6 +30,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
 interface Question {
   id: string
@@ -62,6 +65,7 @@ interface ReviewStats {
 }
 
 export default function QuestionReviewer() {
+  const { getToken } = useAuth()
   const [activeTab, setActiveTab] = useState("review")
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -69,9 +73,155 @@ export default function QuestionReviewer() {
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null)
   const [reviewComment, setReviewComment] = useState("")
   const [rating, setRating] = useState(0)
+  const [questions, setQuestions] = useState<Question[]>([])
+  const [loading, setLoading] = useState(false)
+  const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set())
 
-  // Sample questions for review
-  const questions: Question[] = [
+  // Fetch pending questions from backend
+  useEffect(() => {
+    fetchPendingQuestions()
+  }, [])
+
+  const fetchPendingQuestions = async () => {
+    try {
+      setLoading(true)
+      const token = await getToken()
+      const response = await fetch(`${API_BASE_URL}/questions/pending`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setQuestions(data)
+      } else {
+        console.error('Failed to fetch pending questions')
+      }
+    } catch (error) {
+      console.error('Error fetching pending questions:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleApprove = async (questionId: string) => {
+    try {
+      const token = await getToken()
+      const response = await fetch(`${API_BASE_URL}/questions/${questionId}/approve`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        // Remove from pending list
+        setQuestions(questions.filter(q => q.id !== questionId))
+        console.log('Question approved:', questionId)
+      } else {
+        console.error('Failed to approve question')
+      }
+    } catch (error) {
+      console.error('Error approving question:', error)
+    }
+  }
+
+  const handleReject = async (questionId: string, reason?: string) => {
+    try {
+      const token = await getToken()
+      const url = reason
+        ? `${API_BASE_URL}/questions/${questionId}/reject?reason=${encodeURIComponent(reason)}`
+        : `${API_BASE_URL}/questions/${questionId}/reject`
+
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        // Remove from pending list
+        setQuestions(questions.filter(q => q.id !== questionId))
+        console.log('Question rejected:', questionId)
+      } else {
+        console.error('Failed to reject question')
+      }
+    } catch (error) {
+      console.error('Error rejecting question:', error)
+    }
+  }
+
+  const handleRequestRevision = async (questionId: string, notes: string) => {
+    try {
+      const token = await getToken()
+      const response = await fetch(
+        `${API_BASE_URL}/questions/${questionId}/request-revision?notes=${encodeURIComponent(notes)}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+
+      if (response.ok) {
+        console.log('Revision requested for question:', questionId)
+        // Optionally refresh the list
+        fetchPendingQuestions()
+      } else {
+        console.error('Failed to request revision')
+      }
+    } catch (error) {
+      console.error('Error requesting revision:', error)
+    }
+  }
+
+  const handleBulkApprove = async () => {
+    try {
+      const token = await getToken()
+      const questionIds = Array.from(selectedQuestions)
+
+      const response = await fetch(`${API_BASE_URL}/questions/bulk-approve`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(questionIds)
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        console.log(`Bulk approved ${result.approved_count} questions`)
+        // Remove approved questions from list
+        setQuestions(questions.filter(q => !selectedQuestions.has(q.id)))
+        setSelectedQuestions(new Set())
+      } else {
+        console.error('Failed to bulk approve questions')
+      }
+    } catch (error) {
+      console.error('Error bulk approving questions:', error)
+    }
+  }
+
+  const toggleQuestionSelection = (questionId: string) => {
+    const newSelection = new Set(selectedQuestions)
+    if (newSelection.has(questionId)) {
+      newSelection.delete(questionId)
+    } else {
+      newSelection.add(questionId)
+    }
+    setSelectedQuestions(newSelection)
+  }
+
+  // Sample questions for demo (will be replaced by API data)
+  const sampleQuestions: Question[] = [
     {
       id: "1",
       text: "What is the solution to the equation 2x + 5 = 13?",
@@ -217,31 +367,19 @@ export default function QuestionReviewer() {
     ))
   }
 
-  const filteredQuestions = questions.filter(question => {
+  // Use actual questions from API or sample for demo
+  const displayQuestions = questions.length > 0 ? questions : sampleQuestions
+
+  const filteredQuestions = displayQuestions.filter(question => {
     const matchesSearch = question.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          question.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          question.topic.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          question.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
     const matchesStatus = statusFilter === "all" || question.status === statusFilter
     const matchesSubject = subjectFilter === "all" || question.subject === subjectFilter
-    
+
     return matchesSearch && matchesStatus && matchesSubject
   })
-
-  const handleApprove = (questionId: string) => {
-    // Handle approval logic
-    console.log('Approving question:', questionId)
-  }
-
-  const handleReject = (questionId: string) => {
-    // Handle rejection logic
-    console.log('Rejecting question:', questionId)
-  }
-
-  const handleRequestRevision = (questionId: string) => {
-    // Handle revision request logic
-    console.log('Requesting revision for question:', questionId)
-  }
 
   return (
     <div className="space-y-6">
@@ -254,6 +392,20 @@ export default function QuestionReviewer() {
           </h1>
           <p className="text-gray-600 dark:text-slate-400 mt-1">Review and approve questions for quality assurance</p>
         </div>
+        {selectedQuestions.size > 0 && (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-600 dark:text-slate-400">
+              {selectedQuestions.size} selected
+            </span>
+            <Button
+              onClick={handleBulkApprove}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              <ThumbsUp className="w-4 h-4 mr-2" />
+              Approve Selected
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -382,24 +534,44 @@ export default function QuestionReviewer() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {filteredQuestions.map((question) => (
-                  <Card key={question.id} className="border border-gray-200 dark:border-slate-700 hover:shadow-md transition-all duration-200">
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <Badge className={`border-0 ${getStatusColor(question.status)}`}>
-                            <div className="flex items-center gap-1">
-                              {getStatusIcon(question.status)}
-                              {question.status.replace('-', ' ')}
-                            </div>
-                          </Badge>
-                          <Badge className={getDifficultyColor(question.difficulty)}>
-                            {question.difficulty}
-                          </Badge>
-                          <Badge variant="outline">{question.type}</Badge>
-                          <span className="text-sm text-gray-500">{question.points} pts</span>
-                        </div>
+              {loading ? (
+                <div className="text-center py-12">
+                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+                  <p className="mt-4 text-gray-600 dark:text-slate-400">Loading questions...</p>
+                </div>
+              ) : filteredQuestions.length === 0 ? (
+                <div className="text-center py-12">
+                  <CheckCircle className="w-16 h-16 mx-auto text-green-500 mb-4" />
+                  <p className="text-xl font-semibold text-gray-900 dark:text-white">All caught up!</p>
+                  <p className="text-gray-600 dark:text-slate-400 mt-2">No pending questions to review.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {filteredQuestions.map((question) => (
+                    <Card key={question.id} className="border border-gray-200 dark:border-slate-700 hover:shadow-md transition-all duration-200">
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            {question.status === 'pending' && (
+                              <input
+                                type="checkbox"
+                                checked={selectedQuestions.has(question.id)}
+                                onChange={() => toggleQuestionSelection(question.id)}
+                                className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
+                              />
+                            )}
+                            <Badge className={`border-0 ${getStatusColor(question.status)}`}>
+                              <div className="flex items-center gap-1">
+                                {getStatusIcon(question.status)}
+                                {question.status.replace('-', ' ')}
+                              </div>
+                            </Badge>
+                            <Badge className={getDifficultyColor(question.difficulty)}>
+                              {question.difficulty}
+                            </Badge>
+                            <Badge variant="outline">{question.type}</Badge>
+                            <span className="text-sm text-gray-500">{question.points} pts</span>
+                          </div>
                         <div className="flex items-center gap-2">
                           {question.rating && (
                             <div className="flex items-center gap-1">
@@ -511,14 +683,8 @@ export default function QuestionReviewer() {
                     </CardContent>
                   </Card>
                 ))}
-
-                {filteredQuestions.length === 0 && (
-                  <div className="text-center py-8">
-                    <CheckCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500 dark:text-slate-400">No questions found matching your criteria.</p>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

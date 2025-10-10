@@ -10,7 +10,7 @@ from app.models.assignment import (
     Assignment, AssignmentCreate, AssignmentUpdate, AssignmentInDB,
     AssignmentForStudent, AssignmentStatus, QuestionAssignment
 )
-from app.core.exceptions import NotFoundError, DatabaseException
+from app.core.exceptions import NotFoundError, DatabaseException, ValidationError
 from app.core.utils import to_object_id
 
 logger = structlog.get_logger()
@@ -24,21 +24,50 @@ class AssignmentService:
         self.collection = database.assignments
     
     async def create_assignment(self, assignment_data: AssignmentCreate, tutor_id: str) -> Assignment:
-        """Create a new assignment"""
+        """Create a new assignment with support for groups and subject-based assignment"""
         try:
+            # Resolve student IDs from groups and subject filters
+            student_ids = set(assignment_data.student_ids or [])
+            group_ids = assignment_data.group_ids or []
+
+            # Add students from groups
+            if group_ids:
+                for group_id in group_ids:
+                    group_students = await self._get_students_from_group(group_id)
+                    student_ids.update(group_students)
+
+            # Add students from subject filter
+            if assignment_data.subject_filter:
+                subject_students = await self._get_students_by_subject(
+                    tutor_id,
+                    assignment_data.subject_filter
+                )
+                student_ids.update(subject_students)
+
             # Create assignment document
-            assignment_dict = assignment_data.dict()
+            assignment_dict = assignment_data.dict(exclude={'group_ids', 'subject_filter'})
             assignment_dict["tutor_id"] = tutor_id
             assignment_dict["created_at"] = datetime.utcnow()
             assignment_dict["updated_at"] = datetime.utcnow()
             assignment_dict["status"] = AssignmentStatus.SCHEDULED
             assignment_dict["questions"] = []  # Will be populated later
-            assignment_dict["student_ids"] = assignment_data.student_ids or []
-            
+            assignment_dict["student_ids"] = list(student_ids)
+            assignment_dict["group_ids"] = group_ids
+            assignment_dict["assigned_via_subject"] = assignment_data.subject_filter
+            assignment_dict["is_group_assignment"] = bool(group_ids or assignment_data.subject_filter)
+            assignment_dict["group_completion_rates"] = {}
+            assignment_dict["group_average_scores"] = {}
+
             result = await self.collection.insert_one(assignment_dict)
             assignment_dict["_id"] = result.inserted_id
-            
-            logger.info("Assignment created", assignment_id=str(result.inserted_id))
+
+            logger.info(
+                "Assignment created",
+                assignment_id=str(result.inserted_id),
+                student_count=len(student_ids),
+                group_count=len(group_ids),
+                is_group_assignment=assignment_dict["is_group_assignment"]
+            )
             return Assignment(**assignment_dict)
             
         except Exception as e:
@@ -217,3 +246,111 @@ class AssignmentService:
         except Exception as e:
             logger.error("Failed to assign to students", assignment_id=assignment_id, error=str(e))
             raise DatabaseException(f"Failed to assign to students: {str(e)}")
+
+    async def assign_to_group(self, assignment_id: str, group_id: str) -> Assignment:
+        """Assign assignment to a student group"""
+        try:
+            # Get students from group
+            group_students = await self._get_students_from_group(group_id)
+
+            if not group_students:
+                raise ValidationError(f"Group {group_id} has no students")
+
+            # Update assignment
+            oid = to_object_id(assignment_id)
+            result = await self.collection.update_one(
+                {"_id": oid},
+                {
+                    "$addToSet": {
+                        "student_ids": {"$each": list(group_students)},
+                        "group_ids": group_id
+                    },
+                    "$set": {
+                        "is_group_assignment": True,
+                        "updated_at": datetime.utcnow()
+                    }
+                }
+            )
+
+            if result.matched_count == 0:
+                raise NotFoundError("Assignment", assignment_id)
+
+            logger.info("Assignment assigned to group", assignment_id=assignment_id, group_id=group_id, student_count=len(group_students))
+            return await self.get_assignment_by_id(assignment_id)
+
+        except (NotFoundError, ValidationError):
+            raise
+        except Exception as e:
+            logger.error("Failed to assign to group", assignment_id=assignment_id, error=str(e))
+            raise DatabaseException(f"Failed to assign to group: {str(e)}")
+
+    async def get_group_performance(self, assignment_id: str, group_id: str) -> Dict:
+        """Get performance statistics for a specific group on an assignment"""
+        try:
+            assignment = await self.get_assignment_by_id(assignment_id)
+            group_students = await self._get_students_from_group(group_id)
+
+            # Get progress for group students
+            progress_collection = self.database.progress
+            group_progress = await progress_collection.find({
+                "assignment_id": assignment_id,
+                "student_id": {"$in": list(group_students)}
+            }).to_list(length=None)
+
+            # Calculate statistics
+            total_students = len(group_students)
+            completed = sum(1 for p in group_progress if p.get("status") == "completed")
+            scores = [p.get("score", 0) for p in group_progress if p.get("score") is not None]
+
+            return {
+                "group_id": group_id,
+                "assignment_id": assignment_id,
+                "total_students": total_students,
+                "completed_count": completed,
+                "completion_rate": (completed / total_students * 100) if total_students > 0 else 0,
+                "average_score": sum(scores) / len(scores) if scores else 0,
+                "highest_score": max(scores) if scores else 0,
+                "lowest_score": min(scores) if scores else 0
+            }
+
+        except NotFoundError:
+            raise
+        except Exception as e:
+            logger.error("Failed to get group performance", assignment_id=assignment_id, group_id=group_id, error=str(e))
+            raise DatabaseException(f"Failed to get group performance: {str(e)}")
+
+    async def _get_students_from_group(self, group_id: str) -> List[str]:
+        """Helper: Get student IDs from a group"""
+        try:
+            from app.core.exceptions import NotFoundError as NF
+            oid = to_object_id(group_id)
+            group = await self.database.student_groups.find_one({"_id": oid})
+
+            if not group:
+                raise NF("StudentGroup", group_id)
+
+            return group.get("studentIds", [])
+
+        except Exception as e:
+            logger.error("Failed to get students from group", group_id=group_id, error=str(e))
+            return []
+
+    async def _get_students_by_subject(self, tutor_id: str, subject_id: str) -> List[str]:
+        """Helper: Get student IDs enrolled in a subject"""
+        try:
+            # Get all groups for this subject
+            groups = await self.database.student_groups.find({
+                "tutor_id": tutor_id,
+                "subjects": subject_id
+            }).to_list(length=None)
+
+            # Collect unique student IDs
+            student_ids = set()
+            for group in groups:
+                student_ids.update(group.get("studentIds", []))
+
+            return list(student_ids)
+
+        except Exception as e:
+            logger.error("Failed to get students by subject", subject_id=subject_id, error=str(e))
+            return []

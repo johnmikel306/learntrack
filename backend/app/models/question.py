@@ -28,7 +28,9 @@ class QuestionDifficulty(str, Enum):
 class QuestionStatus(str, Enum):
     """Question status"""
     DRAFT = "draft"
+    PENDING = "pending"  # AI-generated questions awaiting approval
     ACTIVE = "active"
+    REJECTED = "rejected"  # Rejected during review
     ARCHIVED = "archived"
 
 
@@ -91,16 +93,28 @@ class QuestionInDB(QuestionBase):
     status: QuestionStatus = QuestionStatus.ACTIVE
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
     # AI Generation metadata
     ai_generated: bool = False
     ai_provider: Optional[str] = None
     ai_confidence: Optional[float] = None
     source_file: Optional[str] = None
-    
+    generation_id: Optional[str] = None  # Links questions from same generation batch
+
+    # Approval workflow
+    approved_by: Optional[str] = None  # Clerk ID of approver
+    approved_at: Optional[datetime] = None
+    rejected_by: Optional[str] = None  # Clerk ID of rejector
+    rejected_at: Optional[datetime] = None
+    rejection_reason: Optional[str] = None
+    revision_notes: Optional[str] = None
+
     # Usage statistics
     times_used: int = 0
     average_score: Optional[float] = None
+
+    # Reference materials
+    reference_materials: List[str] = []  # Material IDs
 
     model_config = ConfigDict(
         populate_by_name=True,

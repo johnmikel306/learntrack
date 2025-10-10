@@ -131,3 +131,41 @@ async def get_student_assignments(
     except Exception as e:
         logger.error("Failed to get student assignments", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to get student assignments")
+
+
+@router.post("/{assignment_id}/assign-to-group", response_model=Assignment)
+async def assign_to_group(
+    assignment_id: str = Path(..., description="Assignment ID"),
+    group_id: str = Query(..., description="Group ID to assign to"),
+    current_user: ClerkUserContext = Depends(require_tutor),
+    database: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """Assign an assignment to a student group"""
+    try:
+        assignment_service = AssignmentService(database)
+        assignment = await assignment_service.assign_to_group(assignment_id, group_id)
+        return assignment
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to assign to group", assignment_id=assignment_id, group_id=group_id, error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{assignment_id}/group-performance/{group_id}")
+async def get_group_performance(
+    assignment_id: str = Path(..., description="Assignment ID"),
+    group_id: str = Path(..., description="Group ID"),
+    current_user: ClerkUserContext = Depends(require_tutor),
+    database: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """Get performance statistics for a specific group on an assignment"""
+    try:
+        assignment_service = AssignmentService(database)
+        performance = await assignment_service.get_group_performance(assignment_id, group_id)
+        return performance
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to get group performance", assignment_id=assignment_id, group_id=group_id, error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))

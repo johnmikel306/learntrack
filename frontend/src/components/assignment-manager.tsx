@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -20,6 +20,8 @@ import {
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useApiClient } from "@/lib/api-client"
+import { toast } from "sonner"
 
 interface Assignment {
   id: string
@@ -38,57 +40,47 @@ export default function AssignmentManager() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [subjectFilter, setSubjectFilter] = useState("all")
+  const [assignments, setAssignments] = useState<Assignment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Sample assignments data
-  const assignments: Assignment[] = [
-    {
-      id: "1",
-      title: "Algebra Fundamentals Quiz",
-      subject: "Mathematics",
-      topic: "Algebra",
-      dueDate: "2024-01-15",
-      status: "published",
-      studentCount: 25,
-      completedCount: 18,
-      questionCount: 15,
-      averageScore: 87
-    },
-    {
-      id: "2",
-      title: "Physics Lab Report",
-      subject: "Physics",
-      topic: "Motion",
-      dueDate: "2024-01-20",
-      status: "published",
-      studentCount: 22,
-      completedCount: 8,
-      questionCount: 10,
-      averageScore: 92
-    },
-    {
-      id: "3",
-      title: "Chemistry Basics Test",
-      subject: "Chemistry",
-      topic: "Atomic Structure",
-      dueDate: "2024-01-25",
-      status: "draft",
-      studentCount: 0,
-      completedCount: 0,
-      questionCount: 20
-    },
-    {
-      id: "4",
-      title: "English Literature Essay",
-      subject: "English",
-      topic: "Shakespeare",
-      dueDate: "2024-01-12",
-      status: "completed",
-      studentCount: 28,
-      completedCount: 28,
-      questionCount: 5,
-      averageScore: 84
+  const client = useApiClient()
+
+  // Fetch assignments from API
+  useEffect(() => {
+    const fetchAssignments = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await client.get('/assignments/')
+        if (response.error) {
+          throw new Error(response.error)
+        }
+        // Map API response to Assignment interface
+        const assignmentsData = (response.data || []).map((assignment: any) => ({
+          id: assignment._id,
+          title: assignment.title,
+          subject: assignment.subject_id?.name || "Unknown",
+          topic: assignment.topic || "General",
+          dueDate: assignment.due_date ? new Date(assignment.due_date).toISOString().split('T')[0] : "N/A",
+          status: assignment.status || 'draft',
+          studentCount: assignment.assigned_students?.length || 0,
+          completedCount: 0, // TODO: Calculate from progress
+          questionCount: assignment.questions?.length || 0,
+          averageScore: assignment.average_score || undefined
+        }))
+        setAssignments(assignmentsData)
+      } catch (err: any) {
+        console.error('Failed to fetch assignments:', err)
+        setError(err.message || 'Failed to load assignments')
+        toast.error('Failed to load assignments')
+      } finally {
+        setLoading(false)
+      }
     }
-  ]
+
+    fetchAssignments()
+  }, [])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -244,8 +236,43 @@ export default function AssignmentManager() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {filteredAssignments.map((assignment) => (
+          {loading ? (
+            // Loading skeleton
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="p-4 bg-gray-50 dark:bg-slate-800 rounded-lg animate-pulse">
+                  <div className="space-y-3">
+                    <div className="h-4 bg-gray-300 dark:bg-slate-700 rounded w-1/3"></div>
+                    <div className="h-3 bg-gray-300 dark:bg-slate-700 rounded w-1/2"></div>
+                    <div className="h-3 bg-gray-300 dark:bg-slate-700 rounded w-3/4"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : error ? (
+            // Error state
+            <div className="text-center py-12">
+              <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
+              <Button onClick={() => window.location.reload()}>Retry</Button>
+            </div>
+          ) : filteredAssignments.length === 0 ? (
+            // Empty state
+            <div className="text-center py-12">
+              <BookOpen className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No assignments found</h3>
+              <p className="text-gray-600 dark:text-slate-400 mb-4">
+                {searchTerm || statusFilter !== "all" || subjectFilter !== "all"
+                  ? "Try adjusting your filters"
+                  : "Get started by creating your first assignment"}
+              </p>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Create Assignment
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredAssignments.map((assignment) => (
               <div key={assignment.id} className="p-4 bg-gray-50 dark:bg-slate-800 rounded-lg hover:shadow-md transition-all duration-200">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -308,14 +335,8 @@ export default function AssignmentManager() {
                 </div>
               </div>
             ))}
-
-            {filteredAssignments.length === 0 && (
-              <div className="text-center py-8">
-                <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 dark:text-slate-400">No assignments found matching your criteria.</p>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

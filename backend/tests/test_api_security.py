@@ -10,7 +10,7 @@ from unittest.mock import patch, MagicMock
 import json
 
 from app.main import app
-from app.core.auth import UserContext
+from backend.scripts.auth import UserContext
 from app.models.user import UserRole
 
 

@@ -7,7 +7,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
 
 from app.core.database import get_database
-from app.core.seeders import DatabaseSeeder
+from backend.scripts.seeders import DatabaseSeeder
 
 logger = structlog.get_logger()
 router = APIRouter()

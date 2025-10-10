@@ -45,7 +45,7 @@ class UserInDB(UserBase):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     auth0_id: Optional[str] = None  # Keep for backward compatibility
     clerk_id: str  # Clerk ID field - required
-    tutor_id: str  # Tutor ID - for tutors: their own clerk_id, for others: their tutor's clerk_id
+    tutor_id: Optional[str] = None  # Tutor ID - for tutors: their own clerk_id, for others: their tutor's clerk_id
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     last_login: Optional[datetime] = None
@@ -62,6 +62,15 @@ class UserInDB(UserBase):
         """Convert ObjectId to string for Pydantic validation"""
         if isinstance(v, ObjectId):
             return str(v)
+        return v
+
+    @field_validator('tutor_id', mode='before')
+    @classmethod
+    def migrate_tutor_id(cls, v, info):
+        """Migrate tutor_id for existing users - set to clerk_id for tutors, None for others"""
+        if v is None and info.data.get('role') == UserRole.TUTOR:
+            # For tutors without tutor_id, use their clerk_id
+            return info.data.get('clerk_id')
         return v
 
     model_config = ConfigDict(

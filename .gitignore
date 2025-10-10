@@ -48,3 +48,9 @@ dist/
 build/
 # clerk configuration (can include secrets)
 /.clerk/
+
+# Development scripts and mock data (exclude from commits)
+
+test/
+docs/
+scripts/

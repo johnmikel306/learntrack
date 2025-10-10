@@ -4,7 +4,7 @@ Assignment models and schemas
 from datetime import datetime, date
 from typing import List, Optional, Dict
 from enum import Enum
-from pydantic import BaseModel, Field, validator, ConfigDict
+from pydantic import BaseModel, Field, validator, root_validator, ConfigDict
 from bson import ObjectId
 
 from app.models.user import PyObjectId
@@ -50,20 +50,28 @@ class AssignmentBase(BaseModel):
 
 class AssignmentCreate(AssignmentBase):
     """Assignment creation model"""
-    student_ids: List[str]
+    student_ids: Optional[List[str]] = None  # Individual students
+    group_ids: Optional[List[str]] = None  # Student groups
+    subject_filter: Optional[str] = None  # Filter students by subject
     question_ids: List[str]
-    
-    @validator('student_ids')
-    def validate_students(cls, v):
-        if not v:
-            raise ValueError('Assignment must have at least one student')
-        return v
-    
+
     @validator('question_ids')
     def validate_questions(cls, v):
         if not v:
             raise ValueError('Assignment must have at least one question')
         return v
+
+    @root_validator
+    def validate_assignment_targets(cls, values):
+        """Ensure at least one target is specified"""
+        student_ids = values.get('student_ids')
+        group_ids = values.get('group_ids')
+        subject_filter = values.get('subject_filter')
+
+        if not any([student_ids, group_ids, subject_filter]):
+            raise ValueError('Assignment must target at least one student, group, or subject')
+
+        return values
 
 
 class AssignmentUpdate(BaseModel):
@@ -87,11 +95,23 @@ class AssignmentInDB(AssignmentBase):
     status: AssignmentStatus = AssignmentStatus.SCHEDULED
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
+    # Group assignment metadata
+    group_ids: List[str] = []  # Groups this assignment was assigned to
+    assigned_via_subject: Optional[str] = None  # Subject ID if assigned by subject
+    is_group_assignment: bool = False  # Flag for group assignments
+
     # Statistics
     total_points: int = 0
     completion_count: int = 0
     average_score: Optional[float] = None
+
+    # Group-specific statistics
+    group_completion_rates: Dict[str, float] = {}  # {group_id: completion_rate}
+    group_average_scores: Dict[str, float] = {}  # {group_id: average_score}
+
+    # Reference materials
+    reference_materials: List[str] = []  # Material IDs
 
     model_config = ConfigDict(
         populate_by_name=True,

@@ -20,22 +20,29 @@ class QuestionService:
         self.db = database
         self.collection = database.questions
     
-    async def create_question(self, question_data: QuestionCreate, tutor_id: str) -> Question:
+    async def create_question(self, question_data: QuestionCreate, tutor_id: str, ai_generated: bool = False, generation_id: Optional[str] = None) -> Question:
         """Create a new question"""
         try:
             question_dict = question_data.dict()
             question_dict["tutor_id"] = tutor_id
             question_dict["created_at"] = datetime.utcnow()
             question_dict["updated_at"] = datetime.utcnow()
-            question_dict["status"] = "active"
             question_dict["times_used"] = 0
-            
+            question_dict["ai_generated"] = ai_generated
+
+            # AI-generated questions start as "pending" for approval
+            if ai_generated:
+                question_dict["status"] = "pending"
+                question_dict["generation_id"] = generation_id
+            else:
+                question_dict["status"] = "active"
+
             result = await self.collection.insert_one(question_dict)
             question_dict["_id"] = result.inserted_id
-            
-            logger.info("Question created", question_id=str(result.inserted_id), tutor_id=tutor_id)
+
+            logger.info("Question created", question_id=str(result.inserted_id), tutor_id=tutor_id, ai_generated=ai_generated)
             return Question(**question_dict)
-            
+
         except Exception as e:
             logger.error("Failed to create question", error=str(e))
             raise DatabaseException(f"Failed to create question: {str(e)}")
@@ -179,18 +186,145 @@ class QuestionService:
             logger.error("Failed to increment usage count", question_id=question_id, error=str(e))
             return False
     
+    async def approve_question(self, question_id: str, approver_id: str) -> Question:
+        """Approve a pending question"""
+        try:
+            question = await self.get_question_by_id(question_id)
+
+            if question.status != "pending":
+                from app.core.exceptions import ValidationError
+                raise ValidationError("Only pending questions can be approved")
+
+            oid = to_object_id(question_id)
+            result = await self.collection.update_one(
+                {"_id": oid},
+                {
+                    "$set": {
+                        "status": "active",
+                        "approved_by": approver_id,
+                        "approved_at": datetime.utcnow(),
+                        "updated_at": datetime.utcnow()
+                    }
+                }
+            )
+
+            if result.matched_count == 0:
+                raise NotFoundError("Question", question_id)
+
+            logger.info("Question approved", question_id=question_id, approver_id=approver_id)
+            return await self.get_question_by_id(question_id)
+
+        except (NotFoundError, ValidationError):
+            raise
+        except Exception as e:
+            logger.error("Failed to approve question", question_id=question_id, error=str(e))
+            raise DatabaseException(f"Failed to approve question: {str(e)}")
+
+    async def reject_question(self, question_id: str, rejector_id: str, reason: Optional[str] = None) -> Question:
+        """Reject a pending question"""
+        try:
+            question = await self.get_question_by_id(question_id)
+
+            if question.status != "pending":
+                from app.core.exceptions import ValidationError
+                raise ValidationError("Only pending questions can be rejected")
+
+            oid = to_object_id(question_id)
+            result = await self.collection.update_one(
+                {"_id": oid},
+                {
+                    "$set": {
+                        "status": "rejected",
+                        "rejected_by": rejector_id,
+                        "rejected_at": datetime.utcnow(),
+                        "rejection_reason": reason,
+                        "updated_at": datetime.utcnow()
+                    }
+                }
+            )
+
+            if result.matched_count == 0:
+                raise NotFoundError("Question", question_id)
+
+            logger.info("Question rejected", question_id=question_id, rejector_id=rejector_id)
+            return await self.get_question_by_id(question_id)
+
+        except (NotFoundError, ValidationError):
+            raise
+        except Exception as e:
+            logger.error("Failed to reject question", question_id=question_id, error=str(e))
+            raise DatabaseException(f"Failed to reject question: {str(e)}")
+
+    async def request_revision(self, question_id: str, notes: str) -> Question:
+        """Request revision for a pending question"""
+        try:
+            question = await self.get_question_by_id(question_id)
+
+            if question.status != "pending":
+                from app.core.exceptions import ValidationError
+                raise ValidationError("Only pending questions can have revision requested")
+
+            oid = to_object_id(question_id)
+            result = await self.collection.update_one(
+                {"_id": oid},
+                {
+                    "$set": {
+                        "revision_notes": notes,
+                        "updated_at": datetime.utcnow()
+                    }
+                }
+            )
+
+            if result.matched_count == 0:
+                raise NotFoundError("Question", question_id)
+
+            logger.info("Revision requested for question", question_id=question_id)
+            return await self.get_question_by_id(question_id)
+
+        except (NotFoundError, ValidationError):
+            raise
+        except Exception as e:
+            logger.error("Failed to request revision", question_id=question_id, error=str(e))
+            raise DatabaseException(f"Failed to request revision: {str(e)}")
+
+    async def bulk_approve_questions(self, question_ids: List[str], approver_id: str) -> int:
+        """Approve multiple questions at once"""
+        try:
+            oids = [to_object_id(qid) for qid in question_ids]
+            result = await self.collection.update_many(
+                {
+                    "_id": {"$in": oids},
+                    "status": "pending"
+                },
+                {
+                    "$set": {
+                        "status": "active",
+                        "approved_by": approver_id,
+                        "approved_at": datetime.utcnow(),
+                        "updated_at": datetime.utcnow()
+                    }
+                }
+            )
+
+            logger.info("Bulk approved questions", count=result.modified_count, approver_id=approver_id)
+            return result.modified_count
+
+        except Exception as e:
+            logger.error("Failed to bulk approve questions", error=str(e))
+            raise DatabaseException(f"Failed to bulk approve questions: {str(e)}")
+
     async def update_average_score(self, question_id: str, new_score: float) -> bool:
         """Update question average score"""
         try:
             # Get current question to calculate new average
             question = await self.get_question_by_id(question_id)
-            
+
             if question.average_score is None:
                 new_average = new_score
             else:
                 # Simple average calculation - in production you might want more sophisticated tracking
                 new_average = (question.average_score + new_score) / 2
-            
+
             oid = to_object_id(question_id)
             result = await self.collection.update_one(
                 {"_id": oid},

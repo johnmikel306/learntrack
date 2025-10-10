@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -23,6 +23,8 @@ import {
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useApiClient } from "@/lib/api-client"
+import { toast } from "sonner"
 
 interface Student {
   id: string
@@ -44,85 +46,50 @@ export default function StudentManager() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [gradeFilter, setGradeFilter] = useState("all")
+  const [students, setStudents] = useState<Student[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Sample students data
-  const students: Student[] = [
-    {
-      id: "1",
-      name: "Emma Wilson",
-      email: "emma.wilson@email.com",
-      avatar: "/api/placeholder/40/40",
-      grade: "10th Grade",
-      enrollmentDate: "2023-09-01",
-      status: "active",
-      overallGrade: "A",
-      averageScore: 92,
-      assignmentsCompleted: 24,
-      totalAssignments: 28,
-      subjects: ["Mathematics", "Physics", "Chemistry"],
-      lastActivity: "2 hours ago"
-    },
-    {
-      id: "2",
-      name: "James Smith",
-      email: "james.smith@email.com",
-      avatar: "/api/placeholder/40/40",
-      grade: "11th Grade",
-      enrollmentDate: "2023-09-01",
-      status: "active",
-      overallGrade: "B+",
-      averageScore: 87,
-      assignmentsCompleted: 22,
-      totalAssignments: 25,
-      subjects: ["Mathematics", "English", "History"],
-      lastActivity: "1 day ago"
-    },
-    {
-      id: "3",
-      name: "Sarah Johnson",
-      email: "sarah.johnson@email.com",
-      avatar: "/api/placeholder/40/40",
-      grade: "9th Grade",
-      enrollmentDate: "2023-09-01",
-      status: "active",
-      overallGrade: "A-",
-      averageScore: 89,
-      assignmentsCompleted: 18,
-      totalAssignments: 20,
-      subjects: ["Biology", "Chemistry", "Mathematics"],
-      lastActivity: "3 hours ago"
-    },
-    {
-      id: "4",
-      name: "Michael Brown",
-      email: "michael.brown@email.com",
-      avatar: "/api/placeholder/40/40",
-      grade: "12th Grade",
-      enrollmentDate: "2022-09-01",
-      status: "graduated",
-      overallGrade: "A+",
-      averageScore: 95,
-      assignmentsCompleted: 45,
-      totalAssignments: 45,
-      subjects: ["Physics", "Mathematics", "Computer Science"],
-      lastActivity: "1 week ago"
-    },
-    {
-      id: "5",
-      name: "Lisa Davis",
-      email: "lisa.davis@email.com",
-      avatar: "/api/placeholder/40/40",
-      grade: "10th Grade",
-      enrollmentDate: "2023-09-01",
-      status: "inactive",
-      overallGrade: "B",
-      averageScore: 82,
-      assignmentsCompleted: 15,
-      totalAssignments: 28,
-      subjects: ["English", "History", "Art"],
-      lastActivity: "2 weeks ago"
+  const client = useApiClient()
+
+  // Fetch students from API
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await client.get('/students/')
+        if (response.error) {
+          throw new Error(response.error)
+        }
+        // Map API response to Student interface
+        const studentsData = (response.data || []).map((student: any) => ({
+          id: student.clerk_id || student._id,
+          name: student.name,
+          email: student.email,
+          avatar: student.avatar_url || undefined,
+          grade: student.student_profile?.grade || "N/A",
+          enrollmentDate: student.created_at ? new Date(student.created_at).toISOString().split('T')[0] : "N/A",
+          status: student.is_active ? 'active' : 'inactive',
+          overallGrade: "A", // TODO: Calculate from progress
+          averageScore: student.student_profile?.averageScore || 0,
+          assignmentsCompleted: 0, // TODO: Get from progress
+          totalAssignments: 0, // TODO: Get from assignments
+          subjects: student.student_profile?.subjects || [],
+          lastActivity: student.updated_at ? new Date(student.updated_at).toLocaleString() : "N/A"
+        }))
+        setStudents(studentsData)
+      } catch (err: any) {
+        console.error('Failed to fetch students:', err)
+        setError(err.message || 'Failed to load students')
+        toast.error('Failed to load students')
+      } finally {
+        setLoading(false)
+      }
     }
-  ]
+
+    fetchStudents()
+  }, [])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -159,10 +126,10 @@ export default function StudentManager() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Student Manager</h1>
-          <p className="text-gray-600 dark:text-slate-400 mt-1">Manage student profiles and track their progress</p>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Student Manager</h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-1">Manage student profiles and track their progress</p>
         </div>
-        <Button className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-lg">
+        <Button className="bg-blue-600 hover:bg-blue-700 text-white border-0 shadow-sm">
           <Plus className="w-4 h-4 mr-2" />
           Add Student
         </Button>
@@ -170,52 +137,54 @@ export default function StudentManager() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+        <Card className="bg-blue-600 dark:bg-blue-700 text-white border-0 shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-sm font-medium">Total Students</p>
+                <p className="text-blue-100 dark:text-blue-200 text-sm font-medium">Total Students</p>
                 <p className="text-3xl font-bold">{students.length}</p>
               </div>
-              <Users className="w-8 h-8 text-blue-200" />
+              <Users className="w-8 h-8 text-blue-200 dark:text-blue-300" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg">
+        <Card className="bg-green-600 dark:bg-green-700 text-white border-0 shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-100 text-sm font-medium">Active Students</p>
+                <p className="text-green-100 dark:text-green-200 text-sm font-medium">Active Students</p>
                 <p className="text-3xl font-bold">{students.filter(s => s.status === 'active').length}</p>
               </div>
-              <GraduationCap className="w-8 h-8 text-green-200" />
+              <GraduationCap className="w-8 h-8 text-green-200 dark:text-green-300" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
+        <Card className="bg-purple-600 dark:bg-purple-700 text-white border-0 shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100 text-sm font-medium">Avg. Score</p>
+                <p className="text-purple-100 dark:text-purple-200 text-sm font-medium">Avg. Score</p>
                 <p className="text-3xl font-bold">
-                  {Math.round(students.reduce((acc, s) => acc + s.averageScore, 0) / students.length)}%
+                  {students.length > 0
+                    ? Math.round(students.reduce((acc, s) => acc + s.averageScore, 0) / students.length)
+                    : 0}%
                 </p>
               </div>
-              <Target className="w-8 h-8 text-purple-200" />
+              <Target className="w-8 h-8 text-purple-200 dark:text-purple-300" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-lg">
+        <Card className="bg-orange-600 dark:bg-orange-700 text-white border-0 shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-orange-100 text-sm font-medium">Graduated</p>
+                <p className="text-orange-100 dark:text-orange-200 text-sm font-medium">Graduated</p>
                 <p className="text-3xl font-bold">{students.filter(s => s.status === 'graduated').length}</p>
               </div>
-              <TrendingUp className="w-8 h-8 text-orange-200" />
+              <TrendingUp className="w-8 h-8 text-orange-200 dark:text-orange-300" />
             </div>
           </CardContent>
         </Card>
@@ -272,14 +241,52 @@ export default function StudentManager() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {filteredStudents.map((student) => (
+          {loading ? (
+            // Loading skeleton
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="p-4 bg-gray-50 dark:bg-slate-800 rounded-lg animate-pulse">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-gray-300 dark:bg-slate-700 rounded-full"></div>
+                    <div className="flex-1 space-y-3">
+                      <div className="h-4 bg-gray-300 dark:bg-slate-700 rounded w-1/4"></div>
+                      <div className="h-3 bg-gray-300 dark:bg-slate-700 rounded w-1/2"></div>
+                      <div className="h-3 bg-gray-300 dark:bg-slate-700 rounded w-3/4"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : error ? (
+            // Error state
+            <div className="text-center py-12">
+              <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
+              <Button onClick={() => window.location.reload()}>Retry</Button>
+            </div>
+          ) : filteredStudents.length === 0 ? (
+            // Empty state
+            <div className="text-center py-12">
+              <Users className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No students found</h3>
+              <p className="text-gray-600 dark:text-slate-400 mb-4">
+                {searchTerm || statusFilter !== "all" || gradeFilter !== "all"
+                  ? "Try adjusting your filters"
+                  : "Get started by adding your first student"}
+              </p>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Student
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredStudents.map((student) => (
               <div key={student.id} className="p-4 bg-gray-50 dark:bg-slate-800 rounded-lg hover:shadow-md transition-all duration-200">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4 flex-1">
                     <Avatar className="w-12 h-12">
                       <AvatarImage src={student.avatar} alt={student.name} />
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
+                      <AvatarFallback className="bg-blue-600 dark:bg-blue-700 text-white font-semibold">
                         {student.name.split(' ').map(n => n[0]).join('')}
                       </AvatarFallback>
                     </Avatar>
@@ -355,14 +362,8 @@ export default function StudentManager() {
                 </div>
               </div>
             ))}
-
-            {filteredStudents.length === 0 && (
-              <div className="text-center py-8">
-                <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 dark:text-slate-400">No students found matching your criteria.</p>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

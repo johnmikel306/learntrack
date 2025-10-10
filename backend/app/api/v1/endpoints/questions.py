@@ -172,3 +172,93 @@ async def generate_questions(
     except Exception as e:
         logger.error("Failed to generate questions", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to generate questions")
+
+
+@router.get("/pending", response_model=List[Question])
+async def get_pending_questions(
+    current_user: ClerkUserContext = Depends(require_tutor),
+    database: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """Get all pending questions awaiting approval"""
+    try:
+        question_service = QuestionService(database)
+        questions = await question_service.get_questions_for_tutor(
+            tutor_id=current_user.clerk_id,
+            status="pending"
+        )
+        return questions
+    except Exception as e:
+        logger.error("Failed to get pending questions", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to get pending questions")
+
+
+@router.put("/{question_id}/approve", response_model=Question)
+async def approve_question(
+    question_id: str = Path(..., description="Question ID"),
+    current_user: ClerkUserContext = Depends(require_tutor),
+    database: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """Approve a pending question"""
+    try:
+        question_service = QuestionService(database)
+        question = await question_service.approve_question(question_id, current_user.clerk_id)
+        return question
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to approve question", question_id=question_id, error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/{question_id}/reject", response_model=Question)
+async def reject_question(
+    question_id: str = Path(..., description="Question ID"),
+    reason: Optional[str] = Query(None, description="Rejection reason"),
+    current_user: ClerkUserContext = Depends(require_tutor),
+    database: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """Reject a pending question"""
+    try:
+        question_service = QuestionService(database)
+        question = await question_service.reject_question(question_id, current_user.clerk_id, reason)
+        return question
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to reject question", question_id=question_id, error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/{question_id}/request-revision", response_model=Question)
+async def request_revision(
+    question_id: str = Path(..., description="Question ID"),
+    notes: str = Query(..., description="Revision notes"),
+    current_user: ClerkUserContext = Depends(require_tutor),
+    database: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """Request revision for a pending question"""
+    try:
+        question_service = QuestionService(database)
+        question = await question_service.request_revision(question_id, notes)
+        return question
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to request revision", question_id=question_id, error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/bulk-approve", response_model=dict)
+async def bulk_approve_questions(
+    question_ids: List[str],
+    current_user: ClerkUserContext = Depends(require_tutor),
+    database: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """Approve multiple questions at once"""
+    try:
+        question_service = QuestionService(database)
+        count = await question_service.bulk_approve_questions(question_ids, current_user.clerk_id)
+        return {"approved_count": count, "total_requested": len(question_ids)}
+    except Exception as e:
+        logger.error("Failed to bulk approve questions", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to bulk approve questions")

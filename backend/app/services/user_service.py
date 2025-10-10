@@ -134,6 +134,12 @@ class UserService:
         try:
             from app.models.user import UserCreate, UserRole
 
+            # Check if user already exists by clerk_id
+            existing_user = await self.get_user_by_clerk_id(user_context.clerk_id)
+            if existing_user:
+                logger.info("User already exists, returning existing user", clerk_id=user_context.clerk_id)
+                return existing_user
+
             # Determine tutor_id based on role
             if user_context.role == UserRole.TUTOR:
                 tutor_id = user_context.clerk_id  # Tutors use their own clerk_id
@@ -151,8 +157,21 @@ class UserService:
 
             return await self.create_user(user_data)
         except Exception as e:
-            logger.error("Failed to create user from Clerk", error=str(e))
-            raise DatabaseException(f"Failed to create user: {str(e)}")
+            # Handle duplicate key errors gracefully
+            if "E11000" in str(e) or "duplicate key" in str(e).lower():
+                logger.warning("Duplicate user detected, attempting to find existing user",
+                             clerk_id=user_context.clerk_id, email=user_context.email)
+                # Try to find by clerk_id first
+                existing_user = await self.get_user_by_clerk_id(user_context.clerk_id)
+                if existing_user:
+                    return existing_user
+                # Try to find by email
+                existing_user = await self.collection.find_one({"email": user_context.email})
+                if existing_user:
+                    return User(**existing_user)
+
+            logger.error("Failed to create user from Clerk", clerk_id=user_context.clerk_id, error=str(e))
+            raise DatabaseException(f"Failed to create user from Clerk: {str(e)}")
 
     async def update_user_from_clerk(self, user_context) -> User:
         """Update existing user from Clerk user context"""
@@ -245,17 +264,39 @@ class UserService:
             cursor = self.collection.find(
                 {"role": role.value, "is_active": True}
             ).limit(limit)
-            
+
             users = []
             async for user in cursor:
                 users.append(User(**user))
-            
+
             return users
-            
+
         except Exception as e:
             logger.error("Failed to get users by role", role=role, error=str(e))
             raise DatabaseException(f"Failed to get users: {str(e)}")
-    
+
+    async def get_students_for_tutor(self, tutor_id: str, limit: int = 200) -> List[User]:
+        """Get all students assigned to a specific tutor"""
+        try:
+            cursor = self.collection.find(
+                {
+                    "role": UserRole.STUDENT.value,
+                    "tutor_id": tutor_id,
+                    "is_active": True
+                }
+            ).limit(limit)
+
+            students = []
+            async for student in cursor:
+                students.append(User(**student))
+
+            logger.info("Retrieved students for tutor", tutor_id=tutor_id, count=len(students))
+            return students
+
+        except Exception as e:
+            logger.error("Failed to get students for tutor", tutor_id=tutor_id, error=str(e))
+            raise DatabaseException(f"Failed to get students: {str(e)}")
+
     async def assign_student_to_tutor(self, student_id: str, tutor_id: str) -> bool:
         """Assign student to tutor"""
         try:

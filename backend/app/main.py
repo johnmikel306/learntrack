@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
 import structlog
 from datetime import datetime
 
@@ -15,6 +16,7 @@ from app.core.exceptions import (
     validation_exception_handler,
     general_exception_handler
 )
+from app.websocket import get_socket_app
 
 logger = structlog.get_logger()
 
@@ -102,6 +104,10 @@ async def shutdown_event():
 # Include routers
 from app.api.v1 import api_router
 app.include_router(api_router, prefix="/api/v1")
+
+# Mount Socket.IO app for WebSocket support
+socket_app = get_socket_app()
+app.mount("/socket.io", socket_app)
 
 # Authentication removed - no user role endpoint needed
 

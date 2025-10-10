@@ -10,6 +10,11 @@ import AssignmentsPage from './pages/AssignmentsPage'
 import QuestionsPage from './pages/QuestionsPage'
 import StudentsPage from './pages/StudentsPage'
 import RoleSetupPage from './pages/RoleSetupPage'
+import AcceptInvitationPage from './pages/AcceptInvitationPage'
+import ChatWidget from './components/ChatWidget/ChatWidget'
+import TeacherOnboarding from './components/onboarding/TeacherOnboarding'
+import StudentOnboarding from './components/onboarding/StudentOnboarding'
+import ParentOnboarding from './components/onboarding/ParentOnboarding'
 
 function App() {
   return (
@@ -21,6 +26,33 @@ function App() {
           <Route path="/get-started" element={<GetStartedPage />} />
           <Route path="/sign-in/*" element={<SignInPage />} />
           <Route path="/sign-up/*" element={<SignUpPage />} />
+          <Route path="/accept-invitation/:token" element={<AcceptInvitationPage />} />
+
+          {/* Onboarding routes */}
+          <Route
+            path="/onboarding/teacher"
+            element={
+              <SignedIn>
+                <TeacherOnboarding />
+              </SignedIn>
+            }
+          />
+          <Route
+            path="/onboarding/student"
+            element={
+              <SignedIn>
+                <StudentOnboarding />
+              </SignedIn>
+            }
+          />
+          <Route
+            path="/onboarding/parent"
+            element={
+              <SignedIn>
+                <ParentOnboarding />
+              </SignedIn>
+            }
+          />
 
           {/* Protected routes */}
           <Route
@@ -64,6 +96,11 @@ function App() {
             }
           />
         </Routes>
+
+        {/* Chat Widget - Available on all authenticated pages */}
+        <SignedIn>
+          <ChatWidget />
+        </SignedIn>
       </div>
     </ThemeProvider>
   )

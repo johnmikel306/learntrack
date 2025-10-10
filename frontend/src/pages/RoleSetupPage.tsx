@@ -16,17 +16,23 @@ export default function RoleSetupPage() {
     setIsLoading(true)
     try {
       // Update user metadata with selected role
+      // Note: We use unsafeMetadata because publicMetadata can only be updated from the backend
+      // The DashboardPage will handle migrating this to publicMetadata if needed
       await user?.update({
-        publicMetadata: {
-          ...user.publicMetadata,
+        unsafeMetadata: {
+          ...user.unsafeMetadata,
           role: role
         }
       })
-      
+
+      // Force reload user data to get updated metadata
+      await user?.reload()
+
       // Redirect to dashboard
       navigate('/dashboard')
     } catch (error) {
       console.error('Error updating role:', error)
+      alert('Failed to set role. Please try again.')
     } finally {
       setIsLoading(false)
     }

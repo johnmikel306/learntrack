@@ -17,7 +17,7 @@ from bson import ObjectId
 
 from app.main import app
 from app.core.database import get_database
-from app.core.auth import UserContext
+from backend.scripts.auth import UserContext
 from app.core.tenant_middleware import TenantAwareDatabase, get_tenant_aware_database
 from app.models.user import UserRole
 from app.models.student import StudentCreate

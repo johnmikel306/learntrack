@@ -84,6 +84,25 @@ class Database:
             await self.database.student_performance.create_index("student_id")
             await self.database.student_performance.create_index("subject")
 
+            # Conversations collection indexes
+            await self.database.conversations.create_index("tutor_id")
+            await self.database.conversations.create_index("participants")
+            await self.database.conversations.create_index([("tutor_id", 1), ("updated_at", -1)])
+
+            # Messages collection indexes
+            await self.database.messages.create_index("conversation_id")
+            await self.database.messages.create_index("tutor_id")
+            await self.database.messages.create_index([("conversation_id", 1), ("created_at", -1)])
+            await self.database.messages.create_index("sender_id")
+
+            # Materials collection indexes
+            await self.database.materials.create_index("tutor_id")
+            await self.database.materials.create_index("subject_id")
+            await self.database.materials.create_index("material_type")
+            await self.database.materials.create_index("status")
+            await self.database.materials.create_index([("tutor_id", 1), ("created_at", -1)])
+            await self.database.materials.create_index([("tutor_id", 1), ("subject_id", 1)])
+
             logger.info("Database indexes created successfully")
             
         except Exception as e:
@@ -96,4 +115,9 @@ database = Database()
 
 async def get_database() -> AsyncIOMotorDatabase:
     """Dependency to get database instance"""
+    return database.database
+
+
+async def get_database_sync() -> AsyncIOMotorDatabase:
+    """Get database instance synchronously (for WebSocket handlers)"""
     return database.database

@@ -104,12 +104,16 @@ export class ApiClient {
   }
 }
 
-// Hook to create an authenticated API client
+/**
+ * Hook to create an authenticated API client
+ * Gets Clerk JWT token without template (uses default)
+ */
 export function useApiClient() {
   const { getToken } = useAuth()
-  
+
   const memoizedGetToken = React.useCallback(() => {
-    return getToken({ template: 'fastapi' })
+    // Don't specify template - use default Clerk JWT
+    return getToken()
   }, [getToken])
 
   return new ApiClient(memoizedGetToken)

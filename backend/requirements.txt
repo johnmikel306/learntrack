@@ -45,5 +45,9 @@ structlog
 # Webhooks
 svix==1.22.0
 
+# WebSocket for real-time chat
+python-socketio
+python-engineio
+
 
 
