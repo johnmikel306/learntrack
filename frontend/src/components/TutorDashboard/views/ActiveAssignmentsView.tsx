@@ -22,6 +22,7 @@ import {
 import { useApiClient } from "@/lib/api-client"
 import { toast } from "sonner"
 import { ServerError } from '@/components/ErrorScreen'
+import { UpcomingDeadlines } from '../components/UpcomingDeadlines'
 
 interface Assignment {
   id: string
@@ -164,78 +165,85 @@ export default function ActiveAssignmentsView() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Active Assignments
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Manage and track your assignments
-          </p>
-        </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Assignment
-        </Button>
+    <div className="flex h-full overflow-hidden">
+      {/* Left Sidebar - Deadlines */}
+      <div className="w-64 border-r border-border bg-card p-4 overflow-y-auto">
+        <UpcomingDeadlines />
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search assignments..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="published">Published</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-              <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="Subject" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Subjects</SelectItem>
-                <SelectItem value="Mathematics">Mathematics</SelectItem>
-                <SelectItem value="Science">Science</SelectItem>
-                <SelectItem value="English">English</SelectItem>
-                <SelectItem value="History">History</SelectItem>
-              </SelectContent>
-            </Select>
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">
+              Active Assignments
+            </h2>
+            <p className="text-muted-foreground">
+              Manage and track your assignments
+            </p>
           </div>
-        </CardContent>
-      </Card>
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Assignment
+          </Button>
+        </div>
+
+        {/* Filters */}
+        <Card className="border border-border bg-card">
+          <CardContent className="pt-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search assignments..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full md:w-[180px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="published">Published</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+                <SelectTrigger className="w-full md:w-[180px]">
+                  <SelectValue placeholder="Subject" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Subjects</SelectItem>
+                  <SelectItem value="Mathematics">Mathematics</SelectItem>
+                  <SelectItem value="Science">Science</SelectItem>
+                  <SelectItem value="English">English</SelectItem>
+                  <SelectItem value="History">History</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
 
       {/* Loading State */}
       {loading && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
+            <Card key={i} className="animate-pulse border border-border bg-card">
               <CardHeader>
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mt-2"></div>
+                <div className="h-4 bg-muted rounded w-3/4"></div>
+                <div className="h-3 bg-muted rounded w-1/2 mt-2"></div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div>
+                  <div className="h-3 bg-muted rounded"></div>
+                  <div className="h-3 bg-muted rounded w-5/6"></div>
                 </div>
               </CardContent>
             </Card>
@@ -245,13 +253,13 @@ export default function ActiveAssignmentsView() {
 
       {/* Assignments Grid */}
       {!loading && filteredAssignments.length === 0 && (
-        <Card>
+        <Card className="border border-border bg-card">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <BookOpen className="h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               No assignments found
             </h3>
-            <p className="text-gray-600 dark:text-gray-400 text-center mb-4">
+            <p className="text-muted-foreground text-center mb-4">
               {searchTerm || statusFilter !== "all" || subjectFilter !== "all"
                 ? "Try adjusting your filters"
                 : "Create your first assignment to get started"}
@@ -267,7 +275,7 @@ export default function ActiveAssignmentsView() {
       {!loading && filteredAssignments.length > 0 && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredAssignments.map((assignment) => (
-            <Card key={assignment.id} className="hover:shadow-lg transition-shadow">
+            <Card key={assignment.id} className="border border-border bg-card hover:shadow-lg transition-shadow">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -285,33 +293,32 @@ export default function ActiveAssignmentsView() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600 dark:text-gray-400">Progress</span>
-                    <span className="font-medium">
+                    <span className="text-muted-foreground">Progress</span>
+                    <span className="font-medium text-foreground">
                       {assignment.completedCount}/{assignment.studentCount} students
                     </span>
                   </div>
-                  <Progress 
-                    value={(assignment.completedCount / assignment.studentCount) * 100} 
-                    className="h-2"
+                  <Progress
+                    value={(assignment.completedCount / assignment.studentCount) * 100}
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <div className="flex items-center gap-2 text-muted-foreground">
                     <Calendar className="h-4 w-4" />
                     <span>{assignment.dueDate}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <div className="flex items-center gap-2 text-muted-foreground">
                     <BookOpen className="h-4 w-4" />
                     <span>{assignment.questionCount} questions</span>
                   </div>
                 </div>
 
                 {assignment.averageScore !== undefined && (
-                  <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                  <div className="pt-2 border-t border-border">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">Average Score</span>
-                      <span className="font-semibold text-green-600 dark:text-green-400">
+                      <span className="text-muted-foreground">Average Score</span>
+                      <span className="font-semibold text-success">
                         {assignment.averageScore}%
                       </span>
                     </div>
@@ -350,6 +357,7 @@ export default function ActiveAssignmentsView() {
           ))}
         </div>
       )}
+      </div>
     </div>
   )
 }

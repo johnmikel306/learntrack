@@ -64,7 +64,6 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
           <OverviewView
             dashboardStats={dashboardStats}
             loading={loading}
-            onViewChange={setActiveView}
           />
         )
 
@@ -174,7 +173,6 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
           <OverviewView
             dashboardStats={dashboardStats}
             loading={loading}
-            onViewChange={setActiveView}
           />
         )
     }

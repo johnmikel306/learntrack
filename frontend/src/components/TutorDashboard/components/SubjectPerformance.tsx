@@ -22,37 +22,50 @@ const chartConfig = {
 
 export function SubjectPerformance() {
   return (
-    <Card className="border-0 shadow-sm">
-      <CardHeader className="pb-3 sm:pb-4">
-        <div className="flex items-center space-x-2">
-          <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600 dark:text-emerald-400" />
-          <CardTitle className="text-base sm:text-lg font-semibold">Subject Performance Overview</CardTitle>
+    <Card className="border border-border bg-card">
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-5 w-5 text-primary" />
+          <CardTitle className="text-lg font-semibold">Subject Performance Overview</CardTitle>
         </div>
-        <CardDescription className="text-xs sm:text-sm">Compare performance across all subjects</CardDescription>
+        <CardDescription>Compare performance across all subjects</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="w-full" style={{ minHeight: '256px', height: '320px' }}>
-          <ChartContainer config={chartConfig} className="h-full w-full">
-            <ResponsiveContainer width="100%" height="100%" minHeight={256}>
-              <RechartsBarChart data={subjectData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" className="dark:stroke-slate-700" />
-                <XAxis dataKey="subject" stroke="#64748b" fontSize={12} />
-                <YAxis stroke="#64748b" fontSize={12} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar
-                  dataKey="avgScore"
-                  fill="hsl(var(--chart-1))"
-                  radius={[4, 4, 0, 0]}
-                />
-                <Bar
-                  dataKey="completionRate"
-                  fill="hsl(var(--chart-2))"
-                  radius={[4, 4, 0, 0]}
-                />
-              </RechartsBarChart>
-            </ResponsiveContainer>
-          </ChartContainer>
-        </div>
+        <ChartContainer config={chartConfig} className="h-[300px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <RechartsBarChart data={subjectData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="hsl(var(--border))"
+                vertical={false}
+              />
+              <XAxis
+                dataKey="subject"
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+              />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Bar
+                dataKey="avgScore"
+                fill="hsl(var(--primary))"
+                radius={[4, 4, 0, 0]}
+              />
+              <Bar
+                dataKey="completionRate"
+                fill="hsl(var(--secondary))"
+                radius={[4, 4, 0, 0]}
+              />
+            </RechartsBarChart>
+          </ResponsiveContainer>
+        </ChartContainer>
       </CardContent>
     </Card>
   )

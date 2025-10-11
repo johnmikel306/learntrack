@@ -191,7 +191,7 @@ export function AppSidebar({ activeView, onViewChange }: AppSidebarProps) {
       <SidebarContent>
         <SidebarGroup>
           <div className="px-4 py-6">
-            <h1 className="text-2xl font-bold tracking-tight text-primary">
+            <h1 className="text-2xl font-bold tracking-tight text-primary font-lufga">
               LearnTrack
             </h1>
           </div>
