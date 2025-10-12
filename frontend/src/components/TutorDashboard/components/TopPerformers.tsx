@@ -23,45 +23,46 @@ const topPerformers: Performer[] = [
 
 export function TopPerformers() {
   return (
-    <Card className="border-0 shadow-sm bg-indigo-50 dark:bg-indigo-950/30">
-      <CardHeader className="pb-3 sm:pb-4">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center space-x-2">
-            <Award className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600 dark:text-yellow-400" />
-            <CardTitle className="text-base sm:text-lg font-semibold">Top Performers This Week</CardTitle>
-          </div>
-          <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-xs sm:text-sm">
-            View All
-          </Button>
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Award className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold text-foreground">Top Performers This Week</h2>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {topPerformers.map((performer, index) => (
-            <div key={index} className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 hover:shadow-md transition-shadow">
-              <div className="flex items-center space-x-3 mb-3">
+        <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
+          View All
+        </Button>
+      </div>
+
+      {/* Performer Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {topPerformers.map((performer, index) => (
+          <Card key={index} className="border border-border bg-card hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3 mb-4">
                 <Avatar className={`h-10 w-10 ${performer.bgColor} dark:bg-opacity-30`}>
                   <AvatarFallback className={performer.textColor}>
                     {performer.avatar}
                   </AvatarFallback>
                 </Avatar>
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-white text-sm">{performer.name}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{performer.subject}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground text-sm truncate">{performer.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{performer.subject}</p>
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold text-slate-900 dark:text-white">{performer.score}%</span>
+                <span className="text-3xl font-bold text-foreground">{performer.score}%</span>
                 <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-700">
                   <TrendingUp className="h-3 w-3 mr-1" />
                   {performer.trend}
                 </Badge>
               </div>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
   )
 }
 

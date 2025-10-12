@@ -12,7 +12,9 @@ from app.models.user import PyObjectId
 
 class AssignmentStatus(str, Enum):
     """Assignment status"""
+    DRAFT = "draft"  # Added for backward compatibility
     SCHEDULED = "scheduled"
+    PUBLISHED = "published"  # Added for backward compatibility
     ACTIVE = "active"
     COMPLETED = "completed"
     ARCHIVED = "archived"
@@ -38,7 +40,7 @@ class AssignmentBase(BaseModel):
     title: str
     description: Optional[str] = None
     subject_id: str
-    topic: str
+    topic: Optional[str] = None  # Made optional for backward compatibility
     assignment_type: AssignmentType = AssignmentType.PRACTICE
     due_date: datetime
     time_limit: Optional[int] = None  # in minutes
@@ -90,8 +92,8 @@ class AssignmentInDB(AssignmentBase):
     """Assignment model as stored in database"""
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     tutor_id: str
-    student_ids: List[str]
-    questions: List[QuestionAssignment]
+    student_ids: List[str] = []  # Made optional with default for backward compatibility
+    questions: List[QuestionAssignment] = []  # Made optional with default for backward compatibility
     status: AssignmentStatus = AssignmentStatus.SCHEDULED
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -112,6 +114,13 @@ class AssignmentInDB(AssignmentBase):
 
     # Reference materials
     reference_materials: List[str] = []  # Material IDs
+
+    @validator('id', pre=True)
+    def convert_objectid_to_str(cls, v):
+        """Convert ObjectId to string"""
+        if isinstance(v, ObjectId):
+            return str(v)
+        return v
 
     model_config = ConfigDict(
         populate_by_name=True,

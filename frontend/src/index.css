@@ -174,13 +174,13 @@
     --info: 221 83% 60%;
     --info-foreground: 0 0% 100%;
 
-    /* Sidebar specific - matches card background for consistency */
-    --sidebar-background: 0 0% 13%;
+    /* Sidebar specific - custom dark theme colors */
+    --sidebar-background: 0 0% 13%; /* rgb(33, 33, 33) = #212121 */
     --sidebar-foreground: 0 0% 98%;
     --sidebar-primary: 2 63% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 15%;
-    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-accent: 35 42% 60%; /* rgb(196, 160, 110) = #C4A06E - hover color */
+    --sidebar-accent-foreground: 0 0% 100%; /* White text on hover */
     --sidebar-border: 0 0% 20%;
     --sidebar-ring: 2 63% 45%;
   }

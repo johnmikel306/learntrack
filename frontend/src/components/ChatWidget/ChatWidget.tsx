@@ -2,15 +2,16 @@
  * Floating chat widget - accessible from all pages
  */
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, X, Send, Minimize2 } from 'lucide-react';
+import { MessageCircle, X, Send, Minimize2, Maximize2 } from 'lucide-react';
 import { useAuth } from '@clerk/clerk-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { socketClient } from '@/lib/socket';
 import { useVisibility } from '@/hooks/useVisibility';
+import { cn } from '@/lib/utils';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -232,65 +233,90 @@ export default function ChatWidget() {
 
   if (!isOpen) {
     return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-purple-600 hover:bg-purple-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all z-50"
-      >
-        <MessageCircle className="w-6 h-6" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-6 h-6 bg-red-600 text-white text-xs rounded-full flex items-center justify-center font-bold">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
-        )}
-      </button>
+      <div className="fixed bottom-6 right-6 z-50">
+        <Button
+          onClick={() => setIsOpen(true)}
+          size="lg"
+          className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all"
+        >
+          <MessageCircle className="h-6 w-6" />
+          {unreadCount > 0 && (
+            <Badge
+              variant="destructive"
+              className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px]"
+            >
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </Badge>
+          )}
+        </Button>
+      </div>
     );
   }
 
   return (
-    <Card className="fixed bottom-6 right-6 w-96 h-[600px] shadow-2xl flex flex-col z-50 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+    <div
+      className={cn(
+        "fixed bottom-6 right-6 z-50 bg-card border border-border rounded-lg shadow-2xl transition-all",
+        isMinimized ? "w-80 h-14" : "w-96 h-[500px]",
+        "flex flex-col"
+      )}
+    >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 bg-purple-600 dark:bg-purple-700 text-white rounded-t-lg">
-        <div className="flex items-center gap-2">
-          <MessageCircle className="w-5 h-5" />
-          <h3 className="font-semibold">
-            {selectedConversation ? getOtherParticipantName(selectedConversation) : 'Messages'}
-          </h3>
+      <div className="flex items-center justify-between p-4 border-b border-border bg-primary/5">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-8 w-8">
+            <AvatarFallback className="bg-primary/10 text-primary text-xs">
+              {selectedConversation ? getOtherParticipantName(selectedConversation).charAt(0).toUpperCase() : 'M'}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="text-sm font-semibold text-foreground">
+              {selectedConversation ? getOtherParticipantName(selectedConversation) : 'Messages'}
+            </p>
+            {selectedConversation && (
+              <p className="text-[10px] text-muted-foreground">Active now</p>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           {selectedConversation && (
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={() => {
                 socketClient.leaveConversation(selectedConversation._id);
                 setSelectedConversation(null);
                 setMessages([]);
               }}
-              className="text-white hover:bg-purple-700 dark:hover:bg-purple-800 h-8 w-8 p-0"
+              className="h-8 w-8"
             >
               ←
             </Button>
           )}
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
             onClick={() => setIsMinimized(!isMinimized)}
-            className="text-white hover:bg-purple-700 dark:hover:bg-purple-800 h-8 w-8 p-0"
+            className="h-8 w-8"
           >
-            <Minimize2 className="w-4 h-4" />
+            {isMinimized ? (
+              <Maximize2 className="h-4 w-4" />
+            ) : (
+              <Minimize2 className="h-4 w-4" />
+            )}
           </Button>
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
             onClick={() => {
               setIsOpen(false);
               if (selectedConversation) {
                 socketClient.leaveConversation(selectedConversation._id);
               }
             }}
-            className="text-white hover:bg-purple-700 dark:hover:bg-purple-800 h-8 w-8 p-0"
+            className="h-8 w-8"
           >
-            <X className="w-4 h-4" />
+            <X className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -301,42 +327,46 @@ export default function ChatWidget() {
           {!selectedConversation ? (
             <ScrollArea className="flex-1 p-4">
               {conversations.length === 0 ? (
-                <div className="text-center text-slate-500 dark:text-slate-400 py-8">
-                  No conversations yet
+                <div className="text-center text-muted-foreground py-8">
+                  <MessageCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-sm">No conversations yet</p>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {conversations.map((conv) => (
-                    <button
+                    <div
                       key={conv._id}
                       onClick={() => handleSelectConversation(conv)}
-                      className="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition-colors"
+                      className={cn(
+                        "flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all",
+                        "hover:bg-muted/50 border border-border"
+                      )}
                     >
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-10 h-10">
-                          <AvatarFallback className="bg-purple-600 dark:bg-purple-700 text-white">
-                            {getOtherParticipantName(conv).charAt(0)}
+                      <div className="relative">
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback className="bg-primary/10 text-primary">
+                            {getOtherParticipantName(conv).charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <p className="font-medium text-slate-900 dark:text-white truncate">
-                              {getOtherParticipantName(conv)}
-                            </p>
-                            {conv.unread_count[userId || ''] > 0 && (
-                              <span className="ml-2 px-2 py-0.5 bg-red-600 text-white text-xs rounded-full">
-                                {conv.unread_count[userId || '']}
-                              </span>
-                            )}
-                          </div>
-                          {conv.last_message && (
-                            <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
-                              {conv.last_message}
-                            </p>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-sm font-semibold text-foreground truncate">
+                            {getOtherParticipantName(conv)}
+                          </p>
+                          {conv.unread_count[userId || ''] > 0 && (
+                            <Badge variant="destructive" className="h-5 px-2 text-[10px] ml-2">
+                              {conv.unread_count[userId || '']}
+                            </Badge>
                           )}
                         </div>
+                        {conv.last_message && (
+                          <p className="text-xs text-muted-foreground truncate">
+                            {conv.last_message}
+                          </p>
+                        )}
                       </div>
-                    </button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -349,29 +379,52 @@ export default function ChatWidget() {
                   {messages.map((message) => (
                     <div
                       key={message._id}
-                      className={`flex ${message.sender_id === userId ? 'justify-end' : 'justify-start'}`}
+                      className={cn(
+                        "flex gap-2",
+                        message.sender_id === userId ? "justify-end" : "justify-start"
+                      )}
                     >
+                      {message.sender_id !== userId && (
+                        <Avatar className="h-6 w-6 shrink-0">
+                          <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
+                            {getOtherParticipantName(selectedConversation).charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
                       <div
-                        className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                        className={cn(
+                          "max-w-[75%] rounded-lg px-3 py-2",
                           message.sender_id === userId
-                            ? 'bg-purple-600 dark:bg-purple-700 text-white'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'
-                        }`}
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-foreground"
+                        )}
                       >
-                        <p className="text-sm">{message.content}</p>
-                        <p className="text-xs opacity-70 mt-1">
+                        <p className="text-xs">{message.content}</p>
+                        <p className={cn(
+                          "text-[10px] mt-1",
+                          message.sender_id === userId
+                            ? "text-primary-foreground/70"
+                            : "text-muted-foreground"
+                        )}>
                           {new Date(message.created_at).toLocaleTimeString([], {
                             hour: '2-digit',
                             minute: '2-digit',
                           })}
                         </p>
                       </div>
+                      {message.sender_id === userId && (
+                        <Avatar className="h-6 w-6 shrink-0">
+                          <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
+                            ME
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
                     </div>
                   ))}
                   {isTyping && (
                     <div className="flex justify-start">
-                      <div className="bg-slate-100 dark:bg-slate-800 rounded-lg px-4 py-2">
-                        <p className="text-sm text-slate-500 dark:text-slate-400 italic">Typing...</p>
+                      <div className="bg-muted rounded-lg px-3 py-2">
+                        <p className="text-xs text-muted-foreground italic">Typing...</p>
                       </div>
                     </div>
                   )}
@@ -380,21 +433,22 @@ export default function ChatWidget() {
               </ScrollArea>
 
               {/* Message Input */}
-              <div className="p-4 border-t border-slate-200 dark:border-slate-700">
-                <div className="flex gap-2">
+              <div className="p-4 border-t border-border">
+                <div className="flex items-center gap-2">
                   <Input
+                    placeholder="Type a message..."
                     value={newMessage}
                     onChange={handleTyping}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                    placeholder="Type a message..."
-                    className="flex-1 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                    className="flex-1 h-9 text-sm"
                   />
                   <Button
+                    size="icon"
                     onClick={handleSendMessage}
                     disabled={!newMessage.trim()}
-                    className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800 text-white"
+                    className="h-9 w-9 shrink-0"
                   >
-                    <Send className="w-4 h-4" />
+                    <Send className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -402,7 +456,7 @@ export default function ChatWidget() {
           )}
         </>
       )}
-    </Card>
+    </div>
   );
 }
 

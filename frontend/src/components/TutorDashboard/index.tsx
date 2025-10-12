@@ -16,6 +16,7 @@ import QuestionReviewer from "@/components/question-reviewer"
 import MaterialManager from "@/components/MaterialManager"
 import ActiveAssignmentsView from "./views/ActiveAssignmentsView"
 import CreateAssignmentView from "./views/CreateAssignmentView"
+import MessagingView from "./views/MessagingView"
 import { Users, FileText, BookOpen, Brain, Calendar, BarChart3 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
@@ -168,6 +169,12 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
       case "resources":
         return <MaterialManager />
 
+      case "chats":
+        return <MessagingView type="chats" />
+
+      case "emails":
+        return <MessagingView type="emails" />
+
       default:
         return (
           <OverviewView
@@ -204,8 +211,8 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
       "create-new": "Create Assignment",
       "templates": "Templates",
       "grading": "Grading",
-      "progress": "Progress",
-      "reports": "Reports",
+      "chats": "Chats",
+      "emails": "Emails",
     }
     return titles[activeView] || "Dashboard"
   }

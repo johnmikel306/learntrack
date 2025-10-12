@@ -25,26 +25,31 @@ const getUrgencyColor = (urgency: string) => {
 
 export function UpcomingDeadlines() {
   return (
-    <Card className="border border-border bg-card h-full">
-      <CardHeader className="pb-3">
-        <div className="flex items-center gap-2">
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-2 px-1">
+        <div className="h-8 w-8 bg-primary/10 rounded-lg flex items-center justify-center">
           <Clock className="h-4 w-4 text-primary" />
-          <CardTitle className="text-sm font-semibold">Deadlines</CardTitle>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
+        <h3 className="text-sm font-semibold text-foreground">Upcoming Deadlines</h3>
+      </div>
+
+      {/* Deadline Items */}
+      <div className="space-y-2">
         {upcomingDeadlines.map((deadline, index) => {
           const percentage = Math.round((deadline.completed / deadline.total) * 100)
           return (
             <div
               key={index}
-              className="pb-3 border-b border-border last:border-0 last:pb-0 hover:bg-muted/50 -mx-2 px-2 py-2 rounded-md transition-colors cursor-pointer"
+              className="bg-card border border-border rounded-lg p-3 hover:shadow-sm hover:border-primary/20 transition-all cursor-pointer group"
             >
-              <div className="flex items-start justify-between gap-2 mb-1">
-                <p className="font-medium text-foreground text-xs line-clamp-1">{deadline.title}</p>
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <p className="font-medium text-foreground text-xs line-clamp-1 group-hover:text-primary transition-colors">
+                  {deadline.title}
+                </p>
                 <Badge
                   variant={deadline.urgency === "urgent" ? "destructive" : "secondary"}
-                  className="text-[10px] px-1.5 py-0 h-4 shrink-0"
+                  className="text-[10px] px-1.5 py-0.5 h-auto shrink-0"
                 >
                   {deadline.dueDate}
                 </Badge>
@@ -52,17 +57,17 @@ export function UpcomingDeadlines() {
               <p className="text-[10px] text-muted-foreground mb-2">{deadline.subject}</p>
               <div className="flex items-center justify-between text-[10px]">
                 <span className="text-muted-foreground">
-                  {deadline.completed}/{deadline.total}
+                  {deadline.completed}/{deadline.total} completed
                 </span>
-                <span className={`font-medium ${percentage < 50 ? 'text-destructive' : 'text-success'}`}>
+                <span className={`font-medium ${percentage < 50 ? 'text-destructive' : percentage >= 75 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                   {percentage}%
                 </span>
               </div>
             </div>
           )
         })}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 

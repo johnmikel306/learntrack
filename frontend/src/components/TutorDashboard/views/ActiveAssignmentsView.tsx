@@ -23,6 +23,7 @@ import { useApiClient } from "@/lib/api-client"
 import { toast } from "sonner"
 import { ServerError } from '@/components/ErrorScreen'
 import { UpcomingDeadlines } from '../components/UpcomingDeadlines'
+import { MessageInbox } from '@/components/messaging/MessageInbox'
 
 interface Assignment {
   id: string
@@ -166,11 +167,6 @@ export default function ActiveAssignmentsView() {
 
   return (
     <div className="flex h-full overflow-hidden">
-      {/* Left Sidebar - Deadlines */}
-      <div className="w-64 border-r border-border bg-card p-4 overflow-y-auto">
-        <UpcomingDeadlines />
-      </div>
-
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Header */}
@@ -357,6 +353,12 @@ export default function ActiveAssignmentsView() {
           ))}
         </div>
       )}
+      </div>
+
+      {/* Right Sidebar - Deadlines & Messages */}
+      <div className="w-64 border-l border-border bg-muted/30 p-4 overflow-y-auto space-y-6">
+        <UpcomingDeadlines />
+        <MessageInbox />
       </div>
     </div>
   )
