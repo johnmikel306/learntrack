@@ -256,13 +256,13 @@ export default function ChatWidget() {
   return (
     <div
       className={cn(
-        "fixed bottom-6 right-6 z-50 bg-card border border-border rounded-lg shadow-2xl transition-all",
+        "fixed bottom-6 right-6 z-50 bg-card dark:bg-sidebar-background border border-border dark:border-sidebar-border rounded-lg shadow-2xl transition-all",
         isMinimized ? "w-80 h-14" : "w-96 h-[500px]",
         "flex flex-col"
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border bg-primary/5">
+      <div className="flex items-center justify-between p-4 border-b border-border dark:border-sidebar-border bg-primary/5 dark:bg-sidebar-background">
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8">
             <AvatarFallback className="bg-primary/10 text-primary text-xs">
@@ -270,11 +270,11 @@ export default function ChatWidget() {
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="text-sm font-semibold text-foreground">
+            <p className="text-sm font-semibold text-foreground dark:text-sidebar-foreground">
               {selectedConversation ? getOtherParticipantName(selectedConversation) : 'Messages'}
             </p>
             {selectedConversation && (
-              <p className="text-[10px] text-muted-foreground">Active now</p>
+              <p className="text-[10px] text-muted-foreground dark:text-sidebar-foreground/70">Active now</p>
             )}
           </div>
         </div>
@@ -288,7 +288,7 @@ export default function ChatWidget() {
                 setSelectedConversation(null);
                 setMessages([]);
               }}
-              className="h-8 w-8"
+              className="h-8 w-8 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200"
             >
               ←
             </Button>
@@ -297,7 +297,7 @@ export default function ChatWidget() {
             variant="ghost"
             size="icon"
             onClick={() => setIsMinimized(!isMinimized)}
-            className="h-8 w-8"
+            className="h-8 w-8 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200"
           >
             {isMinimized ? (
               <Maximize2 className="h-4 w-4" />
@@ -314,7 +314,7 @@ export default function ChatWidget() {
                 socketClient.leaveConversation(selectedConversation._id);
               }
             }}
-            className="h-8 w-8"
+            className="h-8 w-8 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200"
           >
             <X className="h-4 w-4" />
           </Button>
@@ -338,8 +338,8 @@ export default function ChatWidget() {
                       key={conv._id}
                       onClick={() => handleSelectConversation(conv)}
                       className={cn(
-                        "flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all",
-                        "hover:bg-muted/50 border border-border"
+                        "flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200",
+                        "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground border border-border dark:border-sidebar-border"
                       )}
                     >
                       <div className="relative">
@@ -351,7 +351,7 @@ export default function ChatWidget() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
-                          <p className="text-sm font-semibold text-foreground truncate">
+                          <p className="text-sm font-semibold text-foreground dark:text-sidebar-foreground truncate">
                             {getOtherParticipantName(conv)}
                           </p>
                           {conv.unread_count[userId || ''] > 0 && (
@@ -361,7 +361,7 @@ export default function ChatWidget() {
                           )}
                         </div>
                         {conv.last_message && (
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="text-xs text-muted-foreground dark:text-sidebar-foreground/70 truncate">
                             {conv.last_message}
                           </p>
                         )}
@@ -433,14 +433,14 @@ export default function ChatWidget() {
               </ScrollArea>
 
               {/* Message Input */}
-              <div className="p-4 border-t border-border">
+              <div className="p-4 border-t border-border dark:border-sidebar-border">
                 <div className="flex items-center gap-2">
                   <Input
                     placeholder="Type a message..."
                     value={newMessage}
                     onChange={handleTyping}
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-                    className="flex-1 h-9 text-sm"
+                    className="flex-1 h-9 text-sm dark:bg-sidebar-background dark:text-sidebar-foreground dark:border-sidebar-border"
                   />
                   <Button
                     size="icon"

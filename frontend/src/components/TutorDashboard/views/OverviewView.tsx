@@ -1,4 +1,3 @@
-import { TopPerformers } from "../components/TopPerformers"
 import { StatsCards } from "../components/StatsCards"
 import { PerformanceChart } from "../components/PerformanceChart"
 import { SubjectPerformance } from "../components/SubjectPerformance"
@@ -13,9 +12,6 @@ export function OverviewView({ dashboardStats, loading }: OverviewViewProps) {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6">
-        {/* Top Performers Section */}
-        <TopPerformers />
-
         {/* Stats Cards */}
         <StatsCards dashboardStats={dashboardStats} loading={loading} />
 

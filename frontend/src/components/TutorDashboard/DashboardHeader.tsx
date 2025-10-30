@@ -141,19 +141,19 @@ export function DashboardHeader({ onCreateAssignment }: DashboardHeaderProps) {
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0" align="end">
-              <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+              <div className="p-4 border-b border-border">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-semibold text-sm">Notifications</h3>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={handleMarkAllToggle}
-                    className="h-7 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                    className="h-7 text-xs text-primary hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200"
                   >
                     {allRead ? 'Mark all unread' : 'Mark all read'}
                   </Button>
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-muted-foreground">
                   You have {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
                 </p>
               </div>
@@ -162,38 +162,38 @@ export function DashboardHeader({ onCreateAssignment }: DashboardHeaderProps) {
                   notifications.map((notification) => (
                     <div
                       key={notification.id}
-                      className={`p-4 border-b border-slate-200 dark:border-slate-700 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors ${
-                        notification.unread ? 'bg-blue-50 dark:bg-blue-950/20' : ''
+                      className={`p-4 border-b border-border last:border-0 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all duration-200 ${
+                        notification.unread ? 'bg-primary/5 border-primary/20' : ''
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-900 dark:text-white">
+                          <p className="text-sm font-medium">
                             {notification.title}
                           </p>
-                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                          <p className="text-sm opacity-90 mt-1">
                             {notification.message}
                           </p>
-                          <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                          <p className="text-xs opacity-70 mt-1">
                             {notification.time}
                           </p>
                         </div>
                         {notification.unread && (
-                          <div className="w-2 h-2 bg-blue-600 rounded-full mt-1 flex-shrink-0"></div>
+                          <div className="w-2 h-2 bg-primary rounded-full mt-1 flex-shrink-0"></div>
                         )}
                       </div>
                     </div>
                   ))
                 ) : (
                   <div className="p-8 text-center">
-                    <Bell className="h-12 w-12 mx-auto text-slate-300 dark:text-slate-700 mb-2" />
-                    <p className="text-sm text-slate-500 dark:text-slate-400">No notifications</p>
+                    <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">No notifications</p>
                   </div>
                 )}
               </div>
               {notifications.length > 0 && (
-                <div className="p-2 border-t border-slate-200 dark:border-slate-700">
-                  <Button variant="ghost" className="w-full text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950/30">
+                <div className="p-2 border-t border-border">
+                  <Button variant="ghost" className="w-full text-sm text-primary hover:bg-accent hover:text-accent-foreground transition-all duration-200">
                     See more notifications
                   </Button>
                 </div>
@@ -245,4 +245,8 @@ export function DashboardHeader({ onCreateAssignment }: DashboardHeaderProps) {
     </header>
   )
 }
+
+
+
+
 

@@ -273,7 +273,7 @@ export default function AssignmentManager() {
           ) : (
             <div className="space-y-4">
               {filteredAssignments.map((assignment) => (
-              <div key={assignment.id} className="p-4 bg-gray-50 dark:bg-slate-800 rounded-lg hover:shadow-md transition-all duration-200">
+              <div key={assignment.id} className="p-4 bg-card border border-border rounded-lg hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-md transition-all duration-200 cursor-pointer">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
@@ -322,13 +322,13 @@ export default function AssignmentManager() {
                   </div>
 
                   <div className="flex items-center gap-2 ml-4">
-                    <Button variant="outline" size="sm" className="hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                    <Button variant="outline" size="sm" className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200">
                       <Eye className="w-4 h-4" />
                     </Button>
-                    <Button variant="outline" size="sm" className="hover:bg-green-50 dark:hover:bg-green-900/20">
+                    <Button variant="outline" size="sm" className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200">
                       <Edit className="w-4 h-4" />
                     </Button>
-                    <Button variant="outline" size="sm" className="hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600">
+                    <Button variant="outline" size="sm" className="hover:bg-destructive hover:text-destructive-foreground transition-all duration-200 text-destructive">
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>

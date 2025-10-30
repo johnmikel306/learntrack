@@ -128,10 +128,10 @@
     --sidebar-foreground: 0 0% 9%;
     --sidebar-primary: 2 63% 28%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 96%;
-    --sidebar-accent-foreground: 0 0% 9%;
+    --sidebar-accent: 37 42% 54%; /* rgb(187, 148, 87) = #BB9457 - hover color */
+    --sidebar-accent-foreground: 0 0% 100%; /* White text on hover */
     --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 2 63% 28%;
+    --sidebar-ring: 37 42% 54%; /* Match hover color */
   }
 
   .dark {
@@ -176,13 +176,13 @@
 
     /* Sidebar specific - custom dark theme colors */
     --sidebar-background: 0 0% 13%; /* rgb(33, 33, 33) = #212121 */
-    --sidebar-foreground: 0 0% 98%;
+    --sidebar-foreground: 0 0% 100%; /* White text */
     --sidebar-primary: 2 63% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 35 42% 60%; /* rgb(196, 160, 110) = #C4A06E - hover color */
+    --sidebar-accent: 37 42% 54%; /* rgb(187, 148, 87) = #BB9457 - hover color */
     --sidebar-accent-foreground: 0 0% 100%; /* White text on hover */
-    --sidebar-border: 0 0% 20%;
-    --sidebar-ring: 2 63% 45%;
+    --sidebar-border: 0 0% 13%; /* Same as background for seamless look */
+    --sidebar-ring: 37 42% 54%; /* Match hover color */
   }
 }
 

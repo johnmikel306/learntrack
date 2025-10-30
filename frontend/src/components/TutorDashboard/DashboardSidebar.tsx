@@ -76,17 +76,17 @@ export function DashboardSidebar({ activeView, onViewChange }: DashboardSidebarP
   ]
 
   return (
-    <Sidebar className="border-r border-slate-200 dark:border-slate-700">
+    <Sidebar className="border-r border-border">
       <SidebarContent>
         {/* Logo Header */}
-        <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+        <div className="p-4 border-b border-sidebar-border">
           <div className="flex items-center space-x-3">
-            <div className="h-8 w-8 bg-indigo-600 dark:bg-indigo-500 rounded-lg flex items-center justify-center">
+            <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
               <Brain className="h-5 w-5 text-white" />
             </div>
             <div className="group-data-[collapsible=icon]:hidden">
-              <h1 className="font-semibold text-slate-900 dark:text-white">LearnTrack</h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Tutor Portal</p>
+              <h1 className="font-semibold text-sidebar-foreground">LearnTrack</h1>
+              <p className="text-xs text-sidebar-foreground/70">Tutor Portal</p>
             </div>
           </div>
         </div>
@@ -96,7 +96,7 @@ export function DashboardSidebar({ activeView, onViewChange }: DashboardSidebarP
           <Collapsible key={idx} defaultOpen={idx === 0} className="group/collapsible">
             <SidebarGroup>
               <SidebarGroupLabel asChild>
-                <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors">
+                <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-lg transition-all duration-200">
                   <div className="flex items-center space-x-3">
                     <group.icon className="h-4 w-4" />
                     <span className="group-data-[collapsible=icon]:hidden">{group.title}</span>
@@ -115,8 +115,8 @@ export function DashboardSidebar({ activeView, onViewChange }: DashboardSidebarP
                         <SidebarMenuItem key={itemIdx}>
                           <SidebarMenuButton
                             onClick={() => onViewChange(viewKey)}
-                            className={`text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
-                              isActive ? 'bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 font-medium' : ''
+                            className={`text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent transition-all duration-200 ${
+                              isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : ''
                             }`}
                           >
                             <span className="ml-6 group-data-[collapsible=icon]:ml-0">{item.title}</span>

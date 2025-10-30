@@ -160,8 +160,8 @@ export function MessageInbox() {
               key={message.id}
               onClick={() => handleMessageClick(message)}
               className={cn(
-                "bg-card border border-border rounded-lg p-3 cursor-pointer transition-all group",
-                "hover:shadow-sm hover:border-primary/20",
+                "bg-card border border-border rounded-lg p-3 cursor-pointer transition-all duration-200 group",
+                "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-sm",
                 !message.isRead && "bg-primary/5 border-primary/30",
                 selectedMessage?.id === message.id && "border-primary shadow-sm"
               )}

@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useApiClient } from "@/lib/api-client"
 import { toast } from "sonner"
+import { TopPerformers } from "@/components/TutorDashboard/components/TopPerformers"
 
 interface Student {
   id: string
@@ -135,60 +136,8 @@ export default function StudentManager() {
         </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-blue-600 dark:bg-blue-700 text-white border-0 shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-100 dark:text-blue-200 text-sm font-medium">Total Students</p>
-                <p className="text-3xl font-bold">{students.length}</p>
-              </div>
-              <Users className="w-8 h-8 text-blue-200 dark:text-blue-300" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-green-600 dark:bg-green-700 text-white border-0 shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-100 dark:text-green-200 text-sm font-medium">Active Students</p>
-                <p className="text-3xl font-bold">{students.filter(s => s.status === 'active').length}</p>
-              </div>
-              <GraduationCap className="w-8 h-8 text-green-200 dark:text-green-300" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-purple-600 dark:bg-purple-700 text-white border-0 shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-100 dark:text-purple-200 text-sm font-medium">Avg. Score</p>
-                <p className="text-3xl font-bold">
-                  {students.length > 0
-                    ? Math.round(students.reduce((acc, s) => acc + s.averageScore, 0) / students.length)
-                    : 0}%
-                </p>
-              </div>
-              <Target className="w-8 h-8 text-purple-200 dark:text-purple-300" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-orange-600 dark:bg-orange-700 text-white border-0 shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-orange-100 dark:text-orange-200 text-sm font-medium">Graduated</p>
-                <p className="text-3xl font-bold">{students.filter(s => s.status === 'graduated').length}</p>
-              </div>
-              <TrendingUp className="w-8 h-8 text-orange-200 dark:text-orange-300" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Top Performers Section */}
+      <TopPerformers />
 
       {/* Filters and Search */}
       <Card className="shadow-lg border-0 bg-white dark:bg-slate-900">
@@ -281,7 +230,7 @@ export default function StudentManager() {
           ) : (
             <div className="space-y-4">
               {filteredStudents.map((student) => (
-              <div key={student.id} className="p-4 bg-gray-50 dark:bg-slate-800 rounded-lg hover:shadow-md transition-all duration-200">
+              <div key={student.id} className="p-4 bg-card border border-border rounded-lg hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-md transition-all duration-200 cursor-pointer">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4 flex-1">
                     <Avatar className="w-12 h-12">
@@ -349,13 +298,13 @@ export default function StudentManager() {
                   </div>
 
                   <div className="flex items-center gap-2 ml-4">
-                    <Button variant="outline" size="sm" className="hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                    <Button variant="outline" size="sm" className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200">
                       <MessageCircle className="w-4 h-4" />
                     </Button>
-                    <Button variant="outline" size="sm" className="hover:bg-green-50 dark:hover:bg-green-900/20">
+                    <Button variant="outline" size="sm" className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200">
                       <Edit className="w-4 h-4" />
                     </Button>
-                    <Button variant="outline" size="sm" className="hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600">
+                    <Button variant="outline" size="sm" className="hover:bg-destructive hover:text-destructive-foreground transition-all duration-200 text-destructive">
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
