@@ -100,8 +100,8 @@
     --secondary: 35 42% 54%;
     --secondary-foreground: 0 0% 9%;
 
-    /* Accent - Medium Brown #99582A */
-    --accent: 25 57% 38%;
+    /* Accent - Use the same tan/beige as secondary for consistency */
+    --accent: 35 42% 54%; /* Same as secondary: #BB9457 */
     --accent-foreground: 0 0% 100%;
 
     /* Neutrals - Grays for UI elements */
@@ -154,7 +154,7 @@
     --secondary-foreground: 0 0% 9%;
 
     /* Accent - Lighter brown for dark mode */
-    --accent: 25 57% 50%;
+    --accent: 35 42% 54%; /* Same as secondary, #BB9457 */
     --accent-foreground: 0 0% 100%;
 
     /* Neutrals - Dark grays */
@@ -206,3 +206,9 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   }
 }
+
+
+
+
+
+

@@ -32,39 +32,17 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ onCreateAssignment }: DashboardHeaderProps) {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: "New submission",
-      message: "Sarah Kim submitted Calculus Quiz",
-      time: "2 minutes ago",
-      unread: true
-    },
-    {
-      id: 2,
-      title: "Assignment due soon",
-      message: "Motion Problems due tomorrow",
-      time: "1 hour ago",
-      unread: true
-    },
-    {
-      id: 3,
-      title: "Student question",
-      message: "Michael Brown asked a question",
-      time: "3 hours ago",
-      unread: false
-    }
-  ])
+  const [notifications, setNotifications] = useState([])
   const { user } = useUser()
   const { signOut } = useClerk()
   const navigate = useNavigate()
 
-  const unreadCount = notifications.filter(n => n.unread).length
-  const allRead = unreadCount === 0
+  const unreadCount = 0
+  const allRead = true
 
   // Mark all notifications as read/unread
   const handleMarkAllToggle = () => {
-    setNotifications(notifications.map(n => ({ ...n, unread: !allRead })))
+    // No-op for now since notifications array is empty
   }
 
   // Navigation handlers
@@ -162,19 +140,19 @@ export function DashboardHeader({ onCreateAssignment }: DashboardHeaderProps) {
                   notifications.map((notification) => (
                     <div
                       key={notification.id}
-                      className={`p-4 border-b border-border last:border-0 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all duration-200 ${
+                      className={`group p-4 border-b border-border last:border-0 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all duration-200 ${
                         notification.unread ? 'bg-primary/5 border-primary/20' : ''
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium">
+                          <p className="text-sm font-medium group-hover:text-accent-foreground">
                             {notification.title}
                           </p>
-                          <p className="text-sm opacity-90 mt-1">
+                          <p className="text-sm opacity-90 mt-1 group-hover:text-accent-foreground">
                             {notification.message}
                           </p>
-                          <p className="text-xs opacity-70 mt-1">
+                          <p className="text-xs opacity-70 mt-1 group-hover:text-accent-foreground">
                             {notification.time}
                           </p>
                         </div>
@@ -245,6 +223,12 @@ export function DashboardHeader({ onCreateAssignment }: DashboardHeaderProps) {
     </header>
   )
 }
+
+
+
+
+
+
 
 
 

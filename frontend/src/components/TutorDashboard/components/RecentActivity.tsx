@@ -39,7 +39,7 @@ export function RecentActivity() {
       <CardContent>
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {recentActivity.map((activity, index) => (
-            <div key={index} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-6 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors gap-2 sm:gap-0">
+            <div key={index} className="group flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-6 hover:bg-accent hover:text-accent-foreground transition-colors gap-2 sm:gap-0">
               <div className="flex items-center space-x-3 sm:space-x-4">
                 <Avatar className="h-8 w-8 sm:h-10 sm:w-10 bg-blue-100 dark:bg-blue-900">
                   <AvatarFallback className="text-blue-600 dark:text-blue-300 text-xs sm:text-sm">
@@ -47,12 +47,12 @@ export function RecentActivity() {
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-slate-900 dark:text-white text-xs sm:text-sm truncate">{activity.name}</p>
-                  <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 truncate">{activity.action}</p>
+                  <p className="font-medium text-slate-900 dark:text-white group-hover:text-accent-foreground text-xs sm:text-sm truncate">{activity.name}</p>
+                  <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 group-hover:text-accent-foreground truncate">{activity.action}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-2 sm:space-x-3 ml-11 sm:ml-0">
-                <span className="text-xs text-slate-400 dark:text-slate-500">{activity.time}</span>
+                <span className="text-xs text-slate-400 dark:text-slate-500 group-hover:text-accent-foreground">{activity.time}</span>
                 {activity.score !== null && (
                   <Badge variant={getScoreBadgeVariant(activity.score)} className="text-xs">
                     {activity.score}%
@@ -66,4 +66,8 @@ export function RecentActivity() {
     </Card>
   )
 }
+
+
+
+
 
