@@ -21,6 +21,7 @@ import {
   LogOut,
   Moon,
   Sun,
+  Layers,
 } from "lucide-react"
 
 import {
@@ -188,8 +189,11 @@ export function AppSidebar({ activeView, onViewChange }: AppSidebarProps) {
     <Sidebar collapsible="icon" variant="inset">
       <SidebarContent>
         <SidebarGroup>
-          <div className="px-4 py-6">
-            <h1 className="text-2xl font-bold tracking-tight text-primary font-lufga">
+          <div className="px-4 py-6 flex items-center gap-2 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-4 group-data-[collapsible=icon]:justify-center">
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
+              <Layers className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <h1 className="text-xl font-bold tracking-tight text-primary font-lufga group-data-[collapsible=icon]:hidden">
               LearnTrack
             </h1>
           </div>
@@ -269,16 +273,16 @@ export function AppSidebar({ activeView, onViewChange }: AppSidebarProps) {
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                   tooltip="Notifications"
                 >
-                  <div className="relative">
+                  <div className="relative group-data-[collapsible=icon]:mx-auto">
                     <Bell className="h-4 w-4" />
                     <Badge
                       variant="destructive"
-                      className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px]"
+                      className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px] group-data-[collapsible=icon]:-top-2 group-data-[collapsible=icon]:-right-2"
                     >
                       3
                     </Badge>
                   </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
+                  <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                     <span className="truncate font-semibold">Notifications</span>
                     <span className="truncate text-xs">3 unread</span>
                   </div>
@@ -337,14 +341,14 @@ export function AppSidebar({ activeView, onViewChange }: AppSidebarProps) {
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                   tooltip="Profile"
                 >
-                  <Avatar className="h-8 w-8 rounded-lg">
+                  <Avatar className="h-8 w-8 rounded-lg group-data-[collapsible=icon]:mx-auto">
                     <AvatarImage src={user?.imageUrl} alt={user?.fullName || "User"} />
                     <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">
                       {user?.firstName?.charAt(0) || "U"}
                       {user?.lastName?.charAt(0) || ""}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
+                  <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                     <span className="truncate font-semibold">{user?.fullName || "User"}</span>
                     <span className="truncate text-xs">{user?.primaryEmailAddress?.emailAddress}</span>
                   </div>

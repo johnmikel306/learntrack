@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
+import { Button } from "@/components/ui/button"
 import { useApiClient } from "@/lib/api-client"
 import { toast } from "sonner"
 import { AppSidebar } from "./AppSidebar"
@@ -17,7 +18,7 @@ import MaterialManager from "@/components/MaterialManager"
 import ActiveAssignmentsView from "./views/ActiveAssignmentsView"
 import CreateAssignmentView from "./views/CreateAssignmentView"
 import MessagingView from "./views/MessagingView"
-import { Users, FileText, BookOpen, Brain, Calendar, BarChart3 } from "lucide-react"
+import { Users, FileText, BookOpen, Brain, Calendar, BarChart3, Plus } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
 interface TutorDashboardProps {
@@ -65,6 +66,7 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
           <OverviewView
             dashboardStats={dashboardStats}
             loading={loading}
+            onViewChange={handleViewChange}
           />
         )
 
@@ -220,9 +222,9 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
   return (
     <SidebarProvider>
       <AppSidebar activeView={activeView} onViewChange={handleViewChange} />
-      <SidebarInset>
+      <SidebarInset className="bg-background">
         {/* Header with breadcrumb */}
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-card px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <Breadcrumb>
@@ -241,7 +243,7 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
         </header>
 
         {/* Main Content */}
-        <div className="flex flex-1 flex-col gap-4 p-4">
+        <div className="flex flex-1 flex-col gap-4 p-4 bg-background">
           {renderView()}
         </div>
       </SidebarInset>

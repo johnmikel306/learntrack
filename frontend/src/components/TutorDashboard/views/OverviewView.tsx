@@ -2,23 +2,54 @@ import { StatsCards } from "../components/StatsCards"
 import { PerformanceChart } from "../components/PerformanceChart"
 import { SubjectPerformance } from "../components/SubjectPerformance"
 import { RecentActivity } from "../components/RecentActivity"
+import { Button } from "@/components/ui/button"
+import { Plus } from "lucide-react"
+import { useUser } from "@clerk/clerk-react"
 
 interface OverviewViewProps {
   dashboardStats: any
   loading: boolean
+  onViewChange: (view: string) => void
 }
 
-export function OverviewView({ dashboardStats, loading }: OverviewViewProps) {
+export function OverviewView({ dashboardStats, loading, onViewChange }: OverviewViewProps) {
+  const { user } = useUser()
+  const firstName = user?.firstName || "there"
+
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6">
+        {/* Welcome Section */}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">
+              Welcome back, {firstName}!
+            </h1>
+            <p className="text-muted-foreground">
+              Here's a summary of your classroom activity and student performance.
+            </p>
+          </div>
+          <Button
+            onClick={() => onViewChange("create-new")}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 flex-shrink-0"
+            size="lg"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Create New Assignment
+          </Button>
+        </div>
+
         {/* Stats Cards */}
         <StatsCards dashboardStats={dashboardStats} loading={loading} />
 
         {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <PerformanceChart />
-          <SubjectPerformance />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <PerformanceChart />
+          </div>
+          <div className="lg:col-span-1">
+            <SubjectPerformance />
+          </div>
         </div>
 
         {/* Recent Activity */}

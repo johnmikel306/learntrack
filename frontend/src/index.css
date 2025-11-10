@@ -82,107 +82,107 @@
 
 @layer base {
   :root {
-    /* Light mode - Neutral base with warm accents */
-    --background: 0 0% 100%; /* Pure white */
-    --foreground: 0 0% 9%; /* Near black for text */
+    /* Light mode - Warm beige background like the design */
+    --background: 30 20% 97%; /* Light beige/cream #F8F6F3 */
+    --foreground: 20 14% 20%; /* Dark brown for text #3D3530 */
 
-    /* Cards and surfaces */
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 9%;
+    /* Cards and surfaces - White cards on beige background */
+    --card: 0 0% 100%; /* Pure white for cards */
+    --card-foreground: 20 14% 20%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 9%;
+    --popover-foreground: 20 14% 20%;
 
-    /* Primary - Deep Burgundy #6F1D1B */
-    --primary: 2 63% 28%;
+    /* Primary - Warm Brown #5D4E37 (similar to the design) */
+    --primary: 30 24% 29%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Tan/Beige #BB9457 */
-    --secondary: 35 42% 54%;
-    --secondary-foreground: 0 0% 9%;
+    /* Secondary - Light beige for subtle elements */
+    --secondary: 30 15% 90%;
+    --secondary-foreground: 20 14% 20%;
 
-    /* Accent - Use the same tan/beige as secondary for consistency */
-    --accent: 35 42% 54%; /* Same as secondary: #BB9457 */
-    --accent-foreground: 0 0% 100%;
+    /* Accent - Warm tan/brown for active states #C8A882 */
+    --accent: 35 35% 65%;
+    --accent-foreground: 20 14% 20%;
 
-    /* Neutrals - Grays for UI elements */
-    --muted: 0 0% 96%; /* Light gray backgrounds */
-    --muted-foreground: 0 0% 45%; /* Medium gray text */
-    --border: 0 0% 90%; /* Light gray borders */
-    --input: 0 0% 96%; /* Input backgrounds */
-    --ring: 2 63% 28%; /* Focus ring uses primary */
+    /* Neutrals - Warm grays */
+    --muted: 30 15% 95%; /* Light warm gray */
+    --muted-foreground: 20 10% 50%; /* Medium gray text */
+    --border: 30 10% 88%; /* Light border */
+    --input: 0 0% 100%; /* White input backgrounds */
+    --ring: 30 24% 29%; /* Focus ring uses primary */
 
     /* Action colors */
-    --destructive: 0 84% 60%; /* Red for delete/danger */
+    --destructive: 0 72% 51%; /* Red */
     --destructive-foreground: 0 0% 100%;
-    --success: 142 76% 36%; /* Green for success */
+    --success: 142 71% 45%; /* Green */
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%; /* Orange for warnings */
+    --warning: 38 92% 50%; /* Orange */
     --warning-foreground: 0 0% 100%;
-    --info: 221 83% 53%; /* Blue for info */
+    --info: 221 83% 53%; /* Blue */
     --info-foreground: 0 0% 100%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem; /* Slightly more rounded */
 
-    /* Sidebar specific - uses same colors as cards for consistency */
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 0 0% 9%;
-    --sidebar-primary: 2 63% 28%;
+    /* Sidebar specific - White sidebar on beige background */
+    --sidebar-background: 0 0% 100%; /* Pure white */
+    --sidebar-foreground: 20 14% 20%;
+    --sidebar-primary: 30 24% 29%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 37 42% 54%; /* rgb(187, 148, 87) = #BB9457 - hover color */
-    --sidebar-accent-foreground: 0 0% 100%; /* White text on hover */
-    --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 37 42% 54%; /* Match hover color */
+    --sidebar-accent: 30 15% 95%; /* Very light beige for hover */
+    --sidebar-accent-foreground: 20 14% 20%; /* Dark text on light hover */
+    --sidebar-border: 30 10% 92%;
+    --sidebar-ring: 30 24% 29%;
   }
 
   .dark {
-    /* Dark mode - Standard dark theme with warm accents */
-    --background: 0 0% 9%; /* Dark background */
-    --foreground: 0 0% 98%; /* Light text */
+    /* Dark mode - Very dark background with golden accents */
+    --background: 0 0% 10%; /* Very dark background #1A1A1A */
+    --foreground: 0 0% 90%; /* Light gray text #E5E5E5 */
 
     /* Cards and surfaces */
-    --card: 0 0% 13%; /* Slightly lighter than background */
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 13%;
-    --popover-foreground: 0 0% 98%;
+    --card: 0 0% 14%; /* Slightly lighter dark #242424 */
+    --card-foreground: 0 0% 90%;
+    --popover: 0 0% 14%;
+    --popover-foreground: 0 0% 90%;
 
-    /* Primary - Lighter burgundy for dark mode */
-    --primary: 2 63% 45%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary - Golden tan accent */
+    --primary: 35 35% 65%; /* Golden tan #C8A882 */
+    --primary-foreground: 0 0% 10%; /* Dark text on golden background */
 
-    /* Secondary - Lighter tan for dark mode */
-    --secondary: 35 42% 60%;
-    --secondary-foreground: 0 0% 9%;
+    /* Secondary - Muted golden */
+    --secondary: 35 25% 50%;
+    --secondary-foreground: 0 0% 90%;
 
-    /* Accent - Lighter brown for dark mode */
-    --accent: 35 42% 54%; /* Same as secondary, #BB9457 */
-    --accent-foreground: 0 0% 100%;
+    /* Accent - Golden tan for highlights */
+    --accent: 35 35% 65%; /* Golden tan #C8A882 */
+    --accent-foreground: 0 0% 10%;
 
     /* Neutrals - Dark grays */
-    --muted: 0 0% 15%; /* Dark gray backgrounds */
-    --muted-foreground: 0 0% 65%; /* Light gray text */
-    --border: 0 0% 20%; /* Dark gray borders */
-    --input: 0 0% 15%; /* Input backgrounds */
-    --ring: 2 63% 45%; /* Focus ring uses primary */
+    --muted: 0 0% 18%; /* Dark gray backgrounds #2E2E2E */
+    --muted-foreground: 0 0% 53%; /* Medium gray text #888888 */
+    --border: 0 0% 20%; /* Dark gray borders #333333 */
+    --input: 0 0% 18%; /* Input backgrounds */
+    --ring: 35 35% 65%; /* Focus ring uses golden accent */
 
-    /* Action colors - slightly adjusted for dark mode */
-    --destructive: 0 84% 60%;
+    /* Action colors - adjusted for dark mode */
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --success: 142 76% 45%;
+    --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 55%;
+    --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-    --info: 221 83% 60%;
+    --info: 217 91% 60%;
     --info-foreground: 0 0% 100%;
 
-    /* Sidebar specific - custom dark theme colors */
-    --sidebar-background: 0 0% 13%; /* rgb(33, 33, 33) = #212121 */
-    --sidebar-foreground: 0 0% 100%; /* White text */
-    --sidebar-primary: 2 63% 45%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 37 42% 54%; /* rgb(187, 148, 87) = #BB9457 - hover color */
-    --sidebar-accent-foreground: 0 0% 100%; /* White text on hover */
-    --sidebar-border: 0 0% 13%; /* Same as background for seamless look */
-    --sidebar-ring: 37 42% 54%; /* Match hover color */
+    /* Sidebar specific - dark theme with golden accents */
+    --sidebar-background: 0 0% 10%; /* Same as main background #1A1A1A */
+    --sidebar-foreground: 0 0% 70%; /* Muted gray for inactive items */
+    --sidebar-primary: 35 35% 65%; /* Golden tan for logo and active items */
+    --sidebar-primary-foreground: 0 0% 10%;
+    --sidebar-accent: 0 0% 18%; /* Slightly lighter for hover #2E2E2E */
+    --sidebar-accent-foreground: 35 35% 65%; /* Golden text on hover */
+    --sidebar-border: 0 0% 15%; /* Subtle border */
+    --sidebar-ring: 35 35% 65%; /* Golden focus ring */
   }
 }
 

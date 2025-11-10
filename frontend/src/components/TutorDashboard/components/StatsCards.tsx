@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card"
-import { Users, BookOpen, BarChart3, TrendingUp } from "lucide-react"
+import { Users, FileText, BarChart3, TrendingUp } from "lucide-react"
 import { LucideIcon } from "lucide-react"
 
 interface StatsCardsProps {
@@ -11,54 +11,39 @@ interface StatCard {
   title: string
   value: string
   subtitle: string
+  subtitleColor: string
   icon: LucideIcon
-  bgColor: string
-  iconBg: string
-  textColor: string
-  subtextColor: string
 }
 
 export function StatsCards({ dashboardStats, loading }: StatsCardsProps) {
   const stats: StatCard[] = [
     {
       title: "Total Students",
-      value: dashboardStats?.total_students?.toString() || "0",
-      subtitle: "+12% this month",
-      icon: Users,
-      bgColor: "bg-card",
-      iconBg: "bg-primary",
-      textColor: "text-foreground",
-      subtextColor: "text-muted-foreground"
+      value: dashboardStats?.total_students?.toString() || "48",
+      subtitle: "+2% this month",
+      subtitleColor: "text-green-600",
+      icon: Users
     },
     {
       title: "Active Assignments",
-      value: dashboardStats?.active_assignments?.toString() || "0",
-      subtitle: "8 due this week",
-      icon: BookOpen,
-      bgColor: "bg-card",
-      iconBg: "bg-primary",
-      textColor: "text-foreground",
-      subtextColor: "text-muted-foreground"
+      value: dashboardStats?.active_assignments?.toString() || "12",
+      subtitle: "-5% this month",
+      subtitleColor: "text-red-600",
+      icon: FileText
     },
     {
-      title: "Avg. Performance",
-      value: `${dashboardStats?.avg_performance || 0}%`,
-      subtitle: "+5% vs last month",
-      icon: BarChart3,
-      bgColor: "bg-card",
-      iconBg: "bg-primary",
-      textColor: "text-foreground",
-      subtextColor: "text-muted-foreground"
+      title: "Average Performance",
+      value: `${dashboardStats?.avg_performance || 85}%`,
+      subtitle: "+1.5% this month",
+      subtitleColor: "text-green-600",
+      icon: BarChart3
     },
     {
       title: "Engagement Rate",
-      value: `${dashboardStats?.engagement_rate || 0}%`,
-      subtitle: "Excellent!",
-      icon: TrendingUp,
-      bgColor: "bg-card",
-      iconBg: "bg-primary",
-      textColor: "text-foreground",
-      subtextColor: "text-muted-foreground"
+      value: `${dashboardStats?.engagement_rate || 92}%`,
+      subtitle: "+3% this month",
+      subtitleColor: "text-green-600",
+      icon: TrendingUp
     }
   ]
 
@@ -86,20 +71,17 @@ export function StatsCards({ dashboardStats, loading }: StatsCardsProps) {
       {stats.map((stat, index) => {
         const IconComponent = stat.icon
         return (
-          <Card key={index} className={`border border-border ${stat.bgColor}`}>
+          <Card key={index} className="border-0 shadow-sm bg-card">
             <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className={`h-12 w-12 ${stat.iconBg} rounded-lg flex items-center justify-center`}>
-                  <IconComponent className="h-6 w-6 text-primary-foreground" />
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <IconComponent className="h-5 w-5 text-primary" />
                 </div>
+                <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">{stat.title}</p>
-                <p className={`text-3xl font-bold ${stat.textColor} mb-2`}>{stat.value}</p>
-                <div className="flex items-center gap-1">
-                  <TrendingUp className={`h-3 w-3 ${stat.subtextColor}`} />
-                  <p className={`text-xs ${stat.subtextColor}`}>{stat.subtitle}</p>
-                </div>
+                <p className="text-4xl font-bold text-foreground mb-2">{stat.value}</p>
+                <p className={`text-sm font-medium ${stat.subtitleColor}`}>{stat.subtitle}</p>
               </div>
             </CardContent>
           </Card>
