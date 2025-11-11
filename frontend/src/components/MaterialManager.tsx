@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@clerk/clerk-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -8,21 +7,27 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { toast } from 'sonner'
 import {
-  FileText,
-  Video,
-  Image as ImageIcon,
-  Link as LinkIcon,
-  File,
   Upload,
-  Eye,
-  Download,
   Trash2,
   Edit,
-  Plus,
-  Search,
-  Filter
+  Share2,
+  MoreVertical,
 } from 'lucide-react'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
@@ -49,14 +54,30 @@ interface Subject {
   name: string
 }
 
+// Helper function to get subject badge color
+const getSubjectColor = (subject: string) => {
+  const colors: Record<string, string> = {
+    'Mathematics': 'bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-0',
+    'History': 'bg-orange-100 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400 border-0',
+    'Science': 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-0',
+    'Literature': 'bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-400 border-0',
+    'Physics': 'bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border-0',
+    'Chemistry': 'bg-pink-100 dark:bg-pink-950/30 text-pink-700 dark:text-pink-400 border-0',
+    'Biology': 'bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-0',
+    'Geography': 'bg-teal-100 dark:bg-teal-950/30 text-teal-700 dark:text-teal-400 border-0',
+  }
+  return colors[subject] || 'bg-muted text-muted-foreground border-0'
+}
+
 export default function MaterialManager() {
   const { getToken } = useAuth()
   const [materials, setMaterials] = useState<Material[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
   const [subjectFilter, setSubjectFilter] = useState('all')
+  const [sortBy, setSortBy] = useState('date')
+  const [selectedMaterials, setSelectedMaterials] = useState<Set<string>>(new Set())
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 
   // Form state
@@ -174,76 +195,63 @@ export default function MaterialManager() {
     }
   }
 
-  const trackDownload = async (materialId: string) => {
-    try {
-      const token = await getToken()
-      await fetch(`${API_BASE_URL}/materials/${materialId}/download`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-    } catch (error) {
-      console.error('Failed to track download:', error)
-    }
-  }
-
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'pdf':
-      case 'doc':
-        return <FileText className="w-5 h-5" />
-      case 'video':
-        return <Video className="w-5 h-5" />
-      case 'image':
-        return <ImageIcon className="w-5 h-5" />
-      case 'link':
-        return <LinkIcon className="w-5 h-5" />
-      default:
-        return <File className="w-5 h-5" />
-    }
-  }
-
-  const getTypeColor = (type: string) => {
-    const colors: Record<string, string> = {
-      pdf: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
-      doc: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
-      video: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400',
-      image: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
-      link: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
-      other: 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
-    }
-    return colors[type] || colors.other
-  }
-
-  const formatFileSize = (bytes?: number) => {
-    if (!bytes) return 'N/A'
-    const mb = bytes / (1024 * 1024)
-    return `${mb.toFixed(2)} MB`
-  }
-
   const filteredMaterials = materials.filter(material => {
-    const matchesSearch = material.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         material.description?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesType = typeFilter === 'all' || material.material_type === typeFilter
     const matchesSubject = subjectFilter === 'all' || material.subject_id === subjectFilter
-    
-    return matchesSearch && matchesType && matchesSubject && material.status === 'active'
+
+    return matchesType && matchesSubject && material.status === 'active'
   })
 
+  // Sort materials
+  const sortedMaterials = [...filteredMaterials].sort((a, b) => {
+    if (sortBy === 'date') {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    }
+    return a.title.localeCompare(b.title)
+  })
+
+  // Get subject name by ID
+  const getSubjectName = (subjectId?: string) => {
+    if (!subjectId) return 'N/A'
+    const subject = subjects.find(s => s._id === subjectId)
+    return subject?.name || 'Unknown'
+  }
+
+  // Toggle material selection
+  const toggleMaterialSelection = (id: string) => {
+    const newSelected = new Set(selectedMaterials)
+    if (newSelected.has(id)) {
+      newSelected.delete(id)
+    } else {
+      newSelected.add(id)
+    }
+    setSelectedMaterials(newSelected)
+  }
+
+  // Toggle all materials
+  const toggleAllMaterials = () => {
+    if (selectedMaterials.size === sortedMaterials.length) {
+      setSelectedMaterials(new Set())
+    } else {
+      setSelectedMaterials(new Set(sortedMaterials.map(m => m._id)))
+    }
+  }
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Reference Materials</h1>
-          <p className="text-gray-600 dark:text-slate-400 mt-1">
-            Manage educational resources and materials
+          <h1 className="text-3xl font-bold text-foreground">Manage Materials</h1>
+          <p className="text-muted-foreground mt-1">
+            Upload, organize, and control access to your learning materials.
           </p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-purple-600 hover:bg-purple-700 text-white">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Material
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+              <Upload className="w-4 h-4 mr-2" />
+              Upload New Material
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -354,7 +362,7 @@ export default function MaterialManager() {
 
               <Button
                 onClick={handleCreateMaterial}
-                className="w-full bg-purple-600 hover:bg-purple-700"
+                className="w-full bg-primary hover:bg-primary/90"
                 disabled={!formData.title || !formData.file_url}
               >
                 Create Material
@@ -365,169 +373,155 @@ export default function MaterialManager() {
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Search materials..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+      <div className="bg-muted/30 border border-border rounded-lg p-4">
+        <div className="flex items-center gap-3">
+          <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+            <SelectTrigger className="w-[200px] h-10 border-border bg-background">
+              <SelectValue placeholder="Filter by Subject" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Subjects</SelectItem>
+              {subjects.map(subject => (
+                <SelectItem key={subject._id} value={subject._id}>
+                  {subject.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="pdf">PDF</SelectItem>
-                <SelectItem value="doc">Document</SelectItem>
-                <SelectItem value="video">Video</SelectItem>
-                <SelectItem value="image">Image</SelectItem>
-                <SelectItem value="link">Link</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[200px] h-10 border-border bg-background">
+              <SelectValue placeholder="Sort by: Date" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date">Sort by: Date</SelectItem>
+              <SelectItem value="name">Sort by: Name</SelectItem>
+            </SelectContent>
+          </Select>
 
-            <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by subject" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Subjects</SelectItem>
-                {subjects.map(subject => (
-                  <SelectItem key={subject._id} value={subject._id}>
-                    {subject.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[200px] h-10 border-border bg-background">
+              <SelectValue placeholder="Filter by Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="pdf">PDF</SelectItem>
+              <SelectItem value="doc">Document</SelectItem>
+              <SelectItem value="video">Video</SelectItem>
+              <SelectItem value="image">Image</SelectItem>
+              <SelectItem value="link">Link</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
-      {/* Materials Grid */}
+      {/* Materials Table */}
       {loading ? (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
-          <p className="mt-4 text-gray-600 dark:text-slate-400">Loading materials...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <p className="mt-4 text-muted-foreground">Loading materials...</p>
         </div>
-      ) : filteredMaterials.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-12">
-            <Upload className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              No materials found
-            </h3>
-            <p className="text-gray-600 dark:text-slate-400 mb-4">
-              {searchTerm || typeFilter !== 'all' || subjectFilter !== 'all'
-                ? 'Try adjusting your filters'
-                : 'Get started by adding your first material'}
-            </p>
-            {!searchTerm && typeFilter === 'all' && subjectFilter === 'all' && (
-              <Button
-                onClick={() => setIsCreateDialogOpen(true)}
-                className="bg-purple-600 hover:bg-purple-700"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Material
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+      ) : sortedMaterials.length === 0 ? (
+        <div className="border border-border rounded-lg bg-card p-12 text-center">
+          <Upload className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-xl font-semibold text-foreground mb-2">
+            No materials found
+          </h3>
+          <p className="text-muted-foreground mb-4">
+            {typeFilter !== 'all' || subjectFilter !== 'all'
+              ? 'Try adjusting your filters'
+              : 'Get started by adding your first material'}
+          </p>
+          {typeFilter === 'all' && subjectFilter === 'all' && (
+            <Button
+              onClick={() => setIsCreateDialogOpen(true)}
+              className="bg-primary hover:bg-primary/90"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Upload New Material
+            </Button>
+          )}
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredMaterials.map((material) => (
-            <Card key={material._id} className="hover:shadow-lg transition-shadow duration-200">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className={`p-2 rounded-lg ${getTypeColor(material.material_type)}`}>
-                      {getTypeIcon(material.material_type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <CardTitle className="text-lg truncate">{material.title}</CardTitle>
-                      <Badge className={`mt-1 ${getTypeColor(material.material_type)}`}>
-                        {material.material_type.toUpperCase()}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {material.description && (
-                  <p className="text-sm text-gray-600 dark:text-slate-400 line-clamp-2">
-                    {material.description}
-                  </p>
-                )}
-
-                {material.topic && (
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">
-                      {material.topic}
+        <div className="border border-border rounded-lg overflow-hidden bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableHead className="w-12">
+                  <input
+                    type="checkbox"
+                    checked={selectedMaterials.size === sortedMaterials.length && sortedMaterials.length > 0}
+                    onChange={toggleAllMaterials}
+                    className="w-4 h-4 accent-primary rounded focus:ring-primary"
+                  />
+                </TableHead>
+                <TableHead className="font-semibold text-foreground">Name</TableHead>
+                <TableHead className="font-semibold text-foreground">Subject</TableHead>
+                <TableHead className="font-semibold text-foreground">Date Uploaded</TableHead>
+                <TableHead className="font-semibold text-foreground">Version</TableHead>
+                <TableHead className="font-semibold text-foreground text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedMaterials.map((material) => (
+                <TableRow key={material._id} className="hover:bg-muted/20">
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      checked={selectedMaterials.has(material._id)}
+                      onChange={() => toggleMaterialSelection(material._id)}
+                      className="w-4 h-4 accent-primary rounded focus:ring-primary"
+                    />
+                  </TableCell>
+                  <TableCell className="font-medium text-foreground">
+                    {material.title}
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getSubjectColor(getSubjectName(material.subject_id))}>
+                      {getSubjectName(material.subject_id)}
                     </Badge>
-                  </div>
-                )}
-
-                {material.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {material.tags.slice(0, 3).map((tag, idx) => (
-                      <Badge key={idx} variant="secondary" className="text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                    {material.tags.length > 3 && (
-                      <Badge variant="secondary" className="text-xs">
-                        +{material.tags.length - 3}
-                      </Badge>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-400">
-                  <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1">
-                      <Eye className="w-3 h-3" />
-                      {material.view_count}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Download className="w-3 h-3" />
-                      {material.download_count}
-                    </span>
-                  </div>
-                  <span>{formatFileSize(material.file_size)}</span>
-                </div>
-
-                <div className="flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-slate-700">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => {
-                      if (material.file_url) {
-                        window.open(material.file_url, '_blank')
-                        trackDownload(material._id)
-                      }
-                    }}
-                  >
-                    <Eye className="w-3 h-3 mr-1" />
-                    View
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDelete(material._id)}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {new Date(material.created_at).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: '2-digit',
+                      year: 'numeric'
+                    })}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    v1.0
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => console.log('Edit material:', material._id)}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => console.log('Share material:', material._id)}>
+                          <Share2 className="w-4 h-4 mr-2" />
+                          Share
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(material._id)}
+                          className="text-red-600 dark:text-red-500"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>

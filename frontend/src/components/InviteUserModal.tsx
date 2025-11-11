@@ -171,52 +171,57 @@ export default function InviteUserModal({ open, onOpenChange, onSuccess, editMod
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
-            <UserPlus className="w-5 h-5 text-blue-600" />
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto bg-card border-border">
+        <DialogHeader className="space-y-3">
+          <DialogTitle className="flex items-center gap-2 text-2xl font-bold text-foreground">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <UserPlus className="w-5 h-5 text-primary" />
+            </div>
             {editMode ? 'Edit Invitation' : 'Invite User'}
           </DialogTitle>
-          <DialogDescription className="text-slate-600 dark:text-slate-400">
+          <DialogDescription className="text-muted-foreground text-base">
             {editMode ? 'Update invitation details' : 'Send an invitation to a student or parent to join your account'}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+        <form onSubmit={handleSubmit} className="space-y-6 mt-6">
           {/* Role Selection */}
           <div className="space-y-2">
-            <Label htmlFor="role" className="text-slate-900 dark:text-white">
-              Role *
+            <Label htmlFor="role" className="text-sm font-medium text-foreground">
+              Role <span className="text-destructive">*</span>
             </Label>
             <Select
               value={formData.role}
               onValueChange={(value) => setFormData({ ...formData, role: value, student_ids: [] })}
               disabled={editMode}
             >
-              <SelectTrigger className="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700">
+              <SelectTrigger className="bg-background border-border h-11">
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
-              <SelectContent className="bg-white dark:bg-slate-800">
+              <SelectContent className="bg-card border-border">
                 <SelectItem value="student">Student</SelectItem>
                 <SelectItem value="parent">Parent</SelectItem>
               </SelectContent>
             </Select>
+            {editMode && (
+              <p className="text-xs text-muted-foreground">Role cannot be changed after invitation is sent</p>
+            )}
           </div>
 
           {/* Email */}
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-slate-900 dark:text-white">
-              Email Address *
+            <Label htmlFor="email" className="text-sm font-medium text-foreground">
+              Email Address <span className="text-destructive">*</span>
             </Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 id="email"
                 type="email"
                 placeholder="user@example.com"
                 value={formData.invitee_email}
                 onChange={(e) => setFormData({ ...formData, invitee_email: e.target.value })}
-                className="pl-10 bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                className="pl-10 bg-background border-border h-11"
                 required
               />
             </div>
@@ -224,8 +229,8 @@ export default function InviteUserModal({ open, onOpenChange, onSuccess, editMod
 
           {/* Name */}
           <div className="space-y-2">
-            <Label htmlFor="name" className="text-slate-900 dark:text-white">
-              Name (Optional)
+            <Label htmlFor="name" className="text-sm font-medium text-foreground">
+              Name <span className="text-muted-foreground text-xs font-normal">(Optional)</span>
             </Label>
             <Input
               id="name"
@@ -233,43 +238,48 @@ export default function InviteUserModal({ open, onOpenChange, onSuccess, editMod
               placeholder="John Doe"
               value={formData.invitee_name}
               onChange={(e) => setFormData({ ...formData, invitee_name: e.target.value })}
-              className="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+              className="bg-background border-border h-11"
             />
           </div>
 
           {/* Student Selection for Parents */}
           {formData.role === 'parent' && (
-            <div className="space-y-2">
-              <Label className="text-slate-900 dark:text-white flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                Link to Students (Optional)
-              </Label>
-              <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">
-                Select which students this parent should be linked to
-              </p>
+            <div className="space-y-3">
+              <div>
+                <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <Users className="w-4 h-4 text-primary" />
+                  Link to Students <span className="text-muted-foreground text-xs font-normal">(Optional)</span>
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Select which students this parent should be linked to
+                </p>
+              </div>
               {loadingStudents ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                <div className="flex items-center justify-center py-8 bg-muted/30 rounded-lg border border-border">
+                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
                 </div>
               ) : students.length === 0 ? (
-                <p className="text-sm text-slate-500 dark:text-slate-400 py-4 text-center">
-                  No students found. Add students first before inviting parents.
-                </p>
+                <div className="py-8 bg-muted/30 rounded-lg border border-border">
+                  <p className="text-sm text-muted-foreground text-center">
+                    No students found. Add students first before inviting parents.
+                  </p>
+                </div>
               ) : (
-                <div className="border border-slate-300 dark:border-slate-700 rounded-lg p-3 max-h-[200px] overflow-y-auto space-y-2">
+                <div className="border border-border rounded-lg p-4 max-h-[200px] overflow-y-auto space-y-3 bg-muted/20">
                   {students.map((student) => (
-                    <div key={student.id} className="flex items-center space-x-2">
+                    <div key={student.id} className="flex items-start space-x-3 p-2 rounded-md hover:bg-muted/50 transition-colors">
                       <Checkbox
                         id={`student-${student.id}`}
                         checked={formData.student_ids.includes(student.id)}
                         onCheckedChange={() => toggleStudent(student.id)}
-                        className="border-slate-300 dark:border-slate-700"
+                        className="mt-0.5 border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                       />
                       <label
                         htmlFor={`student-${student.id}`}
-                        className="text-sm text-slate-900 dark:text-white cursor-pointer flex-1"
+                        className="text-sm text-foreground cursor-pointer flex-1 leading-relaxed"
                       >
-                        {student.name} ({student.email})
+                        <div className="font-medium">{student.name}</div>
+                        <div className="text-xs text-muted-foreground">{student.email}</div>
                       </label>
                     </div>
                   ))}
@@ -280,35 +290,35 @@ export default function InviteUserModal({ open, onOpenChange, onSuccess, editMod
 
           {/* Custom Message */}
           <div className="space-y-2">
-            <Label htmlFor="message" className="text-slate-900 dark:text-white flex items-center gap-2">
-              <MessageSquare className="w-4 h-4" />
-              Custom Message (Optional)
+            <Label htmlFor="message" className="text-sm font-medium text-foreground flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-primary" />
+              Custom Message <span className="text-muted-foreground text-xs font-normal">(Optional)</span>
             </Label>
             <Textarea
               id="message"
               placeholder="Add a personal message to the invitation..."
               value={formData.message}
               onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-              className="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white min-h-[80px]"
-              rows={3}
+              className="bg-background border-border min-h-[100px] resize-none"
+              rows={4}
             />
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+          <div className="flex justify-end gap-3 pt-6 border-t border-border">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={loading}
-              className="border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="border-border hover:bg-muted h-11 px-6"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={loading || !formData.invitee_email}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-6"
             >
               {loading ? (
                 <>

@@ -112,7 +112,7 @@ app.mount("/socket.io", socket_app)
 # Authentication removed - no user role endpoint needed
 
 from app.models.responses import HealthResponse
-from datetime import datetime
+from datetime import datetime, timezone
 
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
 def health():
@@ -126,7 +126,7 @@ def health():
         status="healthy",
         service="learntrack-api",
         version="1.0.0",
-        timestamp=datetime.utcnow().isoformat() + "Z"
+        timestamp=datetime.now(timezone.utc).isoformat()
     )
 
 if __name__ == "__main__":

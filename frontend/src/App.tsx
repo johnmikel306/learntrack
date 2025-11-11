@@ -11,7 +11,6 @@ import QuestionsPage from './pages/QuestionsPage'
 import StudentsPage from './pages/StudentsPage'
 import RoleSetupPage from './pages/RoleSetupPage'
 import AcceptInvitationPage from './pages/AcceptInvitationPage'
-import ChatWidget from './components/ChatWidget/ChatWidget'
 import TeacherOnboarding from './components/onboarding/TeacherOnboarding'
 import StudentOnboarding from './components/onboarding/StudentOnboarding'
 import ParentOnboarding from './components/onboarding/ParentOnboarding'
@@ -105,11 +104,6 @@ function App() {
             }
           />
         </Routes>
-
-        {/* Chat Widget - Available on all authenticated pages */}
-        <SignedIn>
-          <ChatWidget />
-        </SignedIn>
       </div>
     </ThemeProvider>
   )

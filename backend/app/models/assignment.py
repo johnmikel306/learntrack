@@ -1,7 +1,7 @@
 """
 Assignment models and schemas
 """
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import List, Optional, Dict
 from enum import Enum
 from pydantic import BaseModel, Field, validator, root_validator, ConfigDict
@@ -95,8 +95,8 @@ class AssignmentInDB(AssignmentBase):
     student_ids: List[str] = []  # Made optional with default for backward compatibility
     questions: List[QuestionAssignment] = []  # Made optional with default for backward compatibility
     status: AssignmentStatus = AssignmentStatus.SCHEDULED
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     # Group assignment metadata
     group_ids: List[str] = []  # Groups this assignment was assigned to

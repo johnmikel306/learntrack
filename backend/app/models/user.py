@@ -1,7 +1,7 @@
 """
 User models and schemas
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Any
 from enum import Enum
 from pydantic import BaseModel, Field, EmailStr, field_validator, ConfigDict
@@ -46,8 +46,8 @@ class UserInDB(UserBase):
     auth0_id: Optional[str] = None  # Keep for backward compatibility
     clerk_id: str  # Clerk ID field - required
     tutor_id: Optional[str] = None  # Tutor ID - for tutors: their own clerk_id, for others: their tutor's clerk_id
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_login: Optional[datetime] = None
 
     # Role-specific fields

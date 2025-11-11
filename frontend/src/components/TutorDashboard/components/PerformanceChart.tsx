@@ -69,7 +69,7 @@ export function PerformanceChart() {
   const chartData = getChartData()
 
   return (
-    <Card className="border-0 shadow-sm bg-card">
+    <Card className="border-0 shadow-sm bg-card h-full flex flex-col">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -88,8 +88,8 @@ export function PerformanceChart() {
           </Select>
         </div>
       </CardHeader>
-      <CardContent className="pb-4">
-        <ChartContainer config={chartConfig} className="h-[280px] w-full">
+      <CardContent className="pb-4 flex-1 flex items-center">
+        <ChartContainer config={chartConfig} className="h-full w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
               <CartesianGrid

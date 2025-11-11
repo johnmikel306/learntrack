@@ -10,10 +10,12 @@ import { OverviewView } from "./views/OverviewView"
 import { PlaceholderView } from "./views/PlaceholderView"
 import InvitationsView from "./views/InvitationsView"
 import RelationshipsView from "./views/RelationshipsView"
+import GroupsManagementView from "./views/GroupsManagementView"
 import StudentManager from "@/components/student-manager"
 import AssignmentManager from "@/components/assignment-manager"
 import IntegratedSubjectsManager from "@/components/integrated-subjects-manager"
 import QuestionReviewer from "@/components/question-reviewer"
+import QuestionBankManager from "@/components/question-bank-manager"
 import MaterialManager from "@/components/MaterialManager"
 import ActiveAssignmentsView from "./views/ActiveAssignmentsView"
 import CreateAssignmentView from "./views/CreateAssignmentView"
@@ -102,15 +104,7 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
         )
 
       case "groups":
-        return (
-          <PlaceholderView
-            title="Groups Management"
-            description="Organize students into groups"
-            icon={Users}
-            message="Group management will be available soon"
-            submessage="Create and manage student groups for collaborative learning"
-          />
-        )
+        return <GroupsManagementView />
 
       case "active-assignments":
         return <ActiveAssignmentsView />
@@ -141,15 +135,7 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
         )
 
       case "question-bank":
-        return (
-          <PlaceholderView
-            title="Question Library"
-            description="Manage your question bank"
-            icon={FileText}
-            message="Question bank will be available soon"
-            submessage="Access and organize your collection of questions"
-          />
-        )
+        return <QuestionBankManager />
 
       case "subjects":
         return <IntegratedSubjectsManager />

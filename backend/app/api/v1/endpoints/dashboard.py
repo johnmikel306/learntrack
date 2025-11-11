@@ -85,8 +85,8 @@ async def get_dashboard_stats(
         avg_performance = round(avg_result[0]["avg_score"], 1) if avg_result and avg_result[0].get("avg_score") else 0.0
 
         # 4. Calculate engagement rate (students who submitted in last 7 days / total students)
-        from datetime import datetime, timedelta
-        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+        from datetime import datetime, timedelta, timezone
+        seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
 
         active_students = await database.submissions.distinct(
             "student_id",
@@ -257,16 +257,16 @@ async def get_upcoming_deadlines(
 ):
     """Calculate upcoming assignment deadlines dynamically with relative dates"""
     try:
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
 
-        # Get current date (start of today)
-        now = datetime.utcnow()
+        # Get current date in UTC (timezone-aware)
+        now = datetime.now(timezone.utc)
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-        # Get assignments with upcoming due dates
+        # Get assignments with upcoming due dates (including today's assignments)
         assignments = await database.assignments.find({
             "tutor_id": current_user.clerk_id,
-            "due_date": {"$gte": now},  # Only future deadlines
+            "due_date": {"$gte": today_start},  # Include assignments from start of today
             "status": {"$in": ["active", "published"]}
         }).sort("due_date", 1).limit(limit).to_list(length=limit)
 
@@ -276,8 +276,13 @@ async def get_upcoming_deadlines(
             if not due_date:
                 continue
 
+            # Make due_date timezone-aware if it isn't already
+            if due_date.tzinfo is None:
+                due_date = due_date.replace(tzinfo=timezone.utc)
+
             # Calculate relative date label
-            days_until = (due_date.replace(hour=0, minute=0, second=0, microsecond=0) - today_start).days
+            due_date_start = due_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            days_until = (due_date_start - today_start).days
 
             if days_until == 0:
                 date_label = "Today"
@@ -398,10 +403,10 @@ async def get_progress_chart(
 ):
     """Calculate weekly assignment progress chart data dynamically from assignments and submissions"""
     try:
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
 
         # Calculate date range
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=days)
 
         # Get all subjects for this tutor

@@ -1,7 +1,7 @@
 """
 Invitation models for user invitation system
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from enum import Enum
@@ -60,7 +60,7 @@ class InvitationInDB(InvitationBase):
     token: str = Field(..., description="Unique invitation token")
     status: InvitationStatus = Field(default=InvitationStatus.PENDING)
     student_ids: list[str] = Field(default=[], description="Student IDs to link (for parent invitations)")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at: datetime = Field(..., description="Expiration date of the invitation")
     accepted_at: Optional[datetime] = Field(None, description="When the invitation was accepted")
     revoked_at: Optional[datetime] = Field(None, description="When the invitation was revoked")

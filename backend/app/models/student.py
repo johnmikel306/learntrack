@@ -1,7 +1,7 @@
 """
 Student models and schemas
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Union
 from pydantic import BaseModel, Field, EmailStr, field_validator, ConfigDict
 from bson import ObjectId
@@ -91,10 +91,10 @@ class StudentUpdate(BaseModel):
 
 class StudentInDB(StudentBase):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    enrollmentDate: datetime = Field(default_factory=datetime.utcnow)
+    enrollmentDate: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     lastActivity: Optional[datetime] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     model_config = ConfigDict(
         populate_by_name=True,

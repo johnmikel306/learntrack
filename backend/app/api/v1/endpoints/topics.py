@@ -5,7 +5,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
-from datetime import datetime
+from datetime import datetime, timezone
 from bson import ObjectId
 
 from app.core.database import get_database
@@ -84,8 +84,9 @@ async def create_topic(
         topic_dict["question_count"] = 0
         topic_dict["assignment_count"] = 0
         topic_dict["completion_rate"] = 0.0
-        topic_dict["created_at"] = datetime.utcnow()
-        topic_dict["updated_at"] = datetime.utcnow()
+        now = datetime.now(timezone.utc)
+        topic_dict["created_at"] = now
+        topic_dict["updated_at"] = now
         
         result = await database.topics.insert_one(topic_dict)
         topic_dict["_id"] = str(result.inserted_id)

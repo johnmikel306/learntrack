@@ -329,15 +329,15 @@ export default function QuestionReviewer() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'approved':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+        return 'bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400'
       case 'rejected':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+        return 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400'
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+        return 'bg-yellow-50 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400'
       case 'needs-revision':
-        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400'
+        return 'bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400'
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+        return 'bg-muted text-muted-foreground'
     }
   }
 
@@ -359,13 +359,13 @@ export default function QuestionReviewer() {
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case 'beginner':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+        return 'bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400'
       case 'intermediate':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+        return 'bg-yellow-50 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400'
       case 'advanced':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+        return 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400'
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+        return 'bg-muted text-muted-foreground'
     }
   }
 
@@ -373,7 +373,7 @@ export default function QuestionReviewer() {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
         key={i}
-        className={`w-4 h-4 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+        className={`w-4 h-4 ${i < rating ? 'text-primary fill-current' : 'text-muted-foreground/30'}`}
       />
     ))
   }
@@ -397,20 +397,19 @@ export default function QuestionReviewer() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center">
-            <CheckCircle className="w-8 h-8 mr-3 text-green-600" />
-            Question Reviewer
+          <h1 className="text-3xl font-bold text-foreground">
+            Review Questions
           </h1>
-          <p className="text-gray-600 dark:text-slate-400 mt-1">Review and approve questions for quality assurance</p>
+          <p className="text-muted-foreground mt-1">Review and approve AI-generated questions for quality assurance</p>
         </div>
         {selectedQuestions.size > 0 && (
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-600 dark:text-slate-400">
+            <span className="text-sm text-muted-foreground">
               {selectedQuestions.size} selected
             </span>
             <Button
               onClick={handleBulkApprove}
-              className="bg-green-600 hover:bg-green-700 text-white"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <ThumbsUp className="w-4 h-4 mr-2" />
               Approve Selected
@@ -420,63 +419,73 @@ export default function QuestionReviewer() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <Card className="border-0 shadow-sm bg-card">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-sm font-medium">Total Questions</p>
-                <p className="text-3xl font-bold">{reviewStats.totalQuestions}</p>
+                <p className="text-muted-foreground text-sm font-medium">Total Questions</p>
+                <p className="text-3xl font-bold text-foreground mt-1">{reviewStats.totalQuestions}</p>
               </div>
-              <BookOpen className="w-8 h-8 text-blue-200" />
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <BookOpen className="w-6 h-6 text-primary" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white border-0 shadow-lg">
+        <Card className="border-0 shadow-sm bg-card">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-yellow-100 text-sm font-medium">Pending Review</p>
-                <p className="text-3xl font-bold">{reviewStats.pendingReview}</p>
+                <p className="text-muted-foreground text-sm font-medium">Pending Review</p>
+                <p className="text-3xl font-bold text-foreground mt-1">{reviewStats.pendingReview}</p>
               </div>
-              <Clock className="w-8 h-8 text-yellow-200" />
+              <div className="w-12 h-12 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+                <Clock className="w-6 h-6 text-yellow-600 dark:text-yellow-500" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg">
+        <Card className="border-0 shadow-sm bg-card">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-100 text-sm font-medium">Approved</p>
-                <p className="text-3xl font-bold">{reviewStats.approved}</p>
+                <p className="text-muted-foreground text-sm font-medium">Approved</p>
+                <p className="text-3xl font-bold text-foreground mt-1">{reviewStats.approved}</p>
               </div>
-              <CheckCircle className="w-8 h-8 text-green-200" />
+              <div className="w-12 h-12 rounded-lg bg-green-500/10 flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-500" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white border-0 shadow-lg">
+        <Card className="border-0 shadow-sm bg-card">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-red-100 text-sm font-medium">Rejected</p>
-                <p className="text-3xl font-bold">{reviewStats.rejected}</p>
+                <p className="text-muted-foreground text-sm font-medium">Rejected</p>
+                <p className="text-3xl font-bold text-foreground mt-1">{reviewStats.rejected}</p>
               </div>
-              <XCircle className="w-8 h-8 text-red-200" />
+              <div className="w-12 h-12 rounded-lg bg-red-500/10 flex items-center justify-center">
+                <XCircle className="w-6 h-6 text-red-600 dark:text-red-500" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
+        <Card className="border-0 shadow-sm bg-card">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100 text-sm font-medium">Avg. Rating</p>
-                <p className="text-3xl font-bold">{reviewStats.averageRating.toFixed(1)}</p>
+                <p className="text-muted-foreground text-sm font-medium">Avg. Rating</p>
+                <p className="text-3xl font-bold text-foreground mt-1">{reviewStats.averageRating.toFixed(1)}</p>
               </div>
-              <Star className="w-8 h-8 text-purple-200" />
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Star className="w-6 h-6 text-primary" />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -484,31 +493,37 @@ export default function QuestionReviewer() {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="review">Review Queue</TabsTrigger>
-          <TabsTrigger value="approved">Approved Questions</TabsTrigger>
-          <TabsTrigger value="analytics">Review Analytics</TabsTrigger>
+        <TabsList className="bg-muted/50 border border-border">
+          <TabsTrigger value="review" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            Review Queue
+          </TabsTrigger>
+          <TabsTrigger value="approved" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            Approved Questions
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            Review Analytics
+          </TabsTrigger>
         </TabsList>
 
         {/* Review Queue Tab */}
         <TabsContent value="review" className="space-y-6">
           {/* Filters and Search */}
-          <Card className="shadow-lg border-0 bg-white dark:bg-slate-900">
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row gap-4">
+          <Card className="border-border shadow-sm bg-card">
+            <CardContent className="p-4">
+              <div className="flex flex-col md:flex-row gap-3">
                 <div className="flex-1">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                     <Input
                       placeholder="Search questions..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
+                      className="pl-10 bg-background border-border h-10"
                     />
                   </div>
                 </div>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full md:w-[180px]">
+                  <SelectTrigger className="w-full md:w-[180px] h-10 border-border">
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -520,7 +535,7 @@ export default function QuestionReviewer() {
                   </SelectContent>
                 </Select>
                 <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-                  <SelectTrigger className="w-full md:w-[180px]">
+                  <SelectTrigger className="w-full md:w-[180px] h-10 border-border">
                     <SelectValue placeholder="Filter by subject" />
                   </SelectTrigger>
                   <SelectContent>
@@ -537,163 +552,218 @@ export default function QuestionReviewer() {
           </Card>
 
           {/* Questions List */}
-          <Card className="shadow-lg border-0 bg-white dark:bg-slate-900">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Eye className="w-5 h-5 mr-2 text-blue-600" />
+          <Card className="border-border shadow-sm bg-card">
+            <CardHeader className="border-b border-border">
+              <CardTitle className="flex items-center text-foreground">
+                <Eye className="w-5 h-5 mr-2 text-primary" />
                 Questions for Review ({filteredQuestions.length})
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               {loading ? (
                 <div className="text-center py-12">
-                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
-                  <p className="mt-4 text-gray-600 dark:text-slate-400">Loading questions...</p>
+                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                  <p className="mt-4 text-muted-foreground">Loading questions...</p>
                 </div>
               ) : filteredQuestions.length === 0 ? (
                 <div className="text-center py-12">
-                  <CheckCircle className="w-16 h-16 mx-auto text-green-500 mb-4" />
-                  <p className="text-xl font-semibold text-gray-900 dark:text-white">All caught up!</p>
-                  <p className="text-gray-600 dark:text-slate-400 mt-2">No pending questions to review.</p>
+                  <CheckCircle className="w-16 h-16 mx-auto text-primary mb-4" />
+                  <p className="text-xl font-semibold text-foreground">All caught up!</p>
+                  <p className="text-muted-foreground mt-2">No pending questions to review.</p>
                 </div>
               ) : (
                 <div className="space-y-6">
                   {filteredQuestions.map((question) => (
-                    <Card key={question.id} className="border border-gray-200 dark:border-slate-700 hover:shadow-md transition-all duration-200">
-                      <CardContent className="p-6">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex items-center gap-3">
+                    <Card key={question.id} className="border-border hover:shadow-lg transition-all duration-200 overflow-hidden">
+                      <CardContent className="p-0">
+                        {/* Header with metadata */}
+                        <div className="flex items-center justify-between gap-4 px-6 py-4 bg-muted/30 border-b border-border">
+                          <div className="flex items-center gap-3 flex-wrap">
                             {question.status === 'pending' && (
                               <input
                                 type="checkbox"
                                 checked={selectedQuestions.has(question.id)}
                                 onChange={() => toggleQuestionSelection(question.id)}
-                                className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
+                                className="w-5 h-5 accent-primary rounded focus:ring-primary"
                               />
                             )}
                             <Badge className={`border-0 ${getStatusColor(question.status)}`}>
                               <div className="flex items-center gap-1">
                                 {getStatusIcon(question.status)}
-                                {question.status.replace('-', ' ')}
+                                <span className="capitalize">{question.status.replace('-', ' ')}</span>
                               </div>
                             </Badge>
                             <Badge className={getDifficultyColor(question.difficulty)}>
-                              {question.difficulty}
+                              <span className="capitalize">{question.difficulty}</span>
                             </Badge>
-                            <Badge variant="outline">{question.type}</Badge>
-                            <span className="text-sm text-gray-500">{question.points} pts</span>
+                            <Badge variant="outline" className="border-border bg-background">
+                              {question.type}
+                            </Badge>
                           </div>
-                        <div className="flex items-center gap-2">
-                          {question.rating && (
-                            <div className="flex items-center gap-1">
-                              {renderStars(question.rating)}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div>
-                          <h4 className="font-medium text-gray-900 dark:text-white mb-2">Question:</h4>
-                          <p className="text-gray-700 dark:text-slate-300">{question.text}</p>
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium text-muted-foreground">{question.points} pts</span>
+                            {question.rating && (
+                              <div className="flex items-center gap-1">
+                                {renderStars(question.rating)}
+                              </div>
+                            )}
+                          </div>
                         </div>
 
+                        {/* Question text - most prominent */}
+                        <div className="px-6 py-6">
+                          <p className="text-lg font-medium text-foreground leading-relaxed">
+                            {question.text}
+                          </p>
+                        </div>
+
+                        {/* Options */}
                         {question.options && (
-                          <div>
-                            <h4 className="font-medium text-gray-900 dark:text-white mb-2">Options:</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          <div className="px-6 pb-6">
+                            <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                              Answer Options
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               {question.options.map((option, optIndex) => (
-                                <div key={optIndex} className={`p-2 rounded text-sm ${option === question.correctAnswer ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' : 'bg-gray-50 dark:bg-slate-800'}`}>
-                                  <span className="font-medium mr-2">{String.fromCharCode(65 + optIndex)}.</span>
-                                  {option}
-                                  {option === question.correctAnswer && (
-                                    <CheckCircle className="w-4 h-4 text-green-600 inline ml-2" />
-                                  )}
+                                <div
+                                  key={optIndex}
+                                  className={`p-4 rounded-lg border-2 transition-all ${
+                                    option === question.correctAnswer
+                                      ? 'bg-green-50 dark:bg-green-950/30 border-green-500 dark:border-green-700'
+                                      : 'bg-background border-border hover:border-muted-foreground/30'
+                                  }`}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <span className="font-bold text-foreground text-lg flex-shrink-0">
+                                      {String.fromCharCode(65 + optIndex)}.
+                                    </span>
+                                    <span className="text-foreground flex-1">{option}</span>
+                                    {option === question.correctAnswer && (
+                                      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-500 flex-shrink-0" />
+                                    )}
+                                  </div>
                                 </div>
                               ))}
                             </div>
                           </div>
                         )}
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <h4 className="font-medium text-gray-900 dark:text-white mb-2">Correct Answer:</h4>
-                            <p className="text-green-700 dark:text-green-400 font-medium">{question.correctAnswer}</p>
-                          </div>
-                          <div>
-                            <h4 className="font-medium text-gray-900 dark:text-white mb-2">Subject & Topic:</h4>
-                            <p className="text-gray-600 dark:text-slate-400">{question.subject} - {question.topic}</p>
-                          </div>
-                        </div>
-
-                        <div>
-                          <h4 className="font-medium text-gray-900 dark:text-white mb-2">Explanation:</h4>
-                          <p className="text-gray-600 dark:text-slate-400">{question.explanation}</p>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div className="flex flex-wrap gap-2">
-                            {question.tags.map((tag, tagIndex) => (
-                              <Badge key={tagIndex} variant="secondary" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                          <div className="text-sm text-gray-500 dark:text-slate-500">
-                            Created by {question.createdBy} • {new Date(question.createdAt).toLocaleDateString()}
-                          </div>
-                        </div>
-
-                        {question.reviewComments && (
-                          <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg">
-                            <h4 className="font-medium text-gray-900 dark:text-white mb-1 flex items-center">
-                              <MessageSquare className="w-4 h-4 mr-2" />
-                              Review Comments:
-                            </h4>
-                            <p className="text-gray-700 dark:text-slate-300 text-sm">{question.reviewComments}</p>
-                            {question.reviewedBy && (
-                              <p className="text-xs text-gray-500 dark:text-slate-500 mt-1">
-                                Reviewed by {question.reviewedBy} • {question.reviewedAt && new Date(question.reviewedAt).toLocaleDateString()}
+                        {/* Info section */}
+                        <div className="px-6 pb-6">
+                          <div className="bg-muted/50 rounded-lg p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                                Subject & Topic
                               </p>
-                            )}
+                              <p className="text-sm font-medium text-foreground">
+                                {question.subject} - {question.topic}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                                Correct Answer
+                              </p>
+                              <p className="text-sm font-semibold text-green-700 dark:text-green-400">
+                                {question.correctAnswer}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                                Created By
+                              </p>
+                              <p className="text-sm font-medium text-foreground">
+                                {question.createdBy}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Explanation */}
+                        <div className="px-6 pb-6">
+                          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                            Explanation
+                          </h4>
+                          <div className="bg-primary/5 border-l-4 border-primary rounded-r-lg p-4">
+                            <p className="text-foreground leading-relaxed">{question.explanation}</p>
+                          </div>
+                        </div>
+
+                        {/* Tags */}
+                        {question.tags.length > 0 && (
+                          <div className="px-6 pb-6">
+                            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                              Tags
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
+                              {question.tags.map((tag, tagIndex) => (
+                                <Badge
+                                  key={tagIndex}
+                                  variant="secondary"
+                                  className="text-xs bg-primary/10 text-primary border-0 font-medium"
+                                >
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
                           </div>
                         )}
 
-                        {question.status === 'pending' && (
-                          <div className="flex items-center gap-2 pt-4 border-t border-gray-200 dark:border-slate-700">
-                            <Button
-                              onClick={() => handleApprove(question.id)}
-                              className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0"
-                            >
-                              <ThumbsUp className="w-4 h-4 mr-2" />
-                              Approve
-                            </Button>
-                            <Button
-                              variant="outline"
-                              onClick={() => handleRequestRevision(question.id)}
-                              className="hover:bg-orange-50 dark:hover:bg-orange-900/20"
-                            >
-                              <Flag className="w-4 h-4 mr-2" />
-                              Request Revision
-                            </Button>
-                            <Button
-                              variant="outline"
-                              onClick={() => handleReject(question.id)}
-                              className="hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600"
-                            >
-                              <ThumbsDown className="w-4 h-4 mr-2" />
-                              Reject
-                            </Button>
-                            <Button variant="outline" className="ml-auto">
-                              <Edit className="w-4 h-4 mr-2" />
-                              Edit
-                            </Button>
+                        {/* Review Comments */}
+                        {question.reviewComments && (
+                          <div className="px-6 pb-6">
+                            <div className="bg-yellow-50 dark:bg-yellow-950/30 p-4 rounded-lg border-2 border-yellow-200 dark:border-yellow-800">
+                              <h4 className="font-semibold text-foreground mb-2 flex items-center">
+                                <MessageSquare className="w-4 h-4 mr-2 text-yellow-600 dark:text-yellow-500" />
+                                Review Comments
+                              </h4>
+                              <p className="text-foreground text-sm leading-relaxed">{question.reviewComments}</p>
+                              {question.reviewedBy && (
+                                <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-yellow-200 dark:border-yellow-800">
+                                  Reviewed by {question.reviewedBy} • {question.reviewedAt && new Date(question.reviewedAt).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+
+                        {/* Action buttons */}
+                        {question.status === 'pending' && (
+                          <div className="px-6 py-4 bg-muted/20 border-t border-border">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <Button
+                                onClick={() => handleApprove(question.id)}
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                              >
+                                <ThumbsUp className="w-4 h-4 mr-2" />
+                                Approve
+                              </Button>
+                              <Button
+                                variant="outline"
+                                onClick={() => handleRequestRevision(question.id)}
+                                className="border-border hover:bg-muted"
+                              >
+                                <Flag className="w-4 h-4 mr-2" />
+                                Request Revision
+                              </Button>
+                              <Button
+                                variant="outline"
+                                onClick={() => handleReject(question.id)}
+                                className="border-border hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-500"
+                              >
+                                <ThumbsDown className="w-4 h-4 mr-2" />
+                                Reject
+                              </Button>
+                              <div className="flex-1"></div>
+                              <Button variant="outline" className="border-border">
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               )}
             </CardContent>
@@ -702,18 +772,22 @@ export default function QuestionReviewer() {
 
         {/* Approved Questions Tab */}
         <TabsContent value="approved" className="space-y-6">
-          <Card className="shadow-lg border-0 bg-white dark:bg-slate-900">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
+          <Card className="border-border shadow-sm bg-card">
+            <CardHeader className="border-b border-border">
+              <CardTitle className="flex items-center text-foreground">
+                <CheckCircle className="w-5 h-5 mr-2 text-green-600 dark:text-green-500" />
                 Approved Questions
               </CardTitle>
-              <CardDescription>Questions that have been reviewed and approved for use</CardDescription>
+              <CardDescription className="text-muted-foreground">
+                Questions that have been reviewed and approved for use
+              </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-8">
               <div className="text-center py-8">
-                <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                <p className="text-gray-500 dark:text-slate-400">Approved questions will be displayed here.</p>
+                <div className="w-16 h-16 rounded-full bg-green-50 dark:bg-green-950/30 flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-500" />
+                </div>
+                <p className="text-muted-foreground">Approved questions will be displayed here.</p>
               </div>
             </CardContent>
           </Card>
@@ -721,18 +795,22 @@ export default function QuestionReviewer() {
 
         {/* Analytics Tab */}
         <TabsContent value="analytics" className="space-y-6">
-          <Card className="shadow-lg border-0 bg-white dark:bg-slate-900">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <BarChart3 className="w-5 h-5 mr-2 text-purple-600" />
+          <Card className="border-border shadow-sm bg-card">
+            <CardHeader className="border-b border-border">
+              <CardTitle className="flex items-center text-foreground">
+                <BarChart3 className="w-5 h-5 mr-2 text-primary" />
                 Review Analytics
               </CardTitle>
-              <CardDescription>Insights and statistics about question review process</CardDescription>
+              <CardDescription className="text-muted-foreground">
+                Insights and statistics about question review process
+              </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-8">
               <div className="text-center py-8">
-                <BarChart3 className="w-12 h-12 text-purple-500 mx-auto mb-4" />
-                <p className="text-gray-500 dark:text-slate-400">Review analytics and charts will be displayed here.</p>
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                  <BarChart3 className="w-8 h-8 text-primary" />
+                </div>
+                <p className="text-muted-foreground">Review analytics and charts will be displayed here.</p>
               </div>
             </CardContent>
           </Card>

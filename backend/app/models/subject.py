@@ -1,7 +1,7 @@
 """
 Subject models and schemas
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from pydantic import BaseModel, Field, ConfigDict
 from bson import ObjectId
@@ -33,8 +33,8 @@ class SubjectInDB(SubjectBase):
     """Subject model as stored in database"""
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     tutor_id: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     question_count: int = 0
     is_active: bool = True
 

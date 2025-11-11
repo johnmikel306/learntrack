@@ -2,7 +2,7 @@
 Invitation service for managing user invitations
 """
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
@@ -86,14 +86,15 @@ class InvitationService:
 
             # Create invitation
             token = self._generate_token()
-            expires_at = datetime.utcnow() + timedelta(days=7)  # 7 days expiration
+            now = datetime.now(timezone.utc)
+            expires_at = now + timedelta(days=7)  # 7 days expiration
 
             invitation_dict = invitation_data.model_dump()
             invitation_dict.update({
                 "tutor_id": tutor_id,
                 "token": token,
                 "status": InvitationStatus.PENDING.value,
-                "created_at": datetime.utcnow(),
+                "created_at": now,
                 "expires_at": expires_at,
                 "accepted_at": None,
                 "revoked_at": None

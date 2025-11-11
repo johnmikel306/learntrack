@@ -1,17 +1,16 @@
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Header } from "@/components/ui/header"
-import { BookOpen, Users, Eye, GraduationCap } from "lucide-react"
+import { GraduationCap, BookOpen, Users } from "lucide-react"
 
 export default function GetStartedPage() {
   const navigate = useNavigate()
   const [selectedRole, setSelectedRole] = useState<string>('')
 
-  const handleRoleSelection = (role: string) => {
+  const handleContinue = () => {
+    if (!selectedRole) return
+
     // Store the selected role in sessionStorage for use after Clerk authentication
-    sessionStorage.setItem('selectedRole', role)
+    sessionStorage.setItem('selectedRole', selectedRole)
     // Navigate to sign-up page
     navigate('/sign-up')
   }
@@ -19,87 +18,116 @@ export default function GetStartedPage() {
   const roles = [
     {
       id: 'tutor',
-      title: 'Tutor',
-      description: 'Create assignments, track student progress, and manage your classroom',
+      title: 'I am a Tutor',
+      description: 'Create courses, manage assignments, and track student progress.',
       icon: GraduationCap,
-      color: 'bg-blue-500'
+      iconColor: 'text-orange-500'
     },
     {
       id: 'student',
-      title: 'Student',
-      description: 'Complete assignments, track your progress, and learn with AI assistance',
+      title: 'I am a Student',
+      description: 'Access course materials, submit assignments, and view your grades.',
       icon: BookOpen,
-      color: 'bg-green-500'
+      iconColor: 'text-yellow-500'
     },
     {
       id: 'parent',
-      title: 'Parent',
-      description: 'Monitor your child\'s progress and stay connected with their learning journey',
-      icon: Eye,
-      color: 'bg-purple-500'
+      title: 'I am a Parent',
+      description: "Monitor your child's progress, view assignments, and communicate with tutors.",
+      icon: Users,
+      iconColor: 'text-orange-500'
     }
   ]
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Header showNavigation={false} />
-      <div className="bg-gradient-to-b from-muted/40 to-background dark:from-black/20 dark:to-background py-20">
-        <div className="max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-4">Choose Your Role</h1>
-            <p className="text-lg text-muted-foreground">
-              Select your role to create your LearnTrack account
-            </p>
-          </div>
+    <div className="min-h-screen bg-white dark:bg-[#1a1a1a] flex items-center justify-center p-4">
+      <div className="w-full max-w-4xl">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-3">
+            Welcome to LearnTrack!
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 text-lg">
+            To get started, please select your role.
+          </p>
+        </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
-            {roles.map((role) => {
-              const IconComponent = role.icon
-              return (
-                <Card
-                  key={role.id}
-                  className={`cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-[1.02] motion-reduce:hover:scale-100 hover:-translate-y-1 motion-reduce:hover:translate-y-0 ${
-                    selectedRole === role.id ? 'ring-2 ring-purple-500 shadow-lg' : ''
-                  }`}
-                  onClick={() => setSelectedRole(role.id)}
-                >
-                  <CardHeader className="text-center">
-                    <div className={`w-16 h-16 ${role.color} rounded-full flex items-center justify-center mx-auto mb-4`}>
-                      <IconComponent className="h-8 w-8 text-white" />
-                    </div>
-                    <CardTitle className="text-xl">{role.title}</CardTitle>
-                    <CardDescription className="text-sm">
-                      {role.description}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="text-center">
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleRoleSelection(role.id)
-                      }}
-                      className="w-full"
-                      variant={selectedRole === role.id ? "default" : "outline"}
-                    >
-                      Continue as {role.title}
-                    </Button>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
+        {/* Role Cards */}
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          {roles.map((role) => {
+            const IconComponent = role.icon
+            const isSelected = selectedRole === role.id
 
-          <div className="text-center mt-8">
-            <p className="text-sm text-muted-foreground">
-              Already have an account?{' '}
+            return (
               <button
-                onClick={() => navigate('/sign-in')}
-                className="text-purple-600 hover:text-purple-700 underline"
+                key={role.id}
+                onClick={() => setSelectedRole(role.id)}
+                className={`
+                  relative p-6 rounded-xl text-left transition-all duration-200
+                  ${isSelected
+                    ? 'bg-gray-800 dark:bg-gray-700 ring-2 ring-[#C8A882]'
+                    : 'bg-gray-100 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-700/50'
+                  }
+                `}
               >
-                Sign in here
+                {/* Icon */}
+                <div className="mb-4">
+                  <IconComponent className={`w-8 h-8 ${role.iconColor}`} />
+                </div>
+
+                {/* Title */}
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  {role.title}
+                </h3>
+
+                {/* Description */}
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {role.description}
+                </p>
+
+                {/* Selection Indicator */}
+                {isSelected && (
+                  <div className="absolute top-4 right-4">
+                    <div className="w-6 h-6 bg-[#C8A882] rounded-full flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  </div>
+                )}
               </button>
-            </p>
-          </div>
+            )
+          })}
+        </div>
+
+        {/* Continue Button */}
+        <div className="flex justify-center mb-6">
+          <button
+            onClick={handleContinue}
+            disabled={!selectedRole}
+            className={`
+              px-12 py-3 rounded-lg font-semibold text-lg transition-all duration-200
+              ${selectedRole
+                ? 'bg-[#C8A882] hover:bg-[#B89872] text-white shadow-lg hover:shadow-xl'
+                : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-500 cursor-not-allowed'
+              }
+            `}
+          >
+            Continue
+          </button>
+        </div>
+
+        {/* Sign In Link */}
+        <div className="text-center">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Already have an account?{' '}
+            <button
+              onClick={() => navigate('/sign-in')}
+              className="text-[#C8A882] hover:text-[#B89872] font-semibold transition-colors"
+            >
+              Sign in here
+            </button>
+          </p>
         </div>
       </div>
     </div>
