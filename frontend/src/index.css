@@ -207,8 +207,41 @@
   }
 }
 
+/* Clerk form field overrides - Remove grayish tint completely */
+@layer components {
+  /* Light mode - Pure white backgrounds */
+  .cl-formFieldInput,
+  .cl-formFieldInput:focus,
+  .cl-formFieldInput:hover,
+  .cl-formFieldInput:active {
+    background-color: #ffffff !important;
+    border: 0 !important;
+  }
 
+  /* Dark mode - Dark gray backgrounds */
+  .dark .cl-formFieldInput,
+  .dark .cl-formFieldInput:focus,
+  .dark .cl-formFieldInput:hover,
+  .dark .cl-formFieldInput:active {
+    background-color: #2a2a2a !important;
+    border: 0 !important;
+  }
 
+  /* Ensure no background color on the input wrapper */
+  .cl-formFieldInputGroup {
+    background-color: transparent !important;
+  }
 
+  /* Override any Clerk default gray backgrounds */
+  .cl-internal-b3fm6y,
+  .cl-formField__input {
+    background-color: #ffffff !important;
+  }
+
+  .dark .cl-internal-b3fm6y,
+  .dark .cl-formField__input {
+    background-color: #2a2a2a !important;
+  }
+}
 
 

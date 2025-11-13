@@ -47,10 +47,13 @@ export default function SignInPage() {
             signUpUrl="/sign-up"
             appearance={{
               variables: {
-                // Light mode colors
                 colorBackground: '#ffffff',
                 colorInputBackground: '#ffffff',
                 colorInputText: '#111827',
+                colorText: '#111827',
+                colorTextSecondary: '#6b7280',
+                colorPrimary: '#C8A882',
+                borderRadius: '0.5rem',
               },
               elements: {
                 rootBox: "w-full",
