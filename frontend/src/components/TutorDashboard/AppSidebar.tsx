@@ -56,7 +56,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { useUser, useClerk } from "@clerk/clerk-react"
 import { useTheme } from "@/contexts/ThemeContext"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, Link } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { useApiClient } from "@/lib/api-client"
 
 interface AppSidebarProps {
   activeView: string
@@ -175,6 +177,31 @@ export function AppSidebar({ activeView, onViewChange }: AppSidebarProps) {
   const { signOut } = useClerk()
   const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
+  const client = useApiClient()
+
+  // Notifications state
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  // Fetch notifications from API
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const response = await client.get('/notifications')
+        if (response.data) {
+          setNotifications(response.data)
+          setUnreadCount(response.data.filter((n: any) => !n.is_read).length)
+        }
+      } catch (err) {
+        console.error('Failed to fetch notifications:', err)
+        // Set empty array if API fails
+        setNotifications([])
+        setUnreadCount(0)
+      }
+    }
+
+    fetchNotifications()
+  }, [])
 
   const handleSignOut = async () => {
     await signOut()
@@ -183,6 +210,29 @@ export function AppSidebar({ activeView, onViewChange }: AppSidebarProps) {
 
   const handleSettings = () => {
     navigate("/settings")
+  }
+
+  // Map view names to routes
+  const getRouteForView = (view: string): string => {
+    const viewToRoute: Record<string, string> = {
+      'overview': '/dashboard',
+      'all-students': '/dashboard/students',
+      'invitations': '/dashboard/invitations',
+      'groups': '/dashboard/groups',
+      'relationships': '/dashboard/relationships',
+      'ai-generator': '/dashboard/content/generator',
+      'review-questions': '/dashboard/content/review',
+      'question-bank': '/dashboard/content/bank',
+      'resources': '/dashboard/content/materials',
+      'subjects': '/dashboard/content/subjects',
+      'active-assignments': '/dashboard/assignments',
+      'create-new': '/dashboard/assignments/create',
+      'templates': '/dashboard/assignments/templates',
+      'grading': '/dashboard/assignments/grading',
+      'chats': '/dashboard/messages/chats',
+      'emails': '/dashboard/messages/emails',
+    }
+    return viewToRoute[view] || '/dashboard'
   }
 
   return (
@@ -224,12 +274,11 @@ export function AppSidebar({ activeView, onViewChange }: AppSidebarProps) {
                                 <SidebarMenuSubButton
                                   asChild
                                   isActive={activeView === subItem.view}
-                                  onClick={() => onViewChange(subItem.view)}
                                 >
-                                  <a href="#">
+                                  <Link to={getRouteForView(subItem.view)}>
                                     {subItem.icon && <subItem.icon />}
                                     <span>{subItem.title}</span>
-                                  </a>
+                                  </Link>
                                 </SidebarMenuSubButton>
                               </SidebarMenuSubItem>
                             ))}
@@ -246,13 +295,12 @@ export function AppSidebar({ activeView, onViewChange }: AppSidebarProps) {
                     <SidebarMenuButton
                       asChild
                       isActive={activeView === item.view}
-                      onClick={() => item.view && onViewChange(item.view)}
                       tooltip={item.title}
                     >
-                      <a href="#">
+                      <Link to={item.view ? getRouteForView(item.view) : '#'}>
                         {item.icon && <item.icon />}
                         <span>{item.title}</span>
-                      </a>
+                      </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )
@@ -275,16 +323,18 @@ export function AppSidebar({ activeView, onViewChange }: AppSidebarProps) {
                 >
                   <div className="relative group-data-[collapsible=icon]:mx-auto">
                     <Bell className="h-4 w-4" />
-                    <Badge
-                      variant="destructive"
-                      className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px] group-data-[collapsible=icon]:-top-2 group-data-[collapsible=icon]:-right-2"
-                    >
-                      3
-                    </Badge>
+                    {unreadCount > 0 && (
+                      <Badge
+                        variant="destructive"
+                        className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px] group-data-[collapsible=icon]:-top-2 group-data-[collapsible=icon]:-right-2"
+                      >
+                        {unreadCount}
+                      </Badge>
+                    )}
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                     <span className="truncate font-semibold">Notifications</span>
-                    <span className="truncate text-xs">3 unread</span>
+                    <span className="truncate text-xs">{unreadCount} unread</span>
                   </div>
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
@@ -299,35 +349,39 @@ export function AppSidebar({ activeView, onViewChange }: AppSidebarProps) {
                     <Bell className="h-4 w-4" />
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-semibold">Notifications</span>
-                      <span className="truncate text-xs text-muted-foreground">3 unread messages</span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {unreadCount} unread {unreadCount === 1 ? 'message' : 'messages'}
+                      </span>
                     </div>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
-                  <DropdownMenuItem>
-                    <div className="flex flex-col gap-1">
-                      <span className="font-medium">New assignment submitted</span>
-                      <span className="text-xs text-muted-foreground">John Doe submitted Math Quiz 1</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <div className="flex flex-col gap-1">
-                      <span className="font-medium">Question approved</span>
-                      <span className="text-xs text-muted-foreground">Your question was approved</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <div className="flex flex-col gap-1">
-                      <span className="font-medium">New student joined</span>
-                      <span className="text-xs text-muted-foreground">Jane Smith accepted your invitation</span>
-                    </div>
-                  </DropdownMenuItem>
+                  {notifications.length === 0 ? (
+                    <DropdownMenuItem disabled>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm text-muted-foreground">No notifications</span>
+                      </div>
+                    </DropdownMenuItem>
+                  ) : (
+                    notifications.slice(0, 3).map((notification) => (
+                      <DropdownMenuItem key={notification._id}>
+                        <div className="flex flex-col gap-1">
+                          <span className="font-medium">{notification.title}</span>
+                          <span className="text-xs text-muted-foreground">{notification.message}</span>
+                        </div>
+                      </DropdownMenuItem>
+                    ))
+                  )}
                 </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="justify-center text-sm font-medium">
-                  View all notifications
-                </DropdownMenuItem>
+                {notifications.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="justify-center text-sm font-medium">
+                      View all notifications
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>

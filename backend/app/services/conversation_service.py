@@ -28,52 +28,59 @@ class ConversationService:
         tutor_id: str
     ) -> Conversation:
         """
-        Create a new conversation
-        
+        Create a new conversation or return existing one
+
         Args:
             conversation_data: Conversation creation data
             current_user_id: Current user's Clerk ID
             tutor_id: Tutor ID for tenant isolation
-            
+
         Returns:
-            Created conversation
+            Created or existing conversation
         """
-        # Validate participants
-        if current_user_id not in conversation_data.participant_ids:
-            raise ValidationError("Current user must be a participant")
-        
-        if len(conversation_data.participant_ids) < 2:
+        # Automatically add current user to participants if not included
+        participant_ids = list(set(conversation_data.participant_ids))
+        if current_user_id not in participant_ids:
+            participant_ids.append(current_user_id)
+
+        # Validate we have at least 2 participants
+        if len(participant_ids) < 2:
             raise ValidationError("Conversation must have at least 2 participants")
         
         # Check if conversation already exists with same participants
+        # Use $all and $size to ensure exact match of participants
         existing = await self.collection.find_one({
-            "participants": {"$all": conversation_data.participant_ids},
+            "participants": {"$all": participant_ids, "$size": len(participant_ids)},
             "tutor_id": tutor_id
         })
-        
+
         if existing:
             logger.info("Conversation already exists", conversation_id=str(existing["_id"]))
             return Conversation(**existing, id=str(existing["_id"]))
-        
+
         # Get participant details from users collection
         participant_names = {}
         participant_roles = {}
-        
-        for participant_id in conversation_data.participant_ids:
+
+        for participant_id in participant_ids:
             user = await self.db.users.find_one({"clerk_id": participant_id})
             if user:
                 participant_names[participant_id] = user.get("name", "Unknown")
                 participant_roles[participant_id] = user.get("role", "student")
-        
+            else:
+                logger.warning("User not found in database", clerk_id=participant_id)
+                participant_names[participant_id] = "Unknown User"
+                participant_roles[participant_id] = "student"
+
         # Create conversation document
         conversation_doc = {
-            "participants": conversation_data.participant_ids,
+            "participants": participant_ids,
             "participant_names": participant_names,
             "participant_roles": participant_roles,
             "tutor_id": tutor_id,
             "last_message": None,
             "last_message_at": None,
-            "unread_count": {pid: 0 for pid in conversation_data.participant_ids},
+            "unread_count": {pid: 0 for pid in participant_ids},
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow()
         }

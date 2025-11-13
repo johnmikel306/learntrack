@@ -2,9 +2,7 @@ import { useState, useEffect } from "react"
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
-import { Button } from "@/components/ui/button"
-import { useApiClient } from "@/lib/api-client"
-import { toast } from "sonner"
+import { useNavigate, useLocation, Routes, Route } from "react-router-dom"
 import { AppSidebar } from "./AppSidebar"
 import { OverviewView } from "./views/OverviewView"
 import { PlaceholderView } from "./views/PlaceholderView"
@@ -12,7 +10,6 @@ import InvitationsView from "./views/InvitationsView"
 import RelationshipsView from "./views/RelationshipsView"
 import GroupsManagementView from "./views/GroupsManagementView"
 import StudentManager from "@/components/student-manager"
-import AssignmentManager from "@/components/assignment-manager"
 import IntegratedSubjectsManager from "@/components/integrated-subjects-manager"
 import QuestionReviewer from "@/components/question-reviewer"
 import QuestionBankManager from "@/components/question-bank-manager"
@@ -20,29 +17,58 @@ import MaterialManager from "@/components/MaterialManager"
 import ActiveAssignmentsView from "./views/ActiveAssignmentsView"
 import CreateAssignmentView from "./views/CreateAssignmentView"
 import MessagingView from "./views/MessagingView"
-import { Users, FileText, BookOpen, Brain, Calendar, BarChart3, Plus } from "lucide-react"
-import { useNavigate } from "react-router-dom"
+import StudentDetailsPage from "@/pages/StudentDetailsPage"
+import { Brain, Calendar, BarChart3, FileText } from "lucide-react"
+import { useApiClient } from "@/lib/api-client"
+import { toast } from "sonner"
 
 interface TutorDashboardProps {
   onBack?: () => void
 }
 
 export default function TutorDashboard({ onBack }: TutorDashboardProps) {
-  const [activeView, setActiveView] = useState("overview")
-  const client = useApiClient()
   const navigate = useNavigate()
+  const location = useLocation()
+  const client = useApiClient()
 
   // Dashboard data state
   const [dashboardStats, setDashboardStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+
+  // Determine active view from URL path
+  const getActiveViewFromPath = () => {
+    const path = location.pathname.replace('/dashboard', '').replace(/^\//, '')
+    if (!path || path === '') return 'overview'
+
+    // Map paths to view names
+    const pathToView: Record<string, string> = {
+      'students': 'all-students',
+      'invitations': 'invitations',
+      'groups': 'groups',
+      'relationships': 'relationships',
+      'content/generator': 'ai-generator',
+      'content/review': 'review-questions',
+      'content/bank': 'question-bank',
+      'content/materials': 'resources',
+      'content/subjects': 'subjects',
+      'assignments': 'active-assignments',
+      'assignments/create': 'create-new',
+      'assignments/templates': 'templates',
+      'assignments/grading': 'grading',
+      'messages/chats': 'chats',
+      'messages/emails': 'emails',
+    }
+
+    return pathToView[path] || 'overview'
+  }
+
+  const activeView = getActiveViewFromPath()
 
   // Fetch dashboard data from API
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true)
-        setError(null)
         const response = await client.get('/dashboard/stats')
         if (response.error) {
           throw new Error(response.error)
@@ -50,7 +76,6 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
         setDashboardStats(response.data)
       } catch (err: any) {
         console.error('Failed to fetch dashboard data:', err)
-        setError(err.message || 'Failed to load dashboard data')
         toast.error('Failed to load dashboard data')
       } finally {
         setLoading(false)
@@ -60,126 +85,31 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
     fetchDashboardData()
   }, [])
 
-  // Render the appropriate view based on activeView state
-  const renderView = () => {
-    switch (activeView) {
-      case "overview":
-        return (
-          <OverviewView
-            dashboardStats={dashboardStats}
-            loading={loading}
-            onViewChange={handleViewChange}
-          />
-        )
-
-      case "all-students":
-        return <StudentManager />
-
-      case "invitations":
-        return <InvitationsView />
-
-      case "relationships":
-        return <RelationshipsView />
-
-      case "performance":
-        return (
-          <PlaceholderView
-            title="Performance Analytics"
-            description="Detailed insights into student performance and progress"
-            icon={BarChart3}
-            message="Performance analytics will be available soon"
-            submessage="Track detailed student performance metrics"
-          />
-        )
-
-      case "attendance":
-        return (
-          <PlaceholderView
-            title="Attendance Tracking"
-            description="Monitor student attendance and participation"
-            icon={Calendar}
-            message="Attendance tracking will be available soon"
-            submessage="Keep track of student attendance records"
-          />
-        )
-
-      case "groups":
-        return <GroupsManagementView />
-
-      case "active-assignments":
-        return <ActiveAssignmentsView />
-
-      case "create-new":
-        return <CreateAssignmentView />
-
-      case "templates":
-        return (
-          <PlaceholderView
-            title="Assignment Templates"
-            description="Reusable assignment templates"
-            icon={FileText}
-            message="Assignment templates will be available soon"
-            submessage="Create and manage reusable assignment templates"
-          />
-        )
-
-      case "grading":
-        return (
-          <PlaceholderView
-            title="Grading Center"
-            description="Grade and review student submissions"
-            icon={FileText}
-            message="Grading center will be available soon"
-            submessage="Review and grade student assignments"
-          />
-        )
-
-      case "question-bank":
-        return <QuestionBankManager />
-
-      case "subjects":
-        return <IntegratedSubjectsManager />
-
-      case "review-questions":
-        return <QuestionReviewer />
-
-      case "ai-generator":
-        return (
-          <PlaceholderView
-            title="AI Generator"
-            description="Generate questions with AI"
-            icon={Brain}
-            message="AI question generator will be available soon"
-            submessage="Create custom questions with AI assistance"
-          />
-        )
-
-      case "resources":
-        return <MaterialManager />
-
-      case "chats":
-        return <MessagingView type="chats" />
-
-      case "emails":
-        return <MessagingView type="emails" />
-
-      default:
-        return (
-          <OverviewView
-            dashboardStats={dashboardStats}
-            loading={loading}
-          />
-        )
-    }
-  }
-
-  // Handle settings navigation
+  // Handle view navigation
   const handleViewChange = (view: string) => {
-    if (view === "settings") {
-      navigate("/settings")
-    } else {
-      setActiveView(view)
+    // Map view names to routes
+    const viewToRoute: Record<string, string> = {
+      'overview': '/dashboard',
+      'all-students': '/dashboard/students',
+      'invitations': '/dashboard/invitations',
+      'groups': '/dashboard/groups',
+      'relationships': '/dashboard/relationships',
+      'ai-generator': '/dashboard/content/generator',
+      'review-questions': '/dashboard/content/review',
+      'question-bank': '/dashboard/content/bank',
+      'resources': '/dashboard/content/materials',
+      'subjects': '/dashboard/content/subjects',
+      'active-assignments': '/dashboard/assignments',
+      'create-new': '/dashboard/assignments/create',
+      'templates': '/dashboard/assignments/templates',
+      'grading': '/dashboard/assignments/grading',
+      'chats': '/dashboard/messages/chats',
+      'emails': '/dashboard/messages/emails',
+      'settings': '/settings',
     }
+
+    const route = viewToRoute[view] || '/dashboard'
+    navigate(route)
   }
 
   // Get breadcrumb title
@@ -228,9 +158,36 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
           </Breadcrumb>
         </header>
 
-        {/* Main Content */}
+        {/* Main Content - Nested Routes */}
         <div className="flex flex-1 flex-col gap-4 p-4 bg-background">
-          {renderView()}
+          <Routes>
+            {/* Default route - Overview */}
+            <Route index element={<OverviewView dashboardStats={dashboardStats} loading={loading} onViewChange={handleViewChange} />} />
+
+            {/* Students routes */}
+            <Route path="students" element={<StudentManager />} />
+            <Route path="students/:studentId" element={<StudentDetailsPage />} />
+            <Route path="invitations" element={<InvitationsView />} />
+            <Route path="groups" element={<GroupsManagementView />} />
+            <Route path="relationships" element={<RelationshipsView />} />
+
+            {/* Content routes */}
+            <Route path="content/generator" element={<PlaceholderView title="AI Generator" description="Generate questions with AI" icon={Brain} message="AI question generator will be available soon" submessage="Create custom questions with AI assistance" />} />
+            <Route path="content/review" element={<QuestionReviewer />} />
+            <Route path="content/bank" element={<QuestionBankManager />} />
+            <Route path="content/materials" element={<MaterialManager />} />
+            <Route path="content/subjects" element={<IntegratedSubjectsManager />} />
+
+            {/* Assignments routes */}
+            <Route path="assignments" element={<ActiveAssignmentsView />} />
+            <Route path="assignments/create" element={<CreateAssignmentView />} />
+            <Route path="assignments/templates" element={<PlaceholderView title="Assignment Templates" description="Reusable assignment templates" icon={FileText} message="Assignment templates will be available soon" submessage="Create and manage reusable assignment templates" />} />
+            <Route path="assignments/grading" element={<PlaceholderView title="Grading Center" description="Grade and review student submissions" icon={FileText} message="Grading center will be available soon" submessage="Review and grade student assignments" />} />
+
+            {/* Messages routes */}
+            <Route path="messages/chats" element={<MessagingView type="chats" />} />
+            <Route path="messages/emails" element={<MessagingView type="emails" />} />
+          </Routes>
         </div>
       </SidebarInset>
     </SidebarProvider>

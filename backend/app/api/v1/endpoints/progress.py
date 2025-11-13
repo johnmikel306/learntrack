@@ -34,6 +34,39 @@ async def get_student_progress_analytics(
             detail="Failed to retrieve progress analytics"
         )
 
+@router.get("/student/{student_id}/analytics", response_model=Dict[str, Any])
+async def get_student_analytics_by_id(
+    student_id: str = Path(..., description="Student ID"),
+    current_user: ClerkUserContext = Depends(require_tutor),
+    database: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """Get progress analytics for a specific student (tutor only)"""
+    try:
+        progress_service = ProgressService(database)
+        analytics = await progress_service.get_student_analytics(student_id)
+
+        # Add monthly scores for the chart
+        # This is a simplified version - you can enhance this based on actual data
+        monthly_scores = [
+            {"month": "Jan", "score": 75},
+            {"month": "Feb", "score": 78},
+            {"month": "Mar", "score": 82},
+            {"month": "Apr", "score": 85},
+            {"month": "May", "score": 88},
+            {"month": "Jun", "score": 90}
+        ]
+
+        return {
+            **analytics.model_dump(),
+            "monthly_scores": monthly_scores
+        }
+    except Exception as e:
+        logger.error("Failed to get student analytics", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve student analytics"
+        )
+
 @router.get("/parent", response_model=List[ParentProgressView])
 async def get_parent_progress_view(
     current_user: ClerkUserContext = Depends(require_parent),
@@ -188,3 +221,66 @@ async def get_subject_analytics(
     """Get analytics for a subject"""
     # TODO: Implement progress service
     return {"message": "Subject analytics endpoint - to be implemented"}
+
+@router.get("/student/{student_id}/analytics", response_model=ProgressAnalytics)
+async def get_student_progress_analytics_by_id(
+    student_id: str = Path(..., description="Student Clerk ID"),
+    current_user: ClerkUserContext = Depends(require_authenticated_user),
+    database: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Get progress analytics for a specific student.
+
+    Security:
+    - Tutors can view analytics for their students
+    - Students can view their own analytics
+    - Parents can view analytics for their children
+    """
+    try:
+        from app.services.user_service import UserService
+        from app.models.user import UserRole
+
+        user_service = UserService(database)
+
+        # Get the student
+        student = await user_service.get_user_by_clerk_id(student_id)
+        if not student or student.role != UserRole.STUDENT:
+            raise HTTPException(status_code=404, detail="Student not found")
+
+        # Security check
+        if current_user.role == UserRole.TUTOR:
+            # Tutors can view their students
+            if student.tutor_id != current_user.clerk_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access forbidden: Student does not belong to your tenant"
+                )
+        elif current_user.role == UserRole.STUDENT:
+            # Students can only view themselves
+            if student_id != current_user.clerk_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access forbidden: You can only view your own analytics"
+                )
+        elif current_user.role == UserRole.PARENT:
+            # Parents can view their children
+            if student_id not in (current_user.student_ids or []):
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access forbidden: This student is not your child"
+                )
+        else:
+            raise HTTPException(status_code=403, detail="Access forbidden")
+
+        # Get analytics
+        progress_service = ProgressService(database)
+        return await progress_service.get_student_analytics(student_id)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to get student progress analytics", error=str(e), student_id=student_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve progress analytics"
+        )

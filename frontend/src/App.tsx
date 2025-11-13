@@ -9,6 +9,7 @@ import DashboardPage from './pages/DashboardPage'
 import AssignmentsPage from './pages/AssignmentsPage'
 import QuestionsPage from './pages/QuestionsPage'
 import StudentsPage from './pages/StudentsPage'
+import StudentDetailsPage from './pages/StudentDetailsPage'
 import RoleSetupPage from './pages/RoleSetupPage'
 import AcceptInvitationPage from './pages/AcceptInvitationPage'
 import TeacherOnboarding from './components/onboarding/TeacherOnboarding'
@@ -54,15 +55,17 @@ function App() {
             }
           />
 
-          {/* Protected routes */}
+          {/* Protected routes - Dashboard with nested routes */}
           <Route
-            path="/dashboard"
+            path="/dashboard/*"
             element={
               <SignedIn>
                 <DashboardPage />
               </SignedIn>
             }
           />
+
+          {/* Legacy routes - redirect to dashboard */}
           <Route
             path="/assignments"
             element={

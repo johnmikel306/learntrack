@@ -1,0 +1,145 @@
+"""
+Notification service for managing notifications
+"""
+from typing import List, Optional
+from datetime import datetime
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from bson import ObjectId
+import structlog
+
+from app.models.notification import (
+    Notification, NotificationCreate, NotificationUpdate,
+    NotificationInDB, NotificationType
+)
+
+logger = structlog.get_logger()
+
+
+class NotificationService:
+    """Service for managing notifications"""
+    
+    def __init__(self, database: AsyncIOMotorDatabase):
+        self.db = database
+        self.collection = database.notifications
+    
+    async def create_notification(
+        self,
+        notification_data: NotificationCreate
+    ) -> Notification:
+        """Create a new notification"""
+        try:
+            notification_dict = notification_data.model_dump()
+            notification_dict["is_read"] = False
+            notification_dict["created_at"] = datetime.utcnow()
+            notification_dict["read_at"] = None
+            
+            result = await self.collection.insert_one(notification_dict)
+            notification_dict["_id"] = str(result.inserted_id)
+            
+            return Notification(**notification_dict)
+        except Exception as e:
+            logger.error("Failed to create notification", error=str(e))
+            raise
+    
+    async def get_user_notifications(
+        self,
+        user_id: str,
+        limit: int = 50,
+        unread_only: bool = False
+    ) -> List[Notification]:
+        """Get notifications for a user"""
+        try:
+            query = {"recipient_id": user_id}
+            if unread_only:
+                query["is_read"] = False
+            
+            cursor = self.collection.find(query).sort("created_at", -1).limit(limit)
+            notifications_data = await cursor.to_list(length=limit)
+            
+            notifications = []
+            for notif_data in notifications_data:
+                notif_data["_id"] = str(notif_data["_id"])
+                notifications.append(Notification(**notif_data))
+            
+            return notifications
+        except Exception as e:
+            logger.error("Failed to get user notifications", error=str(e))
+            raise
+    
+    async def mark_as_read(
+        self,
+        notification_id: str,
+        user_id: str
+    ) -> Optional[Notification]:
+        """Mark a notification as read"""
+        try:
+            result = await self.collection.find_one_and_update(
+                {
+                    "_id": ObjectId(notification_id),
+                    "recipient_id": user_id
+                },
+                {
+                    "$set": {
+                        "is_read": True,
+                        "read_at": datetime.utcnow()
+                    }
+                },
+                return_document=True
+            )
+            
+            if result:
+                result["_id"] = str(result["_id"])
+                return Notification(**result)
+            return None
+        except Exception as e:
+            logger.error("Failed to mark notification as read", error=str(e))
+            raise
+    
+    async def mark_all_as_read(self, user_id: str) -> int:
+        """Mark all notifications as read for a user"""
+        try:
+            result = await self.collection.update_many(
+                {
+                    "recipient_id": user_id,
+                    "is_read": False
+                },
+                {
+                    "$set": {
+                        "is_read": True,
+                        "read_at": datetime.utcnow()
+                    }
+                }
+            )
+            return result.modified_count
+        except Exception as e:
+            logger.error("Failed to mark all notifications as read", error=str(e))
+            raise
+    
+    async def delete_notification(
+        self,
+        notification_id: str,
+        user_id: str
+    ) -> bool:
+        """Delete a notification"""
+        try:
+            result = await self.collection.delete_one({
+                "_id": ObjectId(notification_id),
+                "recipient_id": user_id
+            })
+            return result.deleted_count > 0
+        except Exception as e:
+            logger.error("Failed to delete notification", error=str(e))
+            raise
+    
+    async def get_unread_count(self, user_id: str) -> int:
+        """Get count of unread notifications for a user"""
+        try:
+            count = await self.collection.count_documents({
+                "recipient_id": user_id,
+                "is_read": False
+            })
+            return count
+        except Exception as e:
+            logger.error("Failed to get unread count", error=str(e))
+            raise
+

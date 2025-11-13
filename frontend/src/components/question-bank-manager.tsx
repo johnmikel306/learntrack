@@ -3,7 +3,9 @@
  * Displays all questions in a table format with search and filters
  */
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useApiClient } from "@/lib/api-client"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -72,116 +74,48 @@ const getDifficultyColor = (difficulty: string) => {
 }
 
 export default function QuestionBankManager() {
+  const client = useApiClient()
   const [searchTerm, setSearchTerm] = useState("")
   const [subjectFilter, setSubjectFilter] = useState("all")
   const [topicFilter, setTopicFilter] = useState("all")
   const [difficultyFilter, setDifficultyFilter] = useState("all")
   const [typeFilter, setTypeFilter] = useState("all")
   const [currentPage, setCurrentPage] = useState(1)
+  const [questions, setQuestions] = useState<Question[]>([])
+  const [loading, setLoading] = useState(true)
   const itemsPerPage = 10
 
-  // Mock data - replace with API calls
-  const mockQuestions: Question[] = [
-    {
-      id: "1",
-      text: "What is the primary function of the mitochondria?",
-      subject: "Biology",
-      type: "Multiple Choice",
-      difficulty: "Easy",
-      lastModified: "2024-05-20"
-    },
-    {
-      id: "2",
-      text: "Explain the concept of photosynthesis in your own words.",
-      subject: "Biology",
-      type: "Short Answer",
-      difficulty: "Medium",
-      lastModified: "2024-05-18"
-    },
-    {
-      id: "3",
-      text: "Calculate the velocity of a car that travels 100 meters in 5 seconds.",
-      subject: "Physics",
-      type: "Calculation",
-      difficulty: "Hard",
-      lastModified: "2024-05-15"
-    },
-    {
-      id: "4",
-      text: "True or False: The Earth is the fourth planet from the Sun.",
-      subject: "Astronomy",
-      type: "True/False",
-      difficulty: "Easy",
-      lastModified: "2024-05-12"
-    },
-    {
-      id: "5",
-      text: "What is the capital of France?",
-      subject: "Geography",
-      type: "Multiple Choice",
-      difficulty: "Easy",
-      lastModified: "2024-05-10"
-    },
-    {
-      id: "6",
-      text: "Solve for x: 2x + 5 = 15",
-      subject: "Mathematics",
-      type: "Calculation",
-      difficulty: "Medium",
-      lastModified: "2024-05-08"
-    },
-    {
-      id: "7",
-      text: "Describe the water cycle in detail.",
-      subject: "Science",
-      type: "Short Answer",
-      difficulty: "Medium",
-      lastModified: "2024-05-05"
-    },
-    {
-      id: "8",
-      text: "What is the chemical formula for water?",
-      subject: "Chemistry",
-      type: "Multiple Choice",
-      difficulty: "Easy",
-      lastModified: "2024-05-03"
-    },
-    {
-      id: "9",
-      text: "Explain Newton's first law of motion.",
-      subject: "Physics",
-      type: "Short Answer",
-      difficulty: "Medium",
-      lastModified: "2024-05-01"
-    },
-    {
-      id: "10",
-      text: "What is the square root of 144?",
-      subject: "Mathematics",
-      type: "Multiple Choice",
-      difficulty: "Easy",
-      lastModified: "2024-04-28"
-    },
-    {
-      id: "11",
-      text: "Identify the parts of a plant cell.",
-      subject: "Biology",
-      type: "Multiple Choice",
-      difficulty: "Medium",
-      lastModified: "2024-04-25"
-    },
-    {
-      id: "12",
-      text: "Calculate the area of a circle with radius 7 cm.",
-      subject: "Mathematics",
-      type: "Calculation",
-      difficulty: "Hard",
-      lastModified: "2024-04-22"
-    },
-  ]
+  // Fetch questions from API
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      try {
+        setLoading(true)
+        const response = await client.get('/questions')
+        if (response.data) {
+          const mappedQuestions = response.data.map((q: any) => ({
+            id: q._id,
+            text: q.text,
+            subject: q.subject_id?.name || 'Unknown',
+            type: q.type,
+            difficulty: q.difficulty,
+            lastModified: q.updated_at || q.created_at
+          }))
+          setQuestions(mappedQuestions)
+        }
+      } catch (err) {
+        console.error('Failed to fetch questions:', err)
+        toast.error('Failed to load questions')
+        setQuestions([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchQuestions()
+  }, [])
 
   // Filter questions
-  const filteredQuestions = mockQuestions.filter(question => {
+  const filteredQuestions = questions.filter(question => {
     const matchesSearch = question.text.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesSubject = subjectFilter === "all" || question.subject === subjectFilter
     const matchesTopic = topicFilter === "all" // Add topic logic when available

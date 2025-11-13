@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -40,6 +41,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { useApiClient } from "@/lib/api-client"
 import { toast } from "sonner"
+import { SendMessageModal } from "@/components/modals/SendMessageModal"
 
 interface Student {
   id: string
@@ -59,8 +61,11 @@ export default function StudentManager() {
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
+  const [sendMessageModalOpen, setSendMessageModalOpen] = useState(false)
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
 
   const client = useApiClient()
+  const navigate = useNavigate()
 
   // Fetch students from API
   useEffect(() => {
@@ -300,11 +305,21 @@ export default function StudentManager() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setSelectedStudent(student)
+                                    setSendMessageModalOpen(true)
+                                  }}
+                                >
                                   <MessageCircle className="h-4 w-4 mr-2" />
                                   Send a message
                                 </DropdownMenuItem>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    console.log('View details clicked for student:', student)
+                                    navigate(`/dashboard/students/${student.id}`)
+                                  }}
+                                >
                                   <Eye className="h-4 w-4 mr-2" />
                                   View details
                                 </DropdownMenuItem>
@@ -386,6 +401,16 @@ export default function StudentManager() {
               )}
             </CardContent>
           </Card>
-        </div>
-      )
-    }
+
+      {/* Send Message Modal */}
+      <SendMessageModal
+        open={sendMessageModalOpen}
+        onOpenChange={setSendMessageModalOpen}
+        student={selectedStudent}
+        onMessageSent={() => {
+          toast.success('Message sent successfully')
+        }}
+      />
+    </div>
+  )
+}

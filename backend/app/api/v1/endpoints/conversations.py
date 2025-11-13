@@ -23,9 +23,11 @@ async def create_conversation(
     db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """
-    Create a new conversation
-    
-    - **participant_ids**: List of participant Clerk IDs (must include current user)
+    Create a new conversation or return existing one
+
+    - **participant_ids**: List of participant Clerk IDs (current user is automatically added if not included)
+
+    If a conversation with the exact same participants already exists, it will be returned instead of creating a duplicate.
     """
     try:
         service = ConversationService(db)
@@ -136,4 +138,38 @@ async def get_unread_count(
     except Exception as e:
         logger.error("Failed to get unread count", error=str(e))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get unread count")
+
+
+@router.post("/with-user/{user_id}", response_model=Conversation, status_code=status.HTTP_201_CREATED)
+async def get_or_create_conversation_with_user(
+    user_id: str,
+    current_user: ClerkUserContext = Depends(require_authenticated_user),
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Get or create a direct conversation with a specific user
+
+    - **user_id**: Clerk ID of the user to start a conversation with
+
+    This is a convenience endpoint that creates a 1-on-1 conversation with the specified user.
+    If a conversation already exists between the two users, it will be returned.
+    """
+    try:
+        service = ConversationService(db)
+
+        # Create conversation data with just the target user
+        # The service will automatically add the current user
+        conversation_data = ConversationCreate(participant_ids=[user_id])
+
+        conversation = await service.create_conversation(
+            conversation_data=conversation_data,
+            current_user_id=current_user.clerk_id,
+            tutor_id=current_user.tutor_id
+        )
+        return conversation
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error("Failed to get or create conversation", error=str(e), user_id=user_id)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get or create conversation")
 

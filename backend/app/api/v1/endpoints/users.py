@@ -20,7 +20,7 @@ async def read_users_me(
     try:
         # Try to get user from database first
         user_service = UserService(db)
-        db_user = await user_service.get_by_clerk_id(current_user.clerk_id)
+        db_user = await user_service.get_user_by_clerk_id(current_user.clerk_id)
 
         if db_user:
             # Return user data from database
@@ -72,7 +72,7 @@ async def update_user_role(
         user_service = UserService(db)
 
         # Get or create user in database
-        db_user = await user_service.get_by_clerk_id(current_user.clerk_id)
+        db_user = await user_service.get_user_by_clerk_id(current_user.clerk_id)
 
         if db_user:
             # Update existing user's role
@@ -108,3 +108,83 @@ async def update_user_role(
     except Exception as e:
         logger.error("Failed to update user role", error=str(e), clerk_id=current_user.clerk_id)
         raise HTTPException(status_code=500, detail="Failed to update user role")
+
+@router.get("/{clerk_id}", response_model=User)
+async def get_user_by_id(
+    clerk_id: str,
+    current_user: ClerkUserContext = Depends(require_authenticated_user),
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Get user details by Clerk ID.
+
+    Security:
+    - Tutors can view any user in their tenant (students, parents)
+    - Students can view themselves and their parents
+    - Parents can view themselves and their children
+    """
+    try:
+        user_service = UserService(db)
+
+        # Get the requested user
+        requested_user = await user_service.get_user_by_clerk_id(clerk_id)
+
+        if not requested_user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Security check: Verify access permissions
+        # Allow if:
+        # 1. User is viewing themselves
+        # 2. User is a tutor viewing someone in their tenant
+        # 3. User is a student viewing their parent
+        # 4. User is a parent viewing their child
+
+        if clerk_id == current_user.clerk_id:
+            # User viewing themselves - always allowed
+            pass
+        elif current_user.role == UserRole.TUTOR:
+            # Tutors can view any user in their tenant
+            if requested_user.tutor_id != current_user.clerk_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access forbidden: User does not belong to your tenant"
+                )
+        elif current_user.role == UserRole.STUDENT:
+            # Students can view their parents
+            # Check if requested user is a parent and current user is in their children list
+            if requested_user.role != UserRole.PARENT:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access forbidden: Students can only view their parents"
+                )
+            if current_user.clerk_id not in (requested_user.parent_children or []):
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access forbidden: This parent is not linked to you"
+                )
+        elif current_user.role == UserRole.PARENT:
+            # Parents can view their children
+            if requested_user.role != UserRole.STUDENT:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access forbidden: Parents can only view their children"
+                )
+            if clerk_id not in (current_user.student_ids or []):
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access forbidden: This student is not your child"
+                )
+        else:
+            raise HTTPException(status_code=403, detail="Access forbidden")
+
+        logger.info("User details retrieved",
+                   requested_clerk_id=clerk_id,
+                   requester_clerk_id=current_user.clerk_id)
+
+        return requested_user
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to get user details", error=str(e), clerk_id=clerk_id)
+        raise HTTPException(status_code=500, detail="Failed to retrieve user details")

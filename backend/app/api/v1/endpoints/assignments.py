@@ -50,6 +50,43 @@ async def get_assignments(
         logger.error("Failed to get assignments", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to get assignments")
 
+@router.get("/student/{student_id}")
+async def get_student_assignments(
+    student_id: str = Path(..., description="Student ID"),
+    status: Optional[str] = Query(None, description="Filter by status (pending, completed, etc.)"),
+    current_user: ClerkUserContext = Depends(require_authenticated_user),
+    database: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """Get assignments for a specific student"""
+    try:
+        assignment_service = AssignmentService(database)
+
+        # Get all assignments for the tutor
+        all_assignments = await assignment_service.get_assignments_for_tutor(
+            tutor_id=current_user.tutor_id
+        )
+
+        # Filter assignments that include this student
+        # This is a simplified version - you may need to enhance based on your data model
+        student_assignments = []
+        for assignment in all_assignments:
+            # Check if student is in the assignment's student list
+            if hasattr(assignment, 'student_ids') and student_id in assignment.student_ids:
+                assignment_dict = assignment.model_dump() if hasattr(assignment, 'model_dump') else dict(assignment)
+
+                # Add status filter if provided
+                if status:
+                    # You can enhance this to check actual student progress
+                    if status == "pending":
+                        student_assignments.append(assignment_dict)
+                else:
+                    student_assignments.append(assignment_dict)
+
+        return student_assignments
+    except Exception as e:
+        logger.error("Failed to get student assignments", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to get student assignments")
+
 @router.get("/{assignment_id}", response_model=Assignment)
 async def get_assignment(
     assignment_id: str = Path(..., description="Assignment ID"),

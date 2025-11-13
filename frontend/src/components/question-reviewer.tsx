@@ -231,99 +231,13 @@ export default function QuestionReviewer() {
     setSelectedQuestions(newSelection)
   }
 
-  // Sample questions for demo (will be replaced by API data)
-  const sampleQuestions: Question[] = [
-    {
-      id: "1",
-      text: "What is the solution to the equation 2x + 5 = 13?",
-      type: "multiple-choice",
-      difficulty: "intermediate",
-      subject: "Mathematics",
-      topic: "Algebra",
-      options: ["x = 3", "x = 4", "x = 5", "x = 6"],
-      correctAnswer: "x = 4",
-      explanation: "To solve 2x + 5 = 13, subtract 5 from both sides to get 2x = 8, then divide by 2 to get x = 4.",
-      points: 2,
-      tags: ["algebra", "linear-equations"],
-      status: "pending",
-      createdBy: "AI Generator",
-      createdAt: "2024-01-10T10:30:00Z",
-      usageCount: 0,
-      successRate: 0
-    },
-    {
-      id: "2",
-      text: "Explain the process of photosynthesis in plants.",
-      type: "short-answer",
-      difficulty: "intermediate",
-      subject: "Biology",
-      topic: "Photosynthesis",
-      correctAnswer: "Photosynthesis is the process by which plants convert light energy into chemical energy using chlorophyll.",
-      explanation: "This process involves the conversion of carbon dioxide and water into glucose and oxygen using sunlight.",
-      points: 3,
-      tags: ["biology", "photosynthesis", "plants"],
-      status: "approved",
-      createdBy: "Dr. Smith",
-      createdAt: "2024-01-09T14:20:00Z",
-      reviewedBy: "Prof. Johnson",
-      reviewedAt: "2024-01-09T16:45:00Z",
-      reviewComments: "Excellent question with clear explanation.",
-      rating: 5,
-      usageCount: 15,
-      successRate: 87
-    },
-    {
-      id: "3",
-      text: "What is the capital of France?",
-      type: "multiple-choice",
-      difficulty: "beginner",
-      subject: "Geography",
-      topic: "European Capitals",
-      options: ["London", "Berlin", "Paris", "Madrid"],
-      correctAnswer: "Paris",
-      explanation: "Paris is the capital and largest city of France.",
-      points: 1,
-      tags: ["geography", "capitals", "europe"],
-      status: "needs-revision",
-      createdBy: "AI Generator",
-      createdAt: "2024-01-08T09:15:00Z",
-      reviewedBy: "Prof. Wilson",
-      reviewedAt: "2024-01-08T11:30:00Z",
-      reviewComments: "Too basic for the target audience. Consider adding more context or complexity.",
-      rating: 2,
-      usageCount: 3,
-      successRate: 95
-    },
-    {
-      id: "4",
-      text: "Calculate the derivative of f(x) = x^3 + 2x^2 - 5x + 1",
-      type: "short-answer",
-      difficulty: "advanced",
-      subject: "Mathematics",
-      topic: "Calculus",
-      correctAnswer: "f'(x) = 3x^2 + 4x - 5",
-      explanation: "Using the power rule: d/dx(x^n) = nx^(n-1), we get 3x^2 + 4x - 5.",
-      points: 4,
-      tags: ["calculus", "derivatives", "power-rule"],
-      status: "rejected",
-      createdBy: "AI Generator",
-      createdAt: "2024-01-07T16:45:00Z",
-      reviewedBy: "Dr. Brown",
-      reviewedAt: "2024-01-07T18:20:00Z",
-      reviewComments: "Calculation error in the explanation. The derivative is correct but explanation needs revision.",
-      rating: 1,
-      usageCount: 0,
-      successRate: 0
-    }
-  ]
-
   // Review statistics
   const reviewStats: ReviewStats = {
     totalQuestions: questions.length,
     pendingReview: questions.filter(q => q.status === 'pending').length,
     approved: questions.filter(q => q.status === 'approved').length,
     rejected: questions.filter(q => q.status === 'rejected').length,
-    averageRating: questions.filter(q => q.rating).reduce((acc, q) => acc + (q.rating || 0), 0) / questions.filter(q => q.rating).length
+    averageRating: questions.filter(q => q.rating).reduce((acc, q) => acc + (q.rating || 0), 0) / (questions.filter(q => q.rating).length || 1)
   }
 
   const getStatusColor = (status: string) => {
@@ -378,10 +292,8 @@ export default function QuestionReviewer() {
     ))
   }
 
-  // Use actual questions from API or sample for demo
-  const displayQuestions = questions.length > 0 ? questions : sampleQuestions
-
-  const filteredQuestions = displayQuestions.filter(question => {
+  // Use actual questions from API
+  const filteredQuestions = questions.filter(question => {
     const matchesSearch = question.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          question.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          question.topic.toLowerCase().includes(searchTerm.toLowerCase()) ||
