@@ -46,7 +46,7 @@ export default function GroupSelector({ selectedGroups, onChange, onStudentCount
     try {
       setLoading(true)
       const token = await getToken()
-      const response = await fetch(`${API_BASE_URL}/students/groups`, {
+      const response = await fetch(`${API_BASE_URL}/groups`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

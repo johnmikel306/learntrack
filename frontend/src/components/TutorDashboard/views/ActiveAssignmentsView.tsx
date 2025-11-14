@@ -61,6 +61,7 @@ export default function ActiveAssignmentsView() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [subjectFilter, setSubjectFilter] = useState("all")
   const [assignments, setAssignments] = useState<Assignment[]>([])
+  const [rawAssignments, setRawAssignments] = useState<any[]>([]) // Store raw backend data for modals
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 
@@ -75,7 +76,7 @@ export default function ActiveAssignmentsView() {
   // Modal state
   const [viewModalOpen, setViewModalOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
-  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null)
+  const [selectedAssignment, setSelectedAssignment] = useState<any | null>(null)
 
   const client = useApiClient()
 
@@ -89,8 +90,12 @@ export default function ActiveAssignmentsView() {
         throw new Error(response.error)
       }
       
-      // Map API response to Assignment interface
-      const assignmentsData = (response.data || []).map((assignment: any) => ({
+      // Store raw backend data
+      const rawData = (response.data as any[]) || []
+      setRawAssignments(rawData)
+
+      // Map API response to Assignment interface for display
+      const assignmentsData = rawData.map((assignment: any) => ({
         id: assignment._id,
         title: assignment.title,
         subject: assignment.subject_id?.name || "Unknown",
@@ -102,7 +107,7 @@ export default function ActiveAssignmentsView() {
         questionCount: assignment.questions?.length || 0,
         averageScore: assignment.average_score || undefined
       }))
-      
+
       setAssignments(assignmentsData)
 
       if (assignmentsData.length > 0) {
@@ -241,17 +246,17 @@ export default function ActiveAssignmentsView() {
   }
 
   const handleView = (assignmentId: string) => {
-    const assignment = assignments.find(a => a._id === assignmentId)
-    if (assignment) {
-      setSelectedAssignment(assignment)
+    const rawAssignment = rawAssignments.find(a => a._id === assignmentId)
+    if (rawAssignment) {
+      setSelectedAssignment(rawAssignment)
       setViewModalOpen(true)
     }
   }
 
   const handleEdit = (assignmentId: string) => {
-    const assignment = assignments.find(a => a._id === assignmentId)
-    if (assignment) {
-      setSelectedAssignment(assignment)
+    const rawAssignment = rawAssignments.find(a => a._id === assignmentId)
+    if (rawAssignment) {
+      setSelectedAssignment(rawAssignment)
       setEditModalOpen(true)
     }
   }

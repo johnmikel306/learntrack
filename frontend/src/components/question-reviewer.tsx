@@ -651,7 +651,7 @@ export default function QuestionReviewer() {
                               </Button>
                               <Button
                                 variant="outline"
-                                onClick={() => handleRequestRevision(question.id)}
+                                onClick={() => handleRequestRevision(question.id, reviewComment || 'Please revise')}
                                 className="border-border hover:bg-muted"
                               >
                                 <Flag className="w-4 h-4 mr-2" />

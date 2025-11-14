@@ -1,7 +1,10 @@
 import React from 'react'
 import { useAuth } from '@clerk/clerk-react'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+const RAW_API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000'
+// Normalize base and ensure exactly one /api/v1 prefix
+const NORMALIZED_BASE = RAW_API_BASE_URL.replace(/\/+$/, '')
+const API_ROOT = NORMALIZED_BASE.match(/\/api\/v\d+$/) ? NORMALIZED_BASE : `${NORMALIZED_BASE}/api/v1`
 
 export interface ApiResponse<T = any> {
   data?: T
@@ -27,7 +30,7 @@ export class ApiClient {
     this.getToken = getToken
   }
 
-  private async makeRequest<T>(
+  private async makeRequest<T = any>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
@@ -43,7 +46,10 @@ export class ApiClient {
         headers['Authorization'] = `Bearer ${token}`
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/v1${endpoint}`, {
+      // Avoid accidental double prefixing if callers pass '/api/v1/...'
+      const sanitized = endpoint.replace(/^\/api\/v\d+/, '')
+      const path = sanitized.startsWith('/') ? sanitized : `/${sanitized}`
+      const response = await fetch(`${API_ROOT}${path}`, {
         ...options,
         headers,
       })
@@ -72,29 +78,29 @@ export class ApiClient {
     }
   }
 
-  async get<T>(endpoint: string): Promise<ApiResponse<T>> {
+  async get<T = any>(endpoint: string): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint, { method: 'GET' })
   }
 
-  async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async post<T = any>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
     })
   }
 
-  async put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async put<T = any>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint, {
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
     })
   }
 
-  async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
+  async delete<T = any>(endpoint: string): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint, { method: 'DELETE' })
   }
 
-  async patch<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async patch<T = any>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint, {
       method: 'PATCH',
       body: data ? JSON.stringify(data) : undefined,

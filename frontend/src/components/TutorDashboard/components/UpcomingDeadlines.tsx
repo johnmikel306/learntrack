@@ -31,7 +31,7 @@ export function UpcomingDeadlines() {
         }
 
         // Map backend response to frontend format
-        const deadlinesData = (response.data || []).map((item: any) => ({
+        const deadlinesData = ((response.data as any[]) || []).map((item: any) => ({
           id: item.id,
           title: item.title,
           subject: item.subject_name || 'General',

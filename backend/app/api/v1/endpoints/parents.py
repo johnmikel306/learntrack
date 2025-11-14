@@ -71,8 +71,8 @@ async def get_parent(
     """
     try:
         user_service = UserService(db)
-        parent = await user_service.get_by_clerk_id(parent_clerk_id)
-        
+        parent = await user_service.get_user_by_clerk_id(parent_clerk_id)
+
         if not parent or parent.role != UserRole.PARENT:
             raise HTTPException(status_code=404, detail="Parent not found")
         
@@ -103,7 +103,7 @@ async def update_parent_students(
         user_service = UserService(db)
         
         # Verify parent exists and belongs to tutor
-        parent = await user_service.get_by_clerk_id(parent_clerk_id)
+        parent = await user_service.get_user_by_clerk_id(parent_clerk_id)
         if not parent or parent.role != UserRole.PARENT:
             raise HTTPException(status_code=404, detail="Parent not found")
         
@@ -112,7 +112,7 @@ async def update_parent_students(
         
         # Verify all students belong to the tutor
         for student_id in payload.student_ids:
-            student = await user_service.get_by_clerk_id(student_id)
+            student = await user_service.get_user_by_clerk_id(student_id)
             if not student or student.role != UserRole.STUDENT:
                 raise HTTPException(status_code=400, detail=f"Student {student_id} not found")
             if student.tutor_id != current_user.clerk_id:
@@ -135,7 +135,7 @@ async def update_parent_students(
             raise HTTPException(status_code=404, detail="Parent not found")
         
         # Return updated parent
-        updated_parent = await user_service.get_by_clerk_id(parent_clerk_id)
+        updated_parent = await user_service.get_user_by_clerk_id(parent_clerk_id)
         logger.info("Updated parent students", parent_id=parent_clerk_id, student_count=len(payload.student_ids))
         
         return updated_parent
@@ -160,7 +160,7 @@ async def unlink_student_from_parent(
         user_service = UserService(db)
         
         # Verify parent exists and belongs to tutor
-        parent = await user_service.get_by_clerk_id(parent_clerk_id)
+        parent = await user_service.get_user_by_clerk_id(parent_clerk_id)
         if not parent or parent.role != UserRole.PARENT:
             raise HTTPException(status_code=404, detail="Parent not found")
         
@@ -168,7 +168,7 @@ async def unlink_student_from_parent(
             raise HTTPException(status_code=403, detail="Access forbidden: Parent does not belong to this tutor.")
         
         # Verify student exists and belongs to tutor
-        student = await user_service.get_by_clerk_id(student_clerk_id)
+        student = await user_service.get_user_by_clerk_id(student_clerk_id)
         if not student or student.role != UserRole.STUDENT:
             raise HTTPException(status_code=404, detail="Student not found")
         
@@ -217,7 +217,7 @@ async def link_student_to_parent(
         user_service = UserService(db)
         
         # Verify parent exists and belongs to tutor
-        parent = await user_service.get_by_clerk_id(parent_clerk_id)
+        parent = await user_service.get_user_by_clerk_id(parent_clerk_id)
         if not parent or parent.role != UserRole.PARENT:
             raise HTTPException(status_code=404, detail="Parent not found")
         
@@ -225,7 +225,7 @@ async def link_student_to_parent(
             raise HTTPException(status_code=403, detail="Access forbidden: Parent does not belong to this tutor.")
         
         # Verify student exists and belongs to tutor
-        student = await user_service.get_by_clerk_id(student_clerk_id)
+        student = await user_service.get_user_by_clerk_id(student_clerk_id)
         if not student or student.role != UserRole.STUDENT:
             raise HTTPException(status_code=404, detail="Student not found")
         

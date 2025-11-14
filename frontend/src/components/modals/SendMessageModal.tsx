@@ -64,7 +64,7 @@ export function SendMessageModal({
         throw new Error(conversationResponse.error)
       }
 
-      const conversation = conversationResponse.data
+      const conversation = conversationResponse.data as any
 
       // Send message via WebSocket if connected, otherwise use HTTP
       if (socketClient.isConnected()) {

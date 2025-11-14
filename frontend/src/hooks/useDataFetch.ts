@@ -58,7 +58,7 @@ export function useDataFetch<T>({
         ? transform(response.data || [])
         : (response.data || [])
       
-      setData(transformedData)
+      setData(transformedData as T[])
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to load data'
       setError(errorMessage)

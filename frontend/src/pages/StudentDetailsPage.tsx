@@ -85,7 +85,7 @@ export default function StudentDetailsPage() {
       const studentRes = await client.get(`/students/by-slug/${studentSlug}`)
       if (studentRes.error) throw new Error(studentRes.error)
 
-      const userData = studentRes.data
+      const userData = studentRes.data as any
       const studentClerkId = userData.clerk_id || userData._id
 
       setStudent({
@@ -492,9 +492,10 @@ export default function StudentDetailsPage() {
         <SendMessageModal
           open={sendMessageModalOpen}
           onOpenChange={setSendMessageModalOpen}
-          recipient={{
+          student={{
             id: student.id,
             name: student.name,
+            email: student.email,
             avatar: student.avatar
           }}
           onMessageSent={() => {

@@ -32,12 +32,12 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ onCreateAssignment }: DashboardHeaderProps) {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [notifications, setNotifications] = useState([])
+  const [notifications, setNotifications] = useState<any[]>([])
   const { user } = useUser()
   const { signOut } = useClerk()
   const navigate = useNavigate()
 
-  const unreadCount = 0
+  const unreadCount: number = 0
   const allRead = true
 
   // Mark all notifications as read/unread

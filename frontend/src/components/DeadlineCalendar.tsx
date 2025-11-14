@@ -22,7 +22,7 @@ export function DeadlineCalendar() {
           throw new Error(response.error)
         }
 
-        setAssignments(response.data || [])
+        setAssignments((response.data as any[]) || [])
       } catch (err: any) {
         console.error('Failed to fetch assignments:', err)
         // Don't show error toast to avoid annoying users

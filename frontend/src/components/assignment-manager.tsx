@@ -57,7 +57,7 @@ export default function AssignmentManager() {
           throw new Error(response.error)
         }
         // Map API response to Assignment interface
-        const assignmentsData = (response.data || []).map((assignment: any) => ({
+        const assignmentsData = ((response.data as any[]) || []).map((assignment: any) => ({
           id: assignment._id,
           title: assignment.title,
           subject: assignment.subject_id?.name || "Unknown",

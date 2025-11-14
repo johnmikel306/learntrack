@@ -64,7 +64,9 @@ export default function RelationshipsView() {
     try {
       setLoading(true)
       const token = await getToken()
-      const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+      const RAW_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000'
+      const NORMALIZED = RAW_BASE.replace(/\/+$/, '')
+      const API_BASE = NORMALIZED.match(/\/api\/v\d+$/) ? NORMALIZED : `${NORMALIZED}/api/v1`
 
       // Load students
       const studentsResponse = await fetch(`${API_BASE}/students`, {
@@ -72,7 +74,7 @@ export default function RelationshipsView() {
       })
       if (!studentsResponse.ok) throw new Error('Failed to load students')
       const studentsData = await studentsResponse.json()
-      setStudents(studentsData.students || [])
+      setStudents(studentsData.items || studentsData.students || [])
 
       // Load parents
       const parentsResponse = await fetch(`${API_BASE}/parents`, {
@@ -133,7 +135,9 @@ export default function RelationshipsView() {
 
     try {
       const token = await getToken()
-      const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+      const RAW_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000'
+      const NORMALIZED = RAW_BASE.replace(/\/+$/, '')
+      const API_BASE = NORMALIZED.match(/\/api\/v\d+$/) ? NORMALIZED : `${NORMALIZED}/api/v1`
 
       const response = await fetch(`${API_BASE}/parents/${parentId}/students/${selectedStudent.clerk_id}`, {
         method: 'DELETE',

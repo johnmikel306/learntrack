@@ -51,11 +51,12 @@ async def get_database_status(
     """Get current database status and record counts"""
     try:
         collections = [
-            "users", "subjects", "questions", 
-            "assignments", "progress", 
-            "notifications"
+            "tutors", "students", "parents",
+            "subjects", "questions",
+            "assignments", "progress",
+            "notifications", "invitations", "assignment_templates", "student_groups"
         ]
-        
+
         status = {}
         for collection in collections:
             count = await database[collection].count_documents({})

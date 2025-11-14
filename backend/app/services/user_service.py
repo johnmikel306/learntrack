@@ -48,7 +48,7 @@ class UserService:
                     return User(**existing_user)
 
             # Check if user already exists by email (for duplicate key prevention)
-            existing_email_user = await self.collection.find_one({"email": user_data.email})
+            existing_email_user = await collection.find_one({"email": user_data.email})
             if existing_email_user:
                 logger.warning("User with email already exists", email=user_data.email, existing_clerk_id=existing_email_user.get("clerk_id"))
                 return User(**existing_email_user)
@@ -58,10 +58,10 @@ class UserService:
             user_dict["created_at"] = datetime.utcnow()
             user_dict["updated_at"] = datetime.utcnow()
 
-            # Generate unique slug from name
+            # Generate unique slug from name in the appropriate role collection
             user_dict["slug"] = await generate_unique_slug(
                 self.db,
-                "users",
+                collection.name,
                 user_data.name
             )
 
@@ -218,16 +218,20 @@ class UserService:
             raise DatabaseException(f"Failed to update user: {str(e)}")
 
     async def get_user_by_email(self, email: str) -> Optional[User]:
-        """Get user by email"""
+        """Get user by email - searches across all role collections"""
         try:
-            user = await self.collection.find_one({"email": email})
-            return User(**user) if user else None
+            # Try each collection
+            for collection in [self.tutors_collection, self.students_collection, self.parents_collection]:
+                user = await collection.find_one({"email": email})
+                if user:
+                    return User(**user)
+            return None
         except Exception as e:
             logger.error("Failed to get user by email", email=email, error=str(e))
             raise DatabaseException(f"Failed to get user: {str(e)}")
 
     async def update_user(self, user_id: str, user_update: UserUpdate) -> User:
-        """Update user"""
+        """Update user - searches across all role collections"""
         try:
             update_data = user_update.dict(exclude_unset=True)
             if not update_data:
@@ -238,24 +242,29 @@ class UserService:
             # If name is being updated, regenerate slug
             if "name" in update_data:
                 oid = to_object_id(user_id)
+                # Determine correct collection based on existing user role
+                existing_user = await self.get_user_by_id(user_id)
+                collection_name = "tutors" if existing_user.role == UserRole.TUTOR else ("students" if existing_user.role == UserRole.STUDENT else "parents")
                 update_data["slug"] = await generate_unique_slug(
                     self.db,
-                    "users",
+                    collection_name,
                     update_data["name"],
                     exclude_id=oid
                 )
 
             oid = to_object_id(user_id)
-            result = await self.collection.update_one(
-                {"_id": oid},
-                {"$set": update_data}
-            )
 
-            if result.matched_count == 0:
-                raise NotFoundError("User", user_id)
+            # Try to update in each collection
+            for collection in [self.tutors_collection, self.students_collection, self.parents_collection]:
+                result = await collection.update_one(
+                    {"_id": oid},
+                    {"$set": update_data}
+                )
+                if result.matched_count > 0:
+                    logger.info("User updated", user_id=user_id, collection=collection.name)
+                    return await self.get_user_by_id(user_id)
 
-            logger.info("User updated", user_id=user_id)
-            return await self.get_user_by_id(user_id)
+            raise NotFoundError("User", user_id)
 
         except NotFoundError:
             raise
@@ -264,19 +273,21 @@ class UserService:
             raise DatabaseException(f"Failed to update user: {str(e)}")
     
     async def delete_user(self, user_id: str) -> bool:
-        """Delete user (soft delete by setting is_active=False)"""
+        """Delete user (soft delete by setting is_active=False) - searches across all role collections"""
         try:
             oid = to_object_id(user_id)
-            result = await self.collection.update_one(
-                {"_id": oid},
-                {"$set": {"is_active": False, "updated_at": datetime.utcnow()}}
-            )
 
-            if result.matched_count == 0:
-                raise NotFoundError("User", user_id)
+            # Try to delete in each collection
+            for collection in [self.tutors_collection, self.students_collection, self.parents_collection]:
+                result = await collection.update_one(
+                    {"_id": oid},
+                    {"$set": {"is_active": False, "updated_at": datetime.utcnow()}}
+                )
+                if result.matched_count > 0:
+                    logger.info("User deleted", user_id=user_id, collection=collection.name)
+                    return True
 
-            logger.info("User deleted", user_id=user_id)
-            return True
+            raise NotFoundError("User", user_id)
 
         except NotFoundError:
             raise
@@ -378,90 +389,26 @@ class UserService:
             logger.error("Failed to assign student to tutor", error=str(e))
             raise DatabaseException(f"Failed to assign student: {str(e)}")
 
-    async def assign_child_to_parent(self, child_id: str, parent_id: str) -> bool:
-        """Assign child to parent using parents collection"""
+    async def assign_child_to_parent(self, child_clerk_id: str, parent_clerk_id: str) -> bool:
+        """Assign child to parent using parents collection (IDs are Clerk IDs)"""
         try:
-            # Update parent's children list
-            parent_oid = to_object_id(parent_id)
+            # Update parent's children list by Clerk ID and keep both fields in sync
             await self.parents_collection.update_one(
-                {"_id": parent_oid},
-                {"$addToSet": {"parent_children": child_id}, "$set": {"updated_at": datetime.utcnow()}}
+                {"clerk_id": parent_clerk_id},
+                {
+                    "$addToSet": {
+                        "parent_children": child_clerk_id,
+                        "student_ids": child_clerk_id
+                    },
+                    "$set": {"updated_at": datetime.utcnow()}
+                }
             )
 
-            logger.info("Child assigned to parent", child_id=child_id, parent_id=parent_id)
+            logger.info("Child assigned to parent", child_id=child_clerk_id, parent_id=parent_clerk_id)
             return True
 
         except Exception as e:
             logger.error("Failed to assign child to parent", error=str(e))
             raise DatabaseException(f"Failed to assign child: {str(e)}")
 
-    # Clerk-specific methods for backend-first authentication
-    async def get_user_by_clerk_id(self, clerk_id: str) -> Optional[User]:
-        """Get user by Clerk ID"""
-        try:
-            user_doc = await self.collection.find_one({"clerk_id": clerk_id})
-            if user_doc:
-                return User(**user_doc)
-            return None
-        except Exception as e:
-            logger.error("Error getting user by Clerk ID", clerk_id=clerk_id, error=str(e))
-            raise DatabaseException(f"Failed to get user by Clerk ID: {str(e)}")
 
-    async def create_user_from_clerk(self, clerk_context) -> User:
-        """Create user from Clerk user context"""
-        try:
-            user_data = {
-                "clerk_id": clerk_context.clerk_id,
-                "email": clerk_context.email,
-                "name": clerk_context.name,
-                "role": clerk_context.role,
-                "roles": [role.value for role in clerk_context.roles],
-                "is_active": True,
-                "created_at": clerk_context.created_at or datetime.utcnow(),
-                "updated_at": datetime.utcnow(),
-                "last_login": clerk_context.last_sign_in or datetime.utcnow(),
-                "profile": {
-                    "bio": "",
-                    "avatar_url": "",
-                    "preferences": {}
-                },
-                "student_tutors": [],
-                "parent_children": []
-            }
-
-            result = await self.collection.insert_one(user_data)
-            user_data["_id"] = result.inserted_id
-
-            logger.info("Created user from Clerk", clerk_id=clerk_context.clerk_id)
-            return User(**user_data)
-
-        except Exception as e:
-            logger.error("Error creating user from Clerk", clerk_id=clerk_context.clerk_id, error=str(e))
-            raise DatabaseException(f"Failed to create user from Clerk: {str(e)}")
-
-    async def update_user_from_clerk(self, clerk_context) -> User:
-        """Update existing user from Clerk user context"""
-        try:
-            update_data = {
-                "email": clerk_context.email,
-                "name": clerk_context.name,
-                "role": clerk_context.role,
-                "roles": [role.value for role in clerk_context.roles],
-                "updated_at": datetime.utcnow(),
-                "last_login": clerk_context.last_sign_in or datetime.utcnow()
-            }
-
-            result = await self.collection.update_one(
-                {"clerk_id": clerk_context.clerk_id},
-                {"$set": update_data}
-            )
-
-            if result.modified_count > 0:
-                logger.debug("Updated user from Clerk", clerk_id=clerk_context.clerk_id)
-
-            # Return updated user
-            return await self.get_user_by_clerk_id(clerk_context.clerk_id)
-
-        except Exception as e:
-            logger.error("Error updating user from Clerk", clerk_id=clerk_context.clerk_id, error=str(e))
-            raise DatabaseException(f"Failed to update user from Clerk: {str(e)}")

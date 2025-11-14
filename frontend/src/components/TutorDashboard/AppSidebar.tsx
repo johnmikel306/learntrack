@@ -189,8 +189,8 @@ export function AppSidebar({ activeView, onViewChange }: AppSidebarProps) {
       try {
         const response = await client.get('/notifications')
         if (response.data) {
-          setNotifications(response.data)
-          setUnreadCount(response.data.filter((n: any) => !n.is_read).length)
+          setNotifications(response.data as any[])
+          setUnreadCount((response.data as any[]).filter((n: any) => !n.is_read).length)
         }
       } catch (err) {
         console.error('Failed to fetch notifications:', err)

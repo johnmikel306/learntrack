@@ -41,7 +41,7 @@ const EventCalendar = ({ events: propEvents, isLoading: propLoading }: EventCale
         }
 
         // Convert assignments to events
-        const assignmentEvents: Event[] = (response.data || [])
+        const assignmentEvents: Event[] = ((response.data as any[]) || [])
           .filter((assignment: any) => assignment.due_date)
           .map((assignment: any) => ({
             id: assignment._id,

@@ -134,6 +134,23 @@ class StudentGroupInDB(StudentGroupBase):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
+    # Coerce legacy ObjectId values to strings for compatibility
+    @field_validator('id', mode='before')
+    @classmethod
+    def validate_object_id(cls, v):
+        if isinstance(v, ObjectId):
+            return str(v)
+        return v
+
+    @field_validator('studentIds', mode='before')
+    @classmethod
+    def validate_student_ids(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, list):
+            return [str(x) if isinstance(x, ObjectId) else x for x in v]
+        return v
+
     model_config = ConfigDict(
         populate_by_name=True,
         arbitrary_types_allowed=True,

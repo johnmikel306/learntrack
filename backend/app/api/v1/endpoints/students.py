@@ -113,7 +113,7 @@ async def get_student(
     """
     try:
         user_service = UserService(db)
-        student = await user_service.get_by_clerk_id(student_clerk_id)
+        student = await user_service.get_user_by_clerk_id(student_clerk_id)
 
         if not student or student.role != UserRole.STUDENT:
             raise HTTPException(status_code=404, detail="Student not found")
@@ -142,7 +142,7 @@ async def update_student(
     try:
         user_service = UserService(db)
         # First, verify the student exists and belongs to the tutor
-        student_to_update = await user_service.get_by_clerk_id(student_clerk_id)
+        student_to_update = await user_service.get_user_by_clerk_id(student_clerk_id)
         if not student_to_update or student_to_update.role != UserRole.STUDENT:
             raise HTTPException(status_code=404, detail="Student not found")
         
@@ -153,7 +153,7 @@ async def update_student(
         if hasattr(payload, 'role') and payload.role and payload.role != UserRole.STUDENT:
             raise HTTPException(status_code=400, detail="Cannot change user role via this endpoint.")
 
-        updated_student = await user_service.update_user(student_clerk_id, payload)
+        updated_student = await user_service.update_user(student_to_update.id, payload)
         return updated_student
     except HTTPException:
         raise

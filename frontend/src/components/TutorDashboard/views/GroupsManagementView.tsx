@@ -42,7 +42,7 @@ export default function GroupsManagementView() {
       const token = await getToken()
       const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
-      const response = await fetch(`${API_BASE}/students/groups`, {
+      const response = await fetch(`${API_BASE}/groups`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -68,7 +68,7 @@ export default function GroupsManagementView() {
       const token = await getToken()
       const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
-      const response = await fetch(`${API_BASE}/students/groups/${selectedGroup._id}`, {
+      const response = await fetch(`${API_BASE}/groups/${selectedGroup._id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

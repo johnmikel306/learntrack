@@ -92,7 +92,7 @@ export default function QuestionBankManager() {
         setLoading(true)
         const response = await client.get('/questions')
         if (response.data) {
-          const mappedQuestions = response.data.map((q: any) => ({
+          const mappedQuestions = (response.data as any[]).map((q: any) => ({
             id: q._id,
             text: q.text,
             subject: q.subject_id?.name || 'Unknown',

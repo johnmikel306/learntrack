@@ -28,7 +28,7 @@ export function SubjectPerformance() {
           throw new Error(response.error)
         }
 
-        setAssignments(response.data || [])
+        setAssignments((response.data as any[]) || [])
       } catch (err: any) {
         console.error('Failed to fetch assignments:', err)
       } finally {

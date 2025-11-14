@@ -46,23 +46,23 @@ class Database:
         """Create database indexes for better performance"""
         try:
             # Tutors collection indexes
-            await self.database.tutors.create_index("clerk_id", unique=True, name="clerk_id_unique")
-            await self.database.tutors.create_index("email", unique=True, name="email_unique")
-            await self.database.tutors.create_index("slug", unique=True, name="slug_unique")
+            await self.database.tutors.create_index("clerk_id", unique=True)
+            await self.database.tutors.create_index("email", unique=True)
+            await self.database.tutors.create_index("slug", unique=True)
             await self.database.tutors.create_index("tenant_id")
 
             # Students collection indexes
-            await self.database.students.create_index("clerk_id", unique=True, name="clerk_id_unique")
-            await self.database.students.create_index("email", unique=True, name="email_unique")
-            await self.database.students.create_index("slug", unique=True, name="slug_unique")
+            await self.database.students.create_index("clerk_id", unique=True)
+            await self.database.students.create_index("email", unique=True)
+            await self.database.students.create_index("slug", unique=True)
             await self.database.students.create_index("tutor_id")
             await self.database.students.create_index("tenant_id")
             await self.database.students.create_index([("tutor_id", 1), ("is_active", 1)])
 
             # Parents collection indexes
-            await self.database.parents.create_index("clerk_id", unique=True, name="clerk_id_unique")
-            await self.database.parents.create_index("email", unique=True, name="email_unique")
-            await self.database.parents.create_index("slug", unique=True, name="slug_unique")
+            await self.database.parents.create_index("clerk_id", unique=True)
+            await self.database.parents.create_index("email", unique=True)
+            await self.database.parents.create_index("slug", unique=True)
             await self.database.parents.create_index("tutor_id")
             await self.database.parents.create_index("tenant_id")
             await self.database.parents.create_index("student_ids")
@@ -88,7 +88,7 @@ class Database:
             await self.database.progress.create_index("assignment_id")
 
             # Student groups collection indexes
-            await self.database.student_groups.create_index("userId")
+            await self.database.student_groups.create_index("tutor_id")
 
             # Files collection indexes
             await self.database.files.create_index("userId")

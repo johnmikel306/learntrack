@@ -100,7 +100,7 @@ export function StudentDetailsModal({
       const studentRes = await client.get(`/users/${studentId}`)
       if (studentRes.error) throw new Error(studentRes.error)
 
-      const userData = studentRes.data
+      const userData = studentRes.data as any
 
       setStudent({
         id: userData.clerk_id || userData._id,
