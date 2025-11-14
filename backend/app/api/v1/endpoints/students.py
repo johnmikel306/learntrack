@@ -1,6 +1,6 @@
 """
-Student management endpoints, now operating on the unified 'users' collection.
-A "student" is a user with the role 'student'.
+Student management endpoints, operating on the role-specific "students" collection.
+A "student" is a user with the role "student".
 """
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Query

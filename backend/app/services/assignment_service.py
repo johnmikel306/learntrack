@@ -77,7 +77,7 @@ class AssignmentService:
             # Send email notifications to students
             try:
                 # Get tutor info
-                tutor = await self.db.users.find_one({"clerk_id": tutor_id})
+                tutor = await self.db.tutors.find_one({"clerk_id": tutor_id})
                 tutor_name = tutor.get("name", "Your Teacher") if tutor else "Your Teacher"
 
                 assignment_link = f"{FRONTEND_URL}/assignments/{str(result.inserted_id)}"
