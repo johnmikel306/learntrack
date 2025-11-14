@@ -32,9 +32,10 @@ interface InviteUserModalProps {
   onSuccess?: () => void
   editMode?: boolean
   invitation?: Invitation
+  role?: 'student' | 'parent'  // Add role prop for pre-selecting role
 }
 
-export default function InviteUserModal({ open, onOpenChange, onSuccess, editMode = false, invitation }: InviteUserModalProps) {
+export default function InviteUserModal({ open, onOpenChange, onSuccess, editMode = false, invitation, role }: InviteUserModalProps) {
   const { getToken } = useAuth()
   const [loading, setLoading] = useState(false)
   const [students, setStudents] = useState<Student[]>([])
@@ -42,7 +43,7 @@ export default function InviteUserModal({ open, onOpenChange, onSuccess, editMod
   const [formData, setFormData] = useState({
     invitee_email: '',
     invitee_name: '',
-    role: 'student',
+    role: role || 'student',  // Use role prop if provided
     message: '',
     student_ids: [] as string[]
   })
@@ -192,7 +193,7 @@ export default function InviteUserModal({ open, onOpenChange, onSuccess, editMod
             </Label>
             <Select
               value={formData.role}
-              onValueChange={(value) => setFormData({ ...formData, role: value, student_ids: [] })}
+              onValueChange={(value: 'student' | 'parent') => setFormData({ ...formData, role: value, student_ids: [] })}
               disabled={editMode}
             >
               <SelectTrigger className="bg-background border-border h-11">

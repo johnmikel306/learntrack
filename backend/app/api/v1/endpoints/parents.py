@@ -37,10 +37,9 @@ async def list_parents_for_tutor(
     try:
         user_service = UserService(db)
         
-        # Get all parents for this tutor
-        cursor = db.users.find(
+        # Get all parents for this tutor from parents collection
+        cursor = db.parents.find(
             {
-                "role": UserRole.PARENT.value,
                 "tutor_id": current_user.clerk_id,
                 "is_active": True
             }
@@ -119,9 +118,9 @@ async def update_parent_students(
             if student.tutor_id != current_user.clerk_id:
                 raise HTTPException(status_code=403, detail=f"Student {student_id} does not belong to this tutor")
         
-        # Update parent's student_ids
+        # Update parent's student_ids in parents collection
         from datetime import datetime
-        result = await db.users.update_one(
+        result = await db.parents.update_one(
             {"clerk_id": parent_clerk_id},
             {
                 "$set": {
@@ -176,9 +175,9 @@ async def unlink_student_from_parent(
         if student.tutor_id != current_user.clerk_id:
             raise HTTPException(status_code=403, detail="Student does not belong to this tutor")
         
-        # Remove student from parent's lists
+        # Remove student from parent's lists in parents collection
         from datetime import datetime
-        result = await db.users.update_one(
+        result = await db.parents.update_one(
             {"clerk_id": parent_clerk_id},
             {
                 "$pull": {
@@ -233,9 +232,9 @@ async def link_student_to_parent(
         if student.tutor_id != current_user.clerk_id:
             raise HTTPException(status_code=403, detail="Student does not belong to this tutor")
         
-        # Add student to parent's lists
+        # Add student to parent's lists in parents collection
         from datetime import datetime
-        result = await db.users.update_one(
+        result = await db.parents.update_one(
             {"clerk_id": parent_clerk_id},
             {
                 "$addToSet": {

@@ -1,6 +1,7 @@
 "use client"
 
-import { useToast } from "@/hooks/use-toast"
+// Fix import path: use-toast lives under components/ui in this project
+import { useToast } from "@/components/ui/use-toast"
 import {
   Toast,
   ToastClose,

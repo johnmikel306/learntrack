@@ -255,30 +255,28 @@ export function StudentDetailsModal({
             {/* Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
               {/* Academic Progress Summary */}
-              <Card className="bg-[#0f0f0f] border-gray-800 col-span-1 lg:col-span-2">
+              <Card className="border-border bg-card col-span-1 lg:col-span-2">
                 <CardHeader>
-                  <CardTitle className="text-white">Academic Progress Summary</CardTitle>
+                  <CardTitle className="text-foreground">Academic Progress Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={250}>
                     <LineChart data={progressData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                       <XAxis
                         dataKey="month"
-                        stroke="#888"
-                        tick={{ fill: '#888' }}
+                        tick={{ fill: 'hsl(var(--muted-foreground))' }}
                       />
                       <YAxis
-                        stroke="#888"
-                        tick={{ fill: '#888' }}
+                        tick={{ fill: 'hsl(var(--muted-foreground))' }}
                         domain={[60, 100]}
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: '#2a2a2a',
-                          border: '1px solid #444',
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
                           borderRadius: '8px',
-                          color: '#fff'
+                          color: 'hsl(var(--foreground))'
                         }}
                       />
                       <Line
@@ -295,43 +293,43 @@ export function StudentDetailsModal({
               </Card>
 
               {/* Personal Information */}
-              <Card className="bg-[#0f0f0f] border-gray-800">
+              <Card className="border-border bg-card">
                 <CardHeader>
-                  <CardTitle className="text-white">Personal Information</CardTitle>
+                  <CardTitle className="text-foreground">Personal Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Full Name:</span>
-                    <span className="text-white font-medium">{student.name}</span>
+                    <span className="text-muted-foreground">Full Name:</span>
+                    <span className="text-foreground font-medium">{student.name}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Student ID:</span>
-                    <span className="text-white font-medium">{student.studentId}</span>
+                    <span className="text-muted-foreground">Student ID:</span>
+                    <span className="text-foreground font-medium">{student.studentId}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Email:</span>
-                    <span className="text-white font-medium">{student.email}</span>
+                    <span className="text-muted-foreground">Email:</span>
+                    <span className="text-foreground font-medium text-sm break-all">{student.email}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Parent/Guardian:</span>
+                    <span className="text-muted-foreground">Parent/Guardian:</span>
                     <span className="text-[#C8A882] font-medium">{student.parentName || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Grade Level:</span>
-                    <span className="text-white font-medium">{student.grade}</span>
+                    <span className="text-muted-foreground">Grade Level:</span>
+                    <span className="text-foreground font-medium">{student.grade}</span>
                   </div>
                 </CardContent>
               </Card>
 
               {/* Assignments & Groups */}
-              <Card className="bg-[#0f0f0f] border-gray-800">
+              <Card className="border-border bg-card">
                 <CardHeader>
-                  <CardTitle className="text-white">Assignments & Groups</CardTitle>
+                  <CardTitle className="text-foreground">Assignments & Groups</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {/* Pending Assignments */}
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-300 mb-2">
+                    <h4 className="text-sm font-semibold text-foreground mb-2">
                       Pending Assignments ({pendingAssignments.length})
                     </h4>
                     <div className="space-y-2">
@@ -339,26 +337,26 @@ export function StudentDetailsModal({
                         pendingAssignments.map(assignment => (
                           <div
                             key={assignment.id}
-                            className="flex items-center justify-between p-2 rounded bg-[#1a1a1a] border border-gray-800"
+                            className="flex items-center justify-between p-2 rounded bg-muted/50 border border-border"
                           >
-                            <div className="flex-1">
-                              <p className="text-sm text-white font-medium">{assignment.title}</p>
-                              <p className="text-xs text-gray-400">{assignment.subject}</p>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-foreground font-medium">{assignment.title}</p>
+                              <p className="text-xs text-muted-foreground">{assignment.subject}</p>
                             </div>
-                            <Badge variant="destructive" className="text-xs">
+                            <Badge variant="destructive" className="text-xs ml-2 flex-shrink-0">
                               Due {format(new Date(assignment.dueDate), 'MMM dd')}
                             </Badge>
                           </div>
                         ))
                       ) : (
-                        <p className="text-sm text-gray-500">No pending assignments</p>
+                        <p className="text-sm text-muted-foreground">No pending assignments</p>
                       )}
                     </div>
                   </div>
 
                   {/* Active Groups */}
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-300 mb-2">
+                    <h4 className="text-sm font-semibold text-foreground mb-2">
                       Active Groups ({groups.length})
                     </h4>
                     <div className="space-y-2">
@@ -366,14 +364,14 @@ export function StudentDetailsModal({
                         groups.map(group => (
                           <div
                             key={group.id}
-                            className="flex items-center gap-2 p-2 rounded bg-[#1a1a1a] border border-gray-800"
+                            className="flex items-center gap-2 p-2 rounded bg-muted/50 border border-border"
                           >
-                            <Users className="h-4 w-4 text-[#C8A882]" />
-                            <span className="text-sm text-white">{group.name}</span>
+                            <Users className="h-4 w-4 text-[#C8A882] flex-shrink-0" />
+                            <span className="text-sm text-foreground">{group.name}</span>
                           </div>
                         ))
                       ) : (
-                        <p className="text-sm text-gray-500">No active groups</p>
+                        <p className="text-sm text-muted-foreground">No active groups</p>
                       )}
                     </div>
                   </div>
@@ -381,9 +379,9 @@ export function StudentDetailsModal({
               </Card>
 
               {/* Recent Activity */}
-              <Card className="bg-[#0f0f0f] border-gray-800 col-span-1 lg:col-span-2">
+              <Card className="border-border bg-card col-span-1 lg:col-span-2">
                 <CardHeader>
-                  <CardTitle className="text-white">Recent Activity</CardTitle>
+                  <CardTitle className="text-foreground">Recent Activity</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -391,27 +389,27 @@ export function StudentDetailsModal({
                       activities.map(activity => (
                         <div
                           key={activity.id}
-                          className="flex items-start gap-3 p-3 rounded bg-[#1a1a1a] border border-gray-800"
+                          className="flex items-start gap-3 p-3 rounded bg-muted/50 border border-border"
                         >
                           {activity.type === 'assignment' && activity.status === 'completed' ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />
+                            <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
                           ) : (
-                            <FileText className="h-5 w-5 text-blue-500 mt-0.5" />
+                            <FileText className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
                           )}
-                          <div className="flex-1">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <p className="text-sm font-medium text-white">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-foreground">
                                   {activity.type === 'assignment' ? 'Completed Assignment: ' : 'Submitted: '}
                                   "{activity.title}"
                                 </p>
-                                <p className="text-xs text-gray-400 mt-1">
+                                <p className="text-xs text-muted-foreground mt-1">
                                   {format(new Date(activity.timestamp), 'PPp')}
                                   {activity.status === 'awaiting_grade' && ' · Awaiting Grade'}
                                 </p>
                               </div>
                               {activity.score !== undefined && (
-                                <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                                <Badge className="bg-green-500/20 text-green-400 border-green-500/30 flex-shrink-0">
                                   Score: {activity.score}%
                                 </Badge>
                               )}
@@ -420,7 +418,7 @@ export function StudentDetailsModal({
                         </div>
                       ))
                     ) : (
-                      <p className="text-sm text-gray-500 text-center py-4">No recent activity</p>
+                      <p className="text-sm text-muted-foreground text-center py-4">No recent activity</p>
                     )}
                   </div>
                 </CardContent>

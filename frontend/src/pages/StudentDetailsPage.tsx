@@ -1,16 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
-import { Separator } from "@/components/ui/separator"
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { 
-  MessageCircle, 
-  Edit, 
-  CheckCircle2, 
+import {
+  MessageCircle,
+  Edit,
+  CheckCircle2,
   Clock,
   Users,
   FileText,
@@ -20,7 +17,6 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useApiClient } from '@/lib/api-client'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
-import { AppSidebar } from '@/components/TutorDashboard/AppSidebar'
 import { SendMessageModal } from '@/components/modals/SendMessageModal'
 
 interface StudentDetails {
@@ -67,7 +63,7 @@ interface ProgressData {
 }
 
 export default function StudentDetailsPage() {
-  const { studentId } = useParams<{ studentId: string }>()
+  const { studentSlug } = useParams<{ studentSlug: string }>()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [student, setStudent] = useState<StudentDetails | null>(null)
@@ -75,25 +71,25 @@ export default function StudentDetailsPage() {
   const [groups, setGroups] = useState<Group[]>([])
   const [activities, setActivities] = useState<Activity[]>([])
   const [progressData, setProgressData] = useState<ProgressData[]>([])
-  const [activeView, setActiveView] = useState('all-students')
   const [sendMessageModalOpen, setSendMessageModalOpen] = useState(false)
 
   const client = useApiClient()
 
   const fetchStudentDetails = async () => {
-    if (!studentId) return
+    if (!studentSlug) return
 
     try {
       setLoading(true)
 
-      // Fetch student details
-      const studentRes = await client.get(`/users/${studentId}`)
+      // Fetch student details by slug
+      const studentRes = await client.get(`/students/by-slug/${studentSlug}`)
       if (studentRes.error) throw new Error(studentRes.error)
 
       const userData = studentRes.data
+      const studentClerkId = userData.clerk_id || userData._id
 
       setStudent({
-        id: userData.clerk_id || userData._id,
+        id: studentClerkId,
         name: userData.name,
         email: userData.email,
         avatar: userData.avatar_url,
@@ -110,7 +106,7 @@ export default function StudentDetailsPage() {
 
       // Fetch progress data from API
       try {
-        const progressRes = await client.get(`/progress/student/${studentId}/analytics`)
+        const progressRes = await client.get(`/progress/student/${studentClerkId}/analytics`)
         if (progressRes.data?.monthly_scores) {
           setProgressData(progressRes.data.monthly_scores)
         }
@@ -122,7 +118,7 @@ export default function StudentDetailsPage() {
 
       // Fetch assignments from API
       try {
-        const assignmentsRes = await client.get(`/assignments/student/${studentId}?status=pending`)
+        const assignmentsRes = await client.get(`/assignments/student/${studentClerkId}?status=pending`)
         if (assignmentsRes.data) {
           const mappedAssignments = assignmentsRes.data.map((a: any) => ({
             id: a._id,
@@ -140,7 +136,7 @@ export default function StudentDetailsPage() {
 
       // Fetch groups from API
       try {
-        const groupsRes = await client.get(`/groups/student/${studentId}`)
+        const groupsRes = await client.get(`/groups/student/${studentClerkId}`)
         if (groupsRes.data) {
           const mappedGroups = groupsRes.data.map((g: any) => ({
             id: g._id,
@@ -156,7 +152,7 @@ export default function StudentDetailsPage() {
 
       // Fetch recent activity from API
       try {
-        const activityRes = await client.get(`/activity/student/${studentId}`)
+        const activityRes = await client.get(`/activity/student/${studentClerkId}`)
         if (activityRes.data) {
           const mappedActivities = activityRes.data.map((a: any) => ({
             id: a._id,
@@ -180,11 +176,11 @@ export default function StudentDetailsPage() {
   }
 
   useEffect(() => {
-    if (studentId) {
-      console.log('StudentDetailsPage loaded with studentId:', studentId)
+    if (studentSlug) {
+      console.log('StudentDetailsPage loaded with studentSlug:', studentSlug)
       fetchStudentDetails()
     }
-  }, [studentId])
+  }, [studentSlug])
 
   const getInitials = (name: string) => {
     return name
@@ -203,78 +199,65 @@ export default function StudentDetailsPage() {
     toast.info('Edit profile feature coming soon')
   }
 
-  const handleViewChange = (view: string) => {
-    // Map view names to routes
-    const viewToRoute: Record<string, string> = {
-      'overview': '/dashboard',
-      'all-students': '/dashboard/students',
-      'invitations': '/dashboard/invitations',
-      'groups': '/dashboard/groups',
-      'relationships': '/dashboard/relationships',
-      'ai-generator': '/dashboard/content/generator',
-      'review-questions': '/dashboard/content/review',
-      'question-bank': '/dashboard/content/bank',
-      'resources': '/dashboard/content/materials',
-      'subjects': '/dashboard/content/subjects',
-      'active-assignments': '/dashboard/assignments',
-      'create-new': '/dashboard/assignments/create',
-      'templates': '/dashboard/assignments/templates',
-      'grading': '/dashboard/assignments/grading',
-      'chats': '/dashboard/messages/chats',
-      'emails': '/dashboard/messages/emails',
-      'settings': '/settings',
-    }
-
-    const route = viewToRoute[view] || '/dashboard'
-    navigate(route)
-  }
-
   const pendingAssignments = assignments.filter(a => a.status === 'pending')
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#C8A882]"></div>
-      </div>
-    )
-  }
-
-  if (!student) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Student not found</h2>
-          <Button onClick={() => navigate('/dashboard/students')}>Back to Students</Button>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <SidebarProvider>
-      <AppSidebar activeView={activeView} onViewChange={handleViewChange} />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink onClick={() => navigate('/dashboard/students')} className="cursor-pointer">
-                  All Students
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage>{student.name}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </header>
+    <div className="flex-1 overflow-y-auto bg-background p-6">
+          {loading ? (
+            // Loading skeleton
+            <div className="space-y-6">
+              {/* Header skeleton */}
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="h-16 w-16 bg-gray-700 rounded-full animate-pulse"></div>
+                  <div className="space-y-2">
+                    <div className="h-6 w-48 bg-gray-700 rounded animate-pulse"></div>
+                    <div className="h-4 w-64 bg-gray-700 rounded animate-pulse"></div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <div className="h-10 w-32 bg-gray-700 rounded animate-pulse"></div>
+                  <div className="h-10 w-32 bg-gray-700 rounded animate-pulse"></div>
+                </div>
+              </div>
 
-        <div className="flex-1 overflow-y-auto bg-[#1a1a1a] dark:bg-[#1a1a1a] text-white p-6">
-          {/* Header */}
-          <div className="mb-8">
+              {/* Stats cards skeleton */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="bg-gray-800 rounded-lg p-4 space-y-2">
+                    <div className="h-4 w-24 bg-gray-700 rounded animate-pulse"></div>
+                    <div className="h-8 w-16 bg-gray-700 rounded animate-pulse"></div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Content cards skeleton */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="bg-gray-800 rounded-lg p-6 space-y-4">
+                    <div className="h-6 w-32 bg-gray-700 rounded animate-pulse"></div>
+                    <div className="space-y-2">
+                      <div className="h-4 w-full bg-gray-700 rounded animate-pulse"></div>
+                      <div className="h-4 w-3/4 bg-gray-700 rounded animate-pulse"></div>
+                      <div className="h-4 w-1/2 bg-gray-700 rounded animate-pulse"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : !student ? (
+            // Error state
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <h2 className="text-2xl font-bold mb-4">Student not found</h2>
+                <Button onClick={() => navigate('/dashboard/students')}>Back to Students</Button>
+              </div>
+            </div>
+          ) : (
+            // Actual content
+            <>
+              {/* Header */}
+              <div className="mb-8">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
@@ -318,22 +301,30 @@ export default function StudentDetailsPage() {
             {/* Left Column - Academic Progress & Recent Activity */}
             <div className="lg:col-span-2 space-y-6">
               {/* Academic Progress Summary */}
-              <Card className="bg-[#0f0f0f] border-gray-800">
+              <Card className="border-border bg-card">
                 <CardHeader>
-                  <CardTitle className="text-white">Academic Progress Summary</CardTitle>
+                  <CardTitle className="text-foreground">Academic Progress Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={progressData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                      <XAxis dataKey="month" stroke="#888" />
-                      <YAxis stroke="#888" domain={[60, 100]} />
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis
+                        dataKey="month"
+                        className="text-muted-foreground"
+                        tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                      />
+                      <YAxis
+                        className="text-muted-foreground"
+                        tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                        domain={[60, 100]}
+                      />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: '#1a1a1a',
-                          border: '1px solid #333',
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
                           borderRadius: '8px',
-                          color: '#fff'
+                          color: 'hsl(var(--foreground))'
                         }}
                       />
                       <Line
@@ -350,31 +341,35 @@ export default function StudentDetailsPage() {
               </Card>
 
               {/* Recent Activity */}
-              <Card className="bg-[#0f0f0f] border-gray-800">
+              <Card className="border-border bg-card">
                 <CardHeader>
-                  <CardTitle className="text-white">Recent Activity</CardTitle>
+                  <CardTitle className="text-foreground">Recent Activity</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {activities.map((activity) => (
-                      <div key={activity.id} className="flex items-start gap-3">
-                        {activity.type === 'completed' ? (
-                          <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />
-                        ) : (
-                          <FileText className="h-5 w-5 text-blue-500 mt-0.5" />
-                        )}
-                        <div className="flex-1">
-                          <p className="text-white font-medium">
-                            {activity.type === 'completed' ? 'Completed Assignment: ' : 'Submitted: '}
-                            "{activity.title}"
-                          </p>
-                          <p className="text-gray-400 text-sm">
-                            {format(new Date(activity.timestamp), 'PPp')}
-                            {activity.score && ` · Score: ${activity.score}`}
-                          </p>
+                    {activities.length > 0 ? (
+                      activities.map((activity) => (
+                        <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border border-border">
+                          {activity.type === 'completed' ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                          ) : (
+                            <FileText className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-foreground font-medium">
+                              {activity.type === 'completed' ? 'Completed Assignment: ' : 'Submitted: '}
+                              "{activity.title}"
+                            </p>
+                            <p className="text-muted-foreground text-sm">
+                              {format(new Date(activity.timestamp), 'PPp')}
+                              {activity.score && ` · Score: ${activity.score}`}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground text-center py-8">No recent activity</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -383,102 +378,114 @@ export default function StudentDetailsPage() {
             {/* Right Column - Personal Info & Assignments */}
             <div className="space-y-6">
               {/* Personal Information */}
-              <Card className="bg-[#0f0f0f] border-gray-800">
+              <Card className="border-border bg-card">
                 <CardHeader>
-                  <CardTitle className="text-white">Personal Information</CardTitle>
+                  <CardTitle className="text-foreground">Personal Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <p className="text-gray-400 text-sm">Full Name:</p>
-                    <p className="text-white font-medium">{student.name}</p>
+                    <p className="text-muted-foreground text-sm">Full Name:</p>
+                    <p className="text-foreground font-medium">{student.name}</p>
                   </div>
                   <div>
-                    <p className="text-gray-400 text-sm">Student ID:</p>
-                    <p className="text-white font-medium">{student.studentId}</p>
+                    <p className="text-muted-foreground text-sm">Student ID:</p>
+                    <p className="text-foreground font-medium">{student.studentId}</p>
                   </div>
                   <div>
-                    <p className="text-gray-400 text-sm">Email:</p>
-                    <p className="text-white font-medium">{student.email}</p>
+                    <p className="text-muted-foreground text-sm">Email:</p>
+                    <p className="text-foreground font-medium break-all">{student.email}</p>
                   </div>
                   <div>
-                    <p className="text-gray-400 text-sm">Parent/Guardian:</p>
+                    <p className="text-muted-foreground text-sm">Parent/Guardian:</p>
                     <p className="text-[#C8A882] font-medium">{student.parentName}</p>
                   </div>
                   <div>
-                    <p className="text-gray-400 text-sm">Grade Level:</p>
-                    <p className="text-white font-medium">{student.grade}</p>
+                    <p className="text-muted-foreground text-sm">Grade Level:</p>
+                    <p className="text-foreground font-medium">{student.grade}</p>
                   </div>
                 </CardContent>
               </Card>
 
               {/* Assignments & Groups */}
-              <Card className="bg-[#0f0f0f] border-gray-800">
+              <Card className="border-border bg-card">
                 <CardHeader>
-                  <CardTitle className="text-white">Assignments & Groups</CardTitle>
+                  <CardTitle className="text-foreground">Assignments & Groups</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Pending Assignments */}
                   <div>
-                    <h3 className="text-white font-semibold mb-3">
+                    <h3 className="text-foreground font-semibold mb-3 flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
                       Pending Assignments ({pendingAssignments.length})
                     </h3>
                     <div className="space-y-3">
-                      {pendingAssignments.map((assignment) => {
-                        const dueDate = new Date(assignment.dueDate)
-                        const now = new Date()
-                        const diffMs = dueDate.getTime() - now.getTime()
-                        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+                      {pendingAssignments.length > 0 ? (
+                        pendingAssignments.map((assignment) => {
+                          const dueDate = new Date(assignment.dueDate)
+                          const now = new Date()
+                          const diffMs = dueDate.getTime() - now.getTime()
+                          const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
 
-                        let dueDateText = ''
-                        let dueDateColor = 'text-gray-400'
+                          let dueDateText = ''
+                          let dueDateColor = 'text-muted-foreground'
 
-                        if (diffDays === 0) {
-                          dueDateText = 'Due Today'
-                          dueDateColor = 'text-orange-500'
-                        } else if (diffDays === 1) {
-                          dueDateText = 'Due Tomorrow'
-                          dueDateColor = 'text-red-500'
-                        } else if (diffDays > 1) {
-                          dueDateText = `Due in ${diffDays} days`
-                          dueDateColor = 'text-gray-400'
-                        } else {
-                          dueDateText = 'Overdue'
-                          dueDateColor = 'text-red-500'
-                        }
+                          if (diffDays === 0) {
+                            dueDateText = 'Due Today'
+                            dueDateColor = 'text-orange-500'
+                          } else if (diffDays === 1) {
+                            dueDateText = 'Due Tomorrow'
+                            dueDateColor = 'text-red-500'
+                          } else if (diffDays > 1) {
+                            dueDateText = `Due in ${diffDays} days`
+                            dueDateColor = 'text-muted-foreground'
+                          } else {
+                            dueDateText = 'Overdue'
+                            dueDateColor = 'text-red-500'
+                          }
 
-                        return (
-                          <div key={assignment.id} className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <p className="text-white font-medium text-sm">{assignment.title}</p>
-                              <p className="text-gray-400 text-xs">{assignment.subject}</p>
+                          return (
+                            <div key={assignment.id} className="flex items-start justify-between p-3 rounded-lg bg-muted/50 border border-border">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-foreground font-medium text-sm">{assignment.title}</p>
+                                <p className="text-muted-foreground text-xs">{assignment.subject}</p>
+                              </div>
+                              <Badge variant="outline" className={`text-xs ${dueDateColor} ml-2 flex-shrink-0`}>
+                                {dueDateText}
+                              </Badge>
                             </div>
-                            <p className={`text-xs ${dueDateColor}`}>{dueDateText}</p>
-                          </div>
-                        )
-                      })}
+                          )
+                        })
+                      ) : (
+                        <p className="text-muted-foreground text-sm text-center py-4">No pending assignments</p>
+                      )}
                     </div>
                   </div>
 
                   {/* Active Groups */}
                   <div>
-                    <h3 className="text-white font-semibold mb-3">
+                    <h3 className="text-foreground font-semibold mb-3 flex items-center gap-2">
+                      <Users className="h-4 w-4" />
                       Active Groups ({groups.length})
                     </h3>
                     <div className="space-y-2">
-                      {groups.map((group) => (
-                        <div key={group.id} className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-[#C8A882]" />
-                          <p className="text-white text-sm">{group.name}</p>
-                        </div>
-                      ))}
+                      {groups.length > 0 ? (
+                        groups.map((group) => (
+                          <div key={group.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 border border-border">
+                            <Users className="h-4 w-4 text-[#C8A882] flex-shrink-0" />
+                            <p className="text-foreground text-sm">{group.name}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-muted-foreground text-sm text-center py-4">No active groups</p>
+                      )}
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
           </div>
-        </div>
-      </SidebarInset>
+            </>
+          )}
 
       {/* Send Message Modal */}
       {student && (
@@ -495,7 +502,7 @@ export default function StudentDetailsPage() {
           }}
         />
       )}
-    </SidebarProvider>
+    </div>
   )
 }
 

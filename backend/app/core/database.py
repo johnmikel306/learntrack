@@ -45,33 +45,47 @@ class Database:
     async def _create_indexes(self):
         """Create database indexes for better performance"""
         try:
-            # Users collection indexes
-            await self.database.users.create_index("auth0_id", unique=True, sparse=True)
-            await self.database.users.create_index("email", unique=True)
-            
+            # Tutors collection indexes
+            await self.database.tutors.create_index("clerk_id", unique=True, name="clerk_id_unique")
+            await self.database.tutors.create_index("email", unique=True, name="email_unique")
+            await self.database.tutors.create_index("slug", unique=True, name="slug_unique")
+            await self.database.tutors.create_index("tenant_id")
+
+            # Students collection indexes
+            await self.database.students.create_index("clerk_id", unique=True, name="clerk_id_unique")
+            await self.database.students.create_index("email", unique=True, name="email_unique")
+            await self.database.students.create_index("slug", unique=True, name="slug_unique")
+            await self.database.students.create_index("tutor_id")
+            await self.database.students.create_index("tenant_id")
+            await self.database.students.create_index([("tutor_id", 1), ("is_active", 1)])
+
+            # Parents collection indexes
+            await self.database.parents.create_index("clerk_id", unique=True, name="clerk_id_unique")
+            await self.database.parents.create_index("email", unique=True, name="email_unique")
+            await self.database.parents.create_index("slug", unique=True, name="slug_unique")
+            await self.database.parents.create_index("tutor_id")
+            await self.database.parents.create_index("tenant_id")
+            await self.database.parents.create_index("student_ids")
+
             # Subjects collection indexes
             await self.database.subjects.create_index("tutor_id")
             await self.database.subjects.create_index([("tutor_id", 1), ("name", 1)], unique=True)
-            
+
             # Questions collection indexes
             await self.database.questions.create_index("subject_id")
             await self.database.questions.create_index("tutor_id")
             await self.database.questions.create_index([("subject_id", 1), ("topic", 1)])
-            
+
             # Assignments collection indexes
             await self.database.assignments.create_index("tutor_id")
             await self.database.assignments.create_index("student_ids")
             await self.database.assignments.create_index("due_date")
             await self.database.assignments.create_index("status")
-            
+
             # Progress collection indexes
             await self.database.progress.create_index([("student_id", 1), ("assignment_id", 1)], unique=True)
             await self.database.progress.create_index("student_id")
             await self.database.progress.create_index("assignment_id")
-
-            # Students collection indexes
-            await self.database.students.create_index("userId")
-            await self.database.students.create_index("email")
 
             # Student groups collection indexes
             await self.database.student_groups.create_index("userId")
@@ -102,6 +116,25 @@ class Database:
             await self.database.materials.create_index("status")
             await self.database.materials.create_index([("tutor_id", 1), ("created_at", -1)])
             await self.database.materials.create_index([("tutor_id", 1), ("subject_id", 1)])
+
+            # Invitations collection indexes
+            await self.database.invitations.create_index("tutor_id")
+            await self.database.invitations.create_index("token", unique=True)
+            await self.database.invitations.create_index("invitee_email")
+            await self.database.invitations.create_index("status")
+            await self.database.invitations.create_index("expires_at")
+            await self.database.invitations.create_index([("tutor_id", 1), ("status", 1)])
+            await self.database.invitations.create_index([("tutor_id", 1), ("created_at", -1)])
+
+            # Assignment templates collection indexes
+            await self.database.assignment_templates.create_index("tutor_id")
+            await self.database.assignment_templates.create_index("tenant_id")
+            await self.database.assignment_templates.create_index("subject_id")
+            await self.database.assignment_templates.create_index("status")
+            await self.database.assignment_templates.create_index("tags")
+            await self.database.assignment_templates.create_index([("tutor_id", 1), ("status", 1)])
+            await self.database.assignment_templates.create_index([("tutor_id", 1), ("usage_count", -1)])
+            await self.database.assignment_templates.create_index([("tutor_id", 1), ("created_at", -1)])
 
             logger.info("Database indexes created successfully")
             

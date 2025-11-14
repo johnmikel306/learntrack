@@ -9,29 +9,41 @@ import structlog
 from app.models.user import User, UserRole, UserCreate, UserUpdate
 from app.core.exceptions import NotFoundError, DatabaseException
 from app.core.utils import to_object_id
+from app.utils.slug import generate_unique_slug
 
 logger = structlog.get_logger()
 
 
 class UserService:
-    """User service for database operations"""
-    
+    """User service for database operations with role-specific collections"""
+
     def __init__(self, database: AsyncIOMotorDatabase):
         self.db = database
-        self.collection = database.users
+        # Role-specific collections
+        self.tutors_collection = database.tutors
+        self.students_collection = database.students
+        self.parents_collection = database.parents
+
+    def _get_collection_for_role(self, role: UserRole):
+        """Get the appropriate collection based on user role"""
+        if role == UserRole.TUTOR:
+            return self.tutors_collection
+        elif role == UserRole.STUDENT:
+            return self.students_collection
+        elif role == UserRole.PARENT:
+            return self.parents_collection
+        else:
+            raise ValueError(f"Unknown role: {role}")
     
     async def create_user(self, user_data: UserCreate) -> User:
-        """Create a new user with tenant support"""
+        """Create a new user with tenant support in role-specific collection"""
         try:
+            # Get the appropriate collection for this role
+            collection = self._get_collection_for_role(user_data.role)
+
             # Check if user already exists by clerk_id
             if user_data.clerk_id:
-                existing_user = await self.collection.find_one({"clerk_id": user_data.clerk_id})
-                if existing_user:
-                    return User(**existing_user)
-
-            # Check if user already exists by auth0_id (backward compatibility)
-            if user_data.auth0_id:
-                existing_user = await self.collection.find_one({"auth0_id": user_data.auth0_id})
+                existing_user = await collection.find_one({"clerk_id": user_data.clerk_id})
                 if existing_user:
                     return User(**existing_user)
 
@@ -45,6 +57,13 @@ class UserService:
             user_dict = user_data.dict()
             user_dict["created_at"] = datetime.utcnow()
             user_dict["updated_at"] = datetime.utcnow()
+
+            # Generate unique slug from name
+            user_dict["slug"] = await generate_unique_slug(
+                self.db,
+                "users",
+                user_data.name
+            )
 
             # Set tenant_id based on role
             if user_data.role == UserRole.TUTOR:
@@ -61,17 +80,17 @@ class UserService:
                     user_dict["parent_children"] = []
                     user_dict["student_ids"] = []
 
-            result = await self.collection.insert_one(user_dict)
+            result = await collection.insert_one(user_dict)
             user_dict["_id"] = result.inserted_id
 
-            logger.info("User created", user_id=str(result.inserted_id), role=user_data.role, tenant_id=user_dict.get("tenant_id"))
+            logger.info("User created", user_id=str(result.inserted_id), role=user_data.role, tenant_id=user_dict.get("tenant_id"), collection=collection.name)
             return User(**user_dict)
 
         except Exception as e:
             # Handle duplicate key errors specifically
             if "E11000" in str(e) and "email" in str(e):
                 logger.warning("Duplicate email detected, attempting to find existing user", email=user_data.email)
-                existing_user = await self.collection.find_one({"email": user_data.email})
+                existing_user = await collection.find_one({"email": user_data.email})
                 if existing_user:
                     return User(**existing_user)
 
@@ -79,55 +98,48 @@ class UserService:
             raise DatabaseException(f"Failed to create user: {str(e)}")
     
     async def get_user_by_id(self, user_id: str) -> User:
-        """Get user by ID"""
+        """Get user by ID - searches across all role collections"""
         try:
             oid = to_object_id(user_id)
-            user = await self.collection.find_one({"_id": oid})
-            if not user:
-                raise NotFoundError("User", user_id)
-            return User(**user)
+            # Try each collection
+            for collection in [self.tutors_collection, self.students_collection, self.parents_collection]:
+                user = await collection.find_one({"_id": oid})
+                if user:
+                    return User(**user)
+            raise NotFoundError("User", user_id)
         except NotFoundError:
             raise
         except Exception as e:
             logger.error("Failed to get user by ID", user_id=user_id, error=str(e))
             raise DatabaseException(f"Failed to get user: {str(e)}")
-    
+
     async def get_user_by_clerk_id(self, clerk_id: str) -> Optional[User]:
-        """Get user by Clerk ID."""
+        """Get user by Clerk ID - searches across all role collections"""
         try:
-            user = await self.collection.find_one({"clerk_id": clerk_id})
-            if user:
-                return User(**user)
+            # Try each collection
+            for collection in [self.tutors_collection, self.students_collection, self.parents_collection]:
+                user = await collection.find_one({"clerk_id": clerk_id})
+                if user:
+                    return User(**user)
             return None
         except Exception as e:
             logger.error("Failed to get user by Clerk ID", clerk_id=clerk_id, error=str(e))
             raise DatabaseException(f"Failed to get user: {str(e)}")
 
-    async def get_user_by_auth0_id(self, auth0_id: str) -> Optional[User]:
-        """Get user by Auth0 ID. In dev, auto-provision a default tutor if missing."""
+    async def get_user_by_slug(self, slug: str) -> Optional[User]:
+        """Get user by slug - searches across all role collections"""
         try:
-            user = await self.collection.find_one({"auth0_id": auth0_id})
-            if user:
-                return User(**user)
-
-            # Auto-provision for simplified dev auth with unique email
-            from app.models.user import UserCreate, UserRole  # local import to avoid cycles
-
-            # Create unique email based on auth0_id to avoid duplicates
-            safe_auth0_id = auth0_id.replace("::", "_").replace(":", "_")
-            unique_email = f"dev_{safe_auth0_id}@example.com"
-
-            dev_user = UserCreate(
-                auth0_id=auth0_id,
-                clerk_id=auth0_id,  # Use auth0_id as clerk_id for dev
-                email=unique_email,
-                name=f"Development User ({safe_auth0_id})",
-                role=UserRole.TUTOR,
-            )
-            return await self.create_user(dev_user)
+            # Try each collection
+            for collection in [self.tutors_collection, self.students_collection, self.parents_collection]:
+                user = await collection.find_one({"slug": slug})
+                if user:
+                    return User(**user)
+            return None
         except Exception as e:
-            logger.error("Failed to get user by Auth0 ID", auth0_id=auth0_id, error=str(e))
+            logger.error("Failed to get user by slug", slug=slug, error=str(e))
             raise DatabaseException(f"Failed to get user: {str(e)}")
+
+
     
     async def create_user_from_clerk(self, user_context) -> User:
         """Create a new user from Clerk user context"""
@@ -165,16 +177,17 @@ class UserService:
                 existing_user = await self.get_user_by_clerk_id(user_context.clerk_id)
                 if existing_user:
                     return existing_user
-                # Try to find by email
-                existing_user = await self.collection.find_one({"email": user_context.email})
-                if existing_user:
-                    return User(**existing_user)
+                # Try to find by email across all collections
+                for collection in [self.tutors_collection, self.students_collection, self.parents_collection]:
+                    existing_user = await collection.find_one({"email": user_context.email})
+                    if existing_user:
+                        return User(**existing_user)
 
             logger.error("Failed to create user from Clerk", clerk_id=user_context.clerk_id, error=str(e))
             raise DatabaseException(f"Failed to create user from Clerk: {str(e)}")
 
     async def update_user_from_clerk(self, user_context) -> User:
-        """Update existing user from Clerk user context"""
+        """Update existing user from Clerk user context in role-specific collection"""
         try:
             from app.models.user import UserUpdate
 
@@ -185,8 +198,11 @@ class UserService:
                 updated_at=datetime.utcnow()
             )
 
+            # Get the appropriate collection for this role
+            collection = self._get_collection_for_role(user_context.role)
+
             # Find user by clerk_id and update
-            result = await self.collection.find_one_and_update(
+            result = await collection.find_one_and_update(
                 {"clerk_id": user_context.clerk_id},
                 {"$set": update_data.model_dump(exclude_unset=True)},
                 return_document=True
@@ -218,6 +234,16 @@ class UserService:
                 return await self.get_user_by_id(user_id)
 
             update_data["updated_at"] = datetime.utcnow()
+
+            # If name is being updated, regenerate slug
+            if "name" in update_data:
+                oid = to_object_id(user_id)
+                update_data["slug"] = await generate_unique_slug(
+                    self.db,
+                    "users",
+                    update_data["name"],
+                    exclude_id=oid
+                )
 
             oid = to_object_id(user_id)
             result = await self.collection.update_one(
@@ -259,10 +285,11 @@ class UserService:
             raise DatabaseException(f"Failed to delete user: {str(e)}")
     
     async def get_users_by_role(self, role: UserRole, limit: int = 100) -> List[User]:
-        """Get users by role"""
+        """Get users by role from role-specific collection"""
         try:
-            cursor = self.collection.find(
-                {"role": role.value, "is_active": True}
+            collection = self._get_collection_for_role(role)
+            cursor = collection.find(
+                {"is_active": True}
             ).limit(limit)
 
             users = []
@@ -276,11 +303,10 @@ class UserService:
             raise DatabaseException(f"Failed to get users: {str(e)}")
 
     async def get_students_for_tutor(self, tutor_id: str, limit: int = 200) -> List[User]:
-        """Get all students assigned to a specific tutor"""
+        """Get all students assigned to a specific tutor from students collection"""
         try:
-            cursor = self.collection.find(
+            cursor = self.students_collection.find(
                 {
-                    "role": UserRole.STUDENT.value,
                     "tutor_id": tutor_id,
                     "is_active": True
                 }
@@ -297,13 +323,51 @@ class UserService:
             logger.error("Failed to get students for tutor", tutor_id=tutor_id, error=str(e))
             raise DatabaseException(f"Failed to get students: {str(e)}")
 
+    async def get_students_count_for_tutor(self, tutor_id: str) -> int:
+        """Get total count of students for a tutor from students collection"""
+        try:
+            count = await self.students_collection.count_documents({
+                "tutor_id": tutor_id,
+                "is_active": True
+            })
+            return count
+        except Exception as e:
+            logger.error("Failed to get students count for tutor", tutor_id=tutor_id, error=str(e))
+            raise DatabaseException(f"Failed to get students count: {str(e)}")
+
+    async def get_students_for_tutor_paginated(
+        self,
+        tutor_id: str,
+        skip: int = 0,
+        limit: int = 10
+    ) -> List[User]:
+        """Get paginated students assigned to a specific tutor from students collection"""
+        try:
+            cursor = self.students_collection.find(
+                {
+                    "tutor_id": tutor_id,
+                    "is_active": True
+                }
+            ).skip(skip).limit(limit)
+
+            students = []
+            async for student in cursor:
+                students.append(User(**student))
+
+            logger.info("Retrieved paginated students for tutor", tutor_id=tutor_id, count=len(students))
+            return students
+
+        except Exception as e:
+            logger.error("Failed to get paginated students for tutor", tutor_id=tutor_id, error=str(e))
+            raise DatabaseException(f"Failed to get students: {str(e)}")
+
     async def assign_student_to_tutor(self, student_id: str, tutor_id: str) -> bool:
-        """Assign student to tutor"""
+        """Assign student to tutor using students collection"""
         try:
             # Update student's tutors list
             student_oid = to_object_id(student_id)
-            await self.collection.update_one(
-                {"_id": student_oid, "role": UserRole.STUDENT.value},
+            await self.students_collection.update_one(
+                {"_id": student_oid},
                 {"$addToSet": {"student_tutors": tutor_id}, "$set": {"updated_at": datetime.utcnow()}}
             )
 
@@ -313,14 +377,14 @@ class UserService:
         except Exception as e:
             logger.error("Failed to assign student to tutor", error=str(e))
             raise DatabaseException(f"Failed to assign student: {str(e)}")
-    
+
     async def assign_child_to_parent(self, child_id: str, parent_id: str) -> bool:
-        """Assign child to parent"""
+        """Assign child to parent using parents collection"""
         try:
             # Update parent's children list
             parent_oid = to_object_id(parent_id)
-            await self.collection.update_one(
-                {"_id": parent_oid, "role": UserRole.PARENT.value},
+            await self.parents_collection.update_one(
+                {"_id": parent_oid},
                 {"$addToSet": {"parent_children": child_id}, "$set": {"updated_at": datetime.utcnow()}}
             )
 

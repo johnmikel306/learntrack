@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import { SignedIn, SignedOut } from '@clerk/clerk-react'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { Toaster } from '@/components/ui/sonner'
 import HomePage from './pages/HomePage'
 import GetStartedPage from './pages/GetStartedPage'
 import SignInPage from './pages/SignInPage'
@@ -21,6 +22,7 @@ function App() {
   return (
     <ThemeProvider>
       <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
+        <Toaster />
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<HomePage />} />

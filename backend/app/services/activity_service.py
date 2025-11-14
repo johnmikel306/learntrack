@@ -72,16 +72,49 @@ class ActivityService:
         """Get formatted activity summary for student details page"""
         try:
             activities = await self.get_user_activities(student_id, limit=limit)
-            
+
             summaries = []
             for activity in activities:
                 summary = self._format_activity_summary(activity)
                 if summary:
                     summaries.append(summary)
-            
+
             return summaries
         except Exception as e:
             logger.error("Failed to get student activity summary", error=str(e))
+            raise
+
+    async def get_student_activities_count(self, student_id: str) -> int:
+        """Get total count of activities for a student"""
+        try:
+            count = await self.collection.count_documents({"user_id": student_id})
+            return count
+        except Exception as e:
+            logger.error("Failed to get student activities count", error=str(e))
+            raise
+
+    async def get_student_activity_summary_paginated(
+        self,
+        student_id: str,
+        skip: int = 0,
+        limit: int = 10
+    ) -> List[StudentActivitySummary]:
+        """Get paginated formatted activity summary for student details page"""
+        try:
+            cursor = self.collection.find({"user_id": student_id}).sort("created_at", -1).skip(skip).limit(limit)
+            activities_data = await cursor.to_list(length=limit)
+
+            summaries = []
+            for activity_data in activities_data:
+                activity_data["_id"] = str(activity_data["_id"])
+                activity = Activity(**activity_data)
+                summary = self._format_activity_summary(activity)
+                if summary:
+                    summaries.append(summary)
+
+            return summaries
+        except Exception as e:
+            logger.error("Failed to get paginated student activity summary", error=str(e))
             raise
     
     def _format_activity_summary(self, activity: Activity) -> Optional[StudentActivitySummary]:

@@ -4,7 +4,7 @@ API v1 router
 from fastapi import APIRouter
 
 # Import working endpoints (remove seeders import)
-from app.api.v1.endpoints import questions, assignments, subjects, students, progress, webhooks, users, dashboard, topics, invitations, parents, conversations, messages, visibility, materials, notifications, activities, groups
+from app.api.v1.endpoints import questions, assignments, subjects, students, progress, webhooks, users, dashboard, topics, invitations, parents, conversations, messages, visibility, materials, notifications, activities, groups, websocket, assignment_templates
 # Still disabled due to formatting issues: settings, files, communications
 
 api_router = APIRouter()
@@ -29,6 +29,8 @@ api_router.include_router(materials.router, prefix="/materials", tags=["material
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(activities.router, prefix="/activity", tags=["activity"])
 api_router.include_router(groups.router, prefix="/groups", tags=["groups"])
+api_router.include_router(assignment_templates.router, prefix="/assignment-templates", tags=["assignment-templates"])
+api_router.include_router(websocket.router, tags=["websocket"])
 
 # Still disabled due to formatting issues:
 # api_router.include_router(settings.router, prefix="/settings", tags=["settings"])

@@ -38,6 +38,9 @@ import { toast } from "sonner"
 import { ServerError } from '@/components/ErrorScreen'
 import { UpcomingDeadlines } from '../components/UpcomingDeadlines'
 import { MessageInbox } from '@/components/messaging/MessageInbox'
+import { useNavigate } from 'react-router-dom'
+import { ViewAssignmentModal } from '@/components/modals/ViewAssignmentModal'
+import { EditAssignmentModal } from '@/components/modals/EditAssignmentModal'
 
 interface Assignment {
   id: string
@@ -53,6 +56,7 @@ interface Assignment {
 }
 
 export default function ActiveAssignmentsView() {
+  const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [subjectFilter, setSubjectFilter] = useState("all")
@@ -67,6 +71,11 @@ export default function ActiveAssignmentsView() {
   // Sorting state
   const [sortColumn, setSortColumn] = useState<'dueDate' | 'status' | 'submissions' | null>(null)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+
+  // Modal state
+  const [viewModalOpen, setViewModalOpen] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null)
 
   const client = useApiClient()
 
@@ -232,15 +241,23 @@ export default function ActiveAssignmentsView() {
   }
 
   const handleView = (assignmentId: string) => {
-    toast.info('View assignment', {
-      description: 'Assignment details view coming soon'
-    })
+    const assignment = assignments.find(a => a._id === assignmentId)
+    if (assignment) {
+      setSelectedAssignment(assignment)
+      setViewModalOpen(true)
+    }
   }
 
   const handleEdit = (assignmentId: string) => {
-    toast.info('Edit assignment', {
-      description: 'Assignment editing coming soon'
-    })
+    const assignment = assignments.find(a => a._id === assignmentId)
+    if (assignment) {
+      setSelectedAssignment(assignment)
+      setEditModalOpen(true)
+    }
+  }
+
+  const handleCreateNew = () => {
+    navigate('/dashboard/assignments/create')
   }
 
   // Show error screen if there's an error
@@ -260,7 +277,10 @@ export default function ActiveAssignmentsView() {
               Manage and track your assignments
             </p>
           </div>
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+          <Button
+            onClick={handleCreateNew}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          >
             <Plus className="w-4 h-4 mr-2" />
             New Assignment
           </Button>
@@ -515,6 +535,24 @@ export default function ActiveAssignmentsView() {
           </div>
         )}
       </div>
+
+      {/* Modals */}
+      <ViewAssignmentModal
+        open={viewModalOpen}
+        onOpenChange={setViewModalOpen}
+        assignment={selectedAssignment}
+      />
+
+      <EditAssignmentModal
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        assignment={selectedAssignment}
+        onAssignmentUpdated={() => {
+          toast.success('Assignment updated successfully')
+          // Refresh assignments list
+          setAssignments([])
+        }}
+      />
     </div>
   )
 }

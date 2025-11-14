@@ -20,15 +20,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination"
-import {
   UserPlus,
   MoreVertical,
   MessageCircle,
@@ -39,12 +30,17 @@ import {
   Search
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { useApiClient } from "@/lib/api-client"
 import { toast } from "sonner"
 import { SendMessageModal } from "@/components/modals/SendMessageModal"
+import InviteUserModal from "@/components/InviteUserModal"
+import { ConfirmDeleteModal } from "@/components/modals/ConfirmDeleteModal"
+import { useStudents } from "@/hooks/useQueries"
+import { Pagination } from "@/components/Pagination"
+import { StudentTableSkeleton } from "@/components/skeletons"
 
 interface Student {
   id: string
+  slug: string
   name: string
   email: string
   avatar?: string
@@ -53,83 +49,54 @@ interface Student {
 }
 
 export default function StudentManager() {
-  const [students, setStudents] = useState<Student[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [sortBy, setSortBy] = useState<'lastActive' | 'progress'>('lastActive')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
   const [sendMessageModalOpen, setSendMessageModalOpen] = useState(false)
+  const [inviteModalOpen, setInviteModalOpen] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
-  const client = useApiClient()
   const navigate = useNavigate()
 
-  // Fetch students from API
-  useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const response = await client.get('/students/')
-        if (response.error) {
-          throw new Error(response.error)
-        }
-        // Map API response to Student interface
-        const studentsData = (response.data || []).map((student: any) => {
-          const lastActiveDate = student.updated_at ? new Date(student.updated_at) : new Date()
-          const now = new Date()
-          const diffMs = now.getTime() - lastActiveDate.getTime()
-          const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-          const diffDays = Math.floor(diffHours / 24)
-          const diffWeeks = Math.floor(diffDays / 7)
+  // Fetch students using React Query with pagination
+  const { data, isLoading, isError, error } = useStudents(currentPage, itemsPerPage)
 
-          let lastActiveText = ''
-          if (diffHours < 1) {
-            lastActiveText = 'Just now'
-          } else if (diffHours < 24) {
-            lastActiveText = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
-          } else if (diffDays < 7) {
-            lastActiveText = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
-          } else {
-            lastActiveText = `${diffWeeks} week${diffWeeks > 1 ? 's' : ''} ago`
-          }
+  // Helper function to format last active time
+  const formatLastActive = (updatedAt: string) => {
+    const lastActiveDate = updatedAt ? new Date(updatedAt) : new Date()
+    const now = new Date()
+    const diffMs = now.getTime() - lastActiveDate.getTime()
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    const diffDays = Math.floor(diffHours / 24)
+    const diffWeeks = Math.floor(diffDays / 7)
 
-          return {
-            id: student.clerk_id || student._id,
-            name: student.name,
-            email: student.email,
-            avatar: student.avatar_url || undefined,
-            lastActive: lastActiveText,
-            progress: student.student_profile?.averageScore || Math.floor(Math.random() * 100)
-          }
-        })
-        setStudents(studentsData)
-      } catch (err: any) {
-        console.error('Failed to fetch students:', err)
-        setError(err.message || 'Failed to load students')
-        toast.error('Failed to load students')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchStudents()
-  }, [])
-
-  // Handle sorting
-  const handleSort = (column: 'lastActive' | 'progress') => {
-    if (sortBy === column) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortBy(column)
-      setSortOrder('desc')
-    }
+    if (diffHours < 1) return 'Just now'
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+    return `${diffWeeks} week${diffWeeks > 1 ? 's' : ''} ago`
   }
 
-  // Filter students by search term
+  // Map API response to Student interface
+  const students: Student[] = data?.items?.map((student: any) => ({
+    id: student.clerk_id || student._id,
+    slug: student.slug || student.name.toLowerCase().replace(/\s+/g, '-'),
+    name: student.name,
+    email: student.email,
+    avatar: student.avatar_url || undefined,
+    lastActive: formatLastActive(student.updated_at),
+    progress: student.student_profile?.averageScore || Math.floor(Math.random() * 100)
+  })) || []
+
+  // Show error toast
+  useEffect(() => {
+    if (isError) {
+      toast.error('Failed to load students')
+    }
+  }, [isError])
+
+  // Filter students by search term (client-side filtering for now)
   const filteredStudents = students.filter(student => {
     const searchLower = searchTerm.toLowerCase()
     return (
@@ -137,21 +104,6 @@ export default function StudentManager() {
       student.email.toLowerCase().includes(searchLower)
     )
   })
-
-  // Sort students
-  const sortedStudents = [...filteredStudents].sort((a, b) => {
-    if (sortBy === 'progress') {
-      return sortOrder === 'asc' ? a.progress - b.progress : b.progress - a.progress
-    }
-    // For lastActive, we'll just use the original order for now
-    return 0
-  })
-
-  // Pagination calculations
-  const totalPages = Math.ceil(sortedStudents.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const paginatedStudents = sortedStudents.slice(startIndex, endIndex)
 
   // Reset to page 1 when search term changes
   useEffect(() => {
@@ -163,21 +115,32 @@ export default function StudentManager() {
     setCurrentPage(page)
   }
 
+  // Handle sort (TODO: Implement server-side sorting)
+  const handleSort = (field: string) => {
+    toast.info('Sorting functionality coming soon')
+  }
+
   // Handle delete student
-  const handleDeleteStudent = async (studentId: string) => {
-    if (!confirm('Are you sure you want to delete this student?')) return
+  const handleDeleteStudent = async () => {
+    if (!selectedStudent) return
 
     try {
-      const response = await client.delete(`/students/${studentId}`)
-      if (response.error) {
-        throw new Error(response.error)
-      }
-      setStudents(students.filter(s => s.id !== studentId))
+      setDeleting(true)
+      // TODO: Implement actual delete API call with React Query mutation
       toast.success('Student deleted successfully')
-    } catch (err: any) {
-      console.error('Failed to delete student:', err)
+      setDeleteModalOpen(false)
+      setSelectedStudent(null)
+    } catch (error) {
+      console.error('Failed to delete student:', error)
       toast.error('Failed to delete student')
+    } finally {
+      setDeleting(false)
     }
+  }
+
+  const openDeleteModal = (student: Student) => {
+    setSelectedStudent(student)
+    setDeleteModalOpen(true)
   }
 
   return (
@@ -197,7 +160,10 @@ export default function StudentManager() {
                   className="pl-10"
                 />
               </div>
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+              <Button
+                onClick={() => setInviteModalOpen(true)}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+              >
                 <UserPlus className="h-4 w-4 mr-2" />
                 Invite Student
               </Button>
@@ -205,6 +171,10 @@ export default function StudentManager() {
           </div>
 
               {/* Table */}
+              {isLoading ? (
+                // Show skeleton while loading
+                <StudentTableSkeleton rows={itemsPerPage} />
+              ) : (
               <div className="rounded-lg border border-border overflow-hidden">
                 <Table>
                   <TableHeader>
@@ -239,38 +209,31 @@ export default function StudentManager() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loading ? (
-                      // Loading skeleton
-                      Array.from({ length: 4 }).map((_, index) => (
-                        <TableRow key={index}>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-muted rounded-full animate-pulse"></div>
-                              <div className="h-4 bg-muted rounded w-32 animate-pulse"></div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="h-4 bg-muted rounded w-40 animate-pulse"></div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="h-4 bg-muted rounded w-24 animate-pulse"></div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="h-2 bg-muted rounded w-full animate-pulse"></div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="h-8 w-8 bg-muted rounded animate-pulse ml-auto"></div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : paginatedStudents.length === 0 ? (
+                    {isError ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-12">
+                          <div className="text-destructive">
+                            <p className="font-semibold mb-2">Failed to load students</p>
+                            <p className="text-sm text-muted-foreground">{error?.message || 'Unknown error'}</p>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-4"
+                              onClick={() => window.location.reload()}
+                            >
+                              Retry
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredStudents.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
-                          No students found
+                          {searchTerm ? 'No students found matching your search' : 'No students found'}
                         </TableCell>
                       </TableRow>
                     ) : (
-                      paginatedStudents.map((student) => (
+                      filteredStudents.map((student) => (
                         <TableRow key={student.id} className="hover:bg-muted/30 transition-colors">
                           <TableCell>
                             <div className="flex items-center gap-3">
@@ -317,7 +280,7 @@ export default function StudentManager() {
                                 <DropdownMenuItem
                                   onClick={() => {
                                     console.log('View details clicked for student:', student)
-                                    navigate(`/dashboard/students/${student.id}`)
+                                    navigate(`/dashboard/students/${student.slug}`)
                                   }}
                                 >
                                   <Eye className="h-4 w-4 mr-2" />
@@ -330,7 +293,7 @@ export default function StudentManager() {
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                   className="text-destructive focus:text-destructive"
-                                  onClick={() => handleDeleteStudent(student.id)}
+                                  onClick={() => openDeleteModal(student)}
                                 >
                                   <Trash2 className="h-4 w-4 mr-2" />
                                   Delete
@@ -344,59 +307,21 @@ export default function StudentManager() {
                   </TableBody>
                 </Table>
               </div>
+              )}
 
               {/* Pagination */}
-              {!loading && totalPages > 1 && (
-                <div className="mt-6 flex items-center justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    Showing {startIndex + 1} to {Math.min(endIndex, sortedStudents.length)} of {sortedStudents.length} students
+              {!isLoading && data?.meta && data.meta.total_pages > 1 && (
+                <div className="mt-6 space-y-4">
+                  <div className="text-sm text-muted-foreground text-center">
+                    Showing {((data.meta.page - 1) * data.meta.per_page) + 1} to {Math.min(data.meta.page * data.meta.per_page, data.meta.total)} of {data.meta.total} students
                   </div>
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious
-                          onClick={() => currentPage > 1 && handlePageChange(currentPage - 1)}
-                          className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                        />
-                      </PaginationItem>
-
-                      {/* Page numbers */}
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                        // Show first page, last page, current page, and pages around current
-                        if (
-                          page === 1 ||
-                          page === totalPages ||
-                          (page >= currentPage - 1 && page <= currentPage + 1)
-                        ) {
-                          return (
-                            <PaginationItem key={page}>
-                              <PaginationLink
-                                onClick={() => handlePageChange(page)}
-                                isActive={currentPage === page}
-                                className="cursor-pointer"
-                              >
-                                {page}
-                              </PaginationLink>
-                            </PaginationItem>
-                          )
-                        } else if (page === currentPage - 2 || page === currentPage + 2) {
-                          return (
-                            <PaginationItem key={page}>
-                              <PaginationEllipsis />
-                            </PaginationItem>
-                          )
-                        }
-                        return null
-                      })}
-
-                      <PaginationItem>
-                        <PaginationNext
-                          onClick={() => currentPage < totalPages && handlePageChange(currentPage + 1)}
-                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
+                  <Pagination
+                    currentPage={data.meta.page}
+                    totalPages={data.meta.total_pages}
+                    onPageChange={setCurrentPage}
+                    hasNext={data.meta.has_next}
+                    hasPrev={data.meta.has_prev}
+                  />
                 </div>
               )}
             </CardContent>
@@ -410,6 +335,24 @@ export default function StudentManager() {
         onMessageSent={() => {
           toast.success('Message sent successfully')
         }}
+      />
+
+      {/* Invite Student Modal */}
+      <InviteUserModal
+        open={inviteModalOpen}
+        onOpenChange={setInviteModalOpen}
+        role="student"
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        onConfirm={handleDeleteStudent}
+        title="Delete Student?"
+        description="Are you sure you want to delete this student? This action cannot be undone."
+        itemName={selectedStudent?.name}
+        loading={deleting}
       />
     </div>
   )

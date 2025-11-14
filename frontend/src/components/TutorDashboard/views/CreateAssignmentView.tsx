@@ -244,14 +244,14 @@ export default function CreateAssignmentView() {
               <TabsContent value="group" className="space-y-4">
                 <GroupSelector
                   selectedGroups={formData.selectedGroups}
-                  onGroupsChange={(groups) => setFormData({ ...formData, selectedGroups: groups })}
+                  onChange={(groups) => setFormData({ ...formData, selectedGroups: groups })}
                 />
               </TabsContent>
 
               <TabsContent value="subject" className="space-y-4">
                 <SubjectFilter
                   selectedSubject={formData.selectedSubject}
-                  onSubjectChange={(subject) => setFormData({ ...formData, selectedSubject: subject })}
+                  onChange={(subject) => setFormData({ ...formData, selectedSubject: subject })}
                 />
               </TabsContent>
             </Tabs>

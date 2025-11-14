@@ -32,11 +32,24 @@ class NotificationService:
             notification_dict["is_read"] = False
             notification_dict["created_at"] = datetime.utcnow()
             notification_dict["read_at"] = None
-            
+
             result = await self.collection.insert_one(notification_dict)
             notification_dict["_id"] = str(result.inserted_id)
-            
-            return Notification(**notification_dict)
+
+            notification = Notification(**notification_dict)
+
+            # Send notification via WebSocket
+            try:
+                from app.api.v1.endpoints.websocket import send_notification_via_websocket
+                await send_notification_via_websocket(
+                    notification_data.recipient_id,
+                    notification.model_dump()
+                )
+            except Exception as ws_error:
+                # Don't fail notification creation if WebSocket fails
+                logger.warning("Failed to send WebSocket notification", error=str(ws_error))
+
+            return notification
         except Exception as e:
             logger.error("Failed to create notification", error=str(e))
             raise
@@ -141,5 +154,48 @@ class NotificationService:
             return count
         except Exception as e:
             logger.error("Failed to get unread count", error=str(e))
+            raise
+
+    async def get_notifications_count(
+        self,
+        user_id: str,
+        unread_only: bool = False
+    ) -> int:
+        """Get total count of notifications for a user"""
+        try:
+            query = {"recipient_id": user_id}
+            if unread_only:
+                query["is_read"] = False
+
+            count = await self.collection.count_documents(query)
+            return count
+        except Exception as e:
+            logger.error("Failed to get notifications count", error=str(e))
+            raise
+
+    async def get_user_notifications_paginated(
+        self,
+        user_id: str,
+        skip: int = 0,
+        limit: int = 10,
+        unread_only: bool = False
+    ) -> List[Notification]:
+        """Get paginated notifications for a user"""
+        try:
+            query = {"recipient_id": user_id}
+            if unread_only:
+                query["is_read"] = False
+
+            cursor = self.collection.find(query).sort("created_at", -1).skip(skip).limit(limit)
+            notifications_data = await cursor.to_list(length=limit)
+
+            notifications = []
+            for notif_data in notifications_data:
+                notif_data["_id"] = str(notif_data["_id"])
+                notifications.append(Notification(**notif_data))
+
+            return notifications
+        except Exception as e:
+            logger.error("Failed to get paginated notifications", error=str(e))
             raise
 

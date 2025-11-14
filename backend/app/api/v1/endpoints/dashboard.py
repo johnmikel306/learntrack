@@ -52,10 +52,9 @@ async def get_dashboard_stats(
     try:
         # Calculate real-time stats from actual data
 
-        # 1. Count total students for this tutor
-        total_students = await database.users.count_documents({
+        # 1. Count total students for this tutor from students collection
+        total_students = await database.students.count_documents({
             "tutor_id": current_user.clerk_id,
-            "role": "student",
             "is_active": True
         })
 
@@ -149,10 +148,10 @@ async def get_top_performers(
         if not top_students:
             return []
 
-        # Fetch student details and format response
+        # Fetch student details and format response from students collection
         performers = []
         for student_data in top_students:
-            student = await database.users.find_one({"clerk_id": student_data["_id"]})
+            student = await database.students.find_one({"clerk_id": student_data["_id"]})
             if student:
                 performers.append(TopPerformer(
                     name=student.get("name", "Unknown"),
@@ -308,10 +307,9 @@ async def get_upcoming_deadlines(
                 "tutor_id": current_user.clerk_id
             })
 
-            # Get total students for this tutor
-            total_students = await database.users.count_documents({
+            # Get total students for this tutor from students collection
+            total_students = await database.students.count_documents({
                 "tutor_id": current_user.clerk_id,
-                "role": "student",
                 "is_active": True
             })
 
@@ -503,18 +501,18 @@ async def get_parent_dashboard_stats(
 ):
     """Get dashboard statistics for parent"""
     try:
-        # Get parent's children
-        parent = await database.users.find_one({"clerk_id": current_user.clerk_id})
-        
+        # Get parent's children from parents collection
+        parent = await database.parents.find_one({"clerk_id": current_user.clerk_id})
+
         if not parent:
             return {"children": []}
-        
+
         child_ids = parent.get("parent_children", [])
-        
-        # Get children data
+
+        # Get children data from students collection
         children = []
         for child_id in child_ids:
-            child = await database.users.find_one({"clerk_id": child_id})
+            child = await database.students.find_one({"clerk_id": child_id})
             if child:
                 # Get child's progress
                 progress_records = await database.progress.find({

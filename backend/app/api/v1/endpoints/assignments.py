@@ -11,6 +11,7 @@ from app.core.enhanced_auth import require_tutor, require_authenticated_user, Cl
 from app.models.assignment import Assignment, AssignmentCreate, AssignmentUpdate
 from app.services.assignment_service import AssignmentService
 from app.services.user_service import UserService
+from app.utils.pagination import PaginationParams, PaginatedResponse, paginate
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -50,39 +51,45 @@ async def get_assignments(
         logger.error("Failed to get assignments", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to get assignments")
 
-@router.get("/student/{student_id}")
+@router.get("/student/{student_id}", response_model=PaginatedResponse[Assignment])
 async def get_student_assignments(
     student_id: str = Path(..., description="Student ID"),
     status: Optional[str] = Query(None, description="Filter by status (pending, completed, etc.)"),
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(10, ge=1, le=100, description="Items per page"),
     current_user: ClerkUserContext = Depends(require_authenticated_user),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
-    """Get assignments for a specific student"""
+    """Get paginated assignments for a specific student"""
     try:
         assignment_service = AssignmentService(database)
 
-        # Get all assignments for the tutor
-        all_assignments = await assignment_service.get_assignments_for_tutor(
-            tutor_id=current_user.tutor_id
+        # Create pagination params
+        pagination = PaginationParams(page=page, per_page=per_page)
+
+        # Get total count
+        total = await assignment_service.get_student_assignments_count(
+            student_id=student_id,
+            tutor_id=current_user.tutor_id,
+            status=status
         )
 
-        # Filter assignments that include this student
-        # This is a simplified version - you may need to enhance based on your data model
-        student_assignments = []
-        for assignment in all_assignments:
-            # Check if student is in the assignment's student list
-            if hasattr(assignment, 'student_ids') and student_id in assignment.student_ids:
-                assignment_dict = assignment.model_dump() if hasattr(assignment, 'model_dump') else dict(assignment)
+        # Get paginated assignments
+        assignments = await assignment_service.get_student_assignments_paginated(
+            student_id=student_id,
+            tutor_id=current_user.tutor_id,
+            status=status,
+            skip=pagination.skip,
+            limit=pagination.limit
+        )
 
-                # Add status filter if provided
-                if status:
-                    # You can enhance this to check actual student progress
-                    if status == "pending":
-                        student_assignments.append(assignment_dict)
-                else:
-                    student_assignments.append(assignment_dict)
-
-        return student_assignments
+        # Return paginated response
+        return paginate(
+            items=assignments,
+            page=page,
+            per_page=per_page,
+            total=total
+        )
     except Exception as e:
         logger.error("Failed to get student assignments", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to get student assignments")

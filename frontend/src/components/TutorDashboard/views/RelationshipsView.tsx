@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@clerk/clerk-react'
 import { formatDistanceToNow } from 'date-fns'
+import { LinkParentModal } from '@/components/modals/LinkParentModal'
 
 interface Student {
   id: string
@@ -57,6 +58,7 @@ export default function RelationshipsView() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [communications, setCommunications] = useState<CommunicationLog[]>([])
+  const [showLinkParentModal, setShowLinkParentModal] = useState(false)
 
   const loadData = async () => {
     try {
@@ -149,7 +151,7 @@ export default function RelationshipsView() {
   }
 
   const handleLinkNewParent = () => {
-    toast.info('Link new parent functionality coming soon')
+    setShowLinkParentModal(true)
   }
 
   // Get initials for avatar
@@ -402,6 +404,17 @@ export default function RelationshipsView() {
           </div>
         )}
       </div>
+
+      {/* Link Parent Modal */}
+      <LinkParentModal
+        open={showLinkParentModal}
+        onOpenChange={setShowLinkParentModal}
+        students={students.map(s => ({ _id: s.id, name: s.name }))}
+        onParentLinked={() => {
+          toast.success('Parent invitation sent successfully')
+          loadData()
+        }}
+      />
     </div>
   )
 }

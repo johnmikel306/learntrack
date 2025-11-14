@@ -25,13 +25,14 @@ class UserBase(BaseModel):
     name: str
     role: UserRole
     is_active: bool = True
+    slug: Optional[str] = None  # URL-friendly slug (e.g., "john-doe")
 
 
 class UserCreate(UserBase):
     """User creation model"""
-    auth0_id: Optional[str] = None  # Keep for backward compatibility
     clerk_id: str  # Clerk ID field - required for new users
     tutor_id: Optional[str] = None  # Will be set automatically for tutors
+    tenant_id: Optional[str] = None  # Tenant ID for multi-tenancy
 
 
 class UserUpdate(BaseModel):
@@ -43,7 +44,6 @@ class UserUpdate(BaseModel):
 class UserInDB(UserBase):
     """User model as stored in database"""
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    auth0_id: Optional[str] = None  # Keep for backward compatibility
     clerk_id: str  # Clerk ID field - required
     tutor_id: Optional[str] = None  # Tutor ID - for tutors: their own clerk_id, for others: their tutor's clerk_id
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

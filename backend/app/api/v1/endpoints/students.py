@@ -11,23 +11,44 @@ from app.core.database import get_database
 from app.core.enhanced_auth import require_tutor, ClerkUserContext
 from app.models.user import User, UserCreate, UserUpdate, UserRole
 from app.services.user_service import UserService
+from app.utils.pagination import PaginationParams, PaginatedResponse, paginate
 
 logger = structlog.get_logger()
 router = APIRouter()
 
-@router.get("/", response_model=List[User])
+@router.get("/", response_model=PaginatedResponse[User])
 async def list_students_for_tutor(
-    limit: int = Query(200, ge=1, le=500),
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(10, ge=1, le=100, description="Items per page"),
     current_user: ClerkUserContext = Depends(require_tutor),
     db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """
-    Get all students assigned to the currently authenticated tutor.
+    Get paginated students assigned to the currently authenticated tutor.
     """
     try:
         user_service = UserService(db)
-        students = await user_service.get_students_for_tutor(current_user.clerk_id, limit)
-        return students
+
+        # Create pagination params
+        pagination = PaginationParams(page=page, per_page=per_page)
+
+        # Get total count
+        total = await user_service.get_students_count_for_tutor(current_user.clerk_id)
+
+        # Get paginated students
+        students = await user_service.get_students_for_tutor_paginated(
+            tutor_id=current_user.clerk_id,
+            skip=pagination.skip,
+            limit=pagination.limit
+        )
+
+        # Return paginated response
+        return paginate(
+            items=students,
+            page=page,
+            per_page=per_page,
+            total=total
+        )
     except Exception as e:
         logger.error("Failed to list students for tutor", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to retrieve students")
@@ -54,6 +75,33 @@ async def create_student_for_tutor(
         logger.error("Failed to create student", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to create student")
 
+@router.get("/by-slug/{slug}", response_model=User)
+async def get_student_by_slug(
+    slug: str,
+    current_user: ClerkUserContext = Depends(require_tutor),
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Get a specific student by slug, ensuring they belong to the current tutor.
+    """
+    try:
+        user_service = UserService(db)
+        student = await user_service.get_user_by_slug(slug)
+
+        if not student or student.role != UserRole.STUDENT:
+            raise HTTPException(status_code=404, detail="Student not found")
+
+        # Security Check: Ensure the student belongs to the requesting tutor
+        if student.tutor_id != current_user.clerk_id:
+            raise HTTPException(status_code=403, detail="Access forbidden: Student does not belong to this tutor.")
+
+        return student
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to get student by slug", slug=slug, error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to retrieve student")
+
 @router.get("/{student_clerk_id}", response_model=User)
 async def get_student(
     student_clerk_id: str,
@@ -66,14 +114,14 @@ async def get_student(
     try:
         user_service = UserService(db)
         student = await user_service.get_by_clerk_id(student_clerk_id)
-        
+
         if not student or student.role != UserRole.STUDENT:
             raise HTTPException(status_code=404, detail="Student not found")
-        
+
         # Security Check: Ensure the student belongs to the requesting tutor
         if student.tutor_id != current_user.clerk_id:
             raise HTTPException(status_code=403, detail="Access forbidden: Student does not belong to this tutor.")
-            
+
         return student
     except HTTPException:
         raise

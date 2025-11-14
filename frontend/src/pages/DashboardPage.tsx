@@ -24,8 +24,8 @@ export default function DashboardPage() {
     // If role is in unsafeMetadata but not in publicMetadata, move it
     if (user?.unsafeMetadata?.role && !user?.publicMetadata?.role) {
       user.update({
-        publicMetadata: {
-          ...user.publicMetadata,
+        unsafeMetadata: {
+          ...user.unsafeMetadata,
           role: user.unsafeMetadata.role
         }
       }).catch(console.error)

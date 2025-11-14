@@ -393,3 +393,55 @@ class AssignmentService:
         except Exception as e:
             logger.error("Failed to get students by subject", subject_id=subject_id, error=str(e))
             return []
+
+    async def get_student_assignments_count(
+        self,
+        student_id: str,
+        tutor_id: str,
+        status: Optional[str] = None
+    ) -> int:
+        """Get total count of assignments for a student"""
+        try:
+            query = {
+                "tutor_id": tutor_id,
+                "student_ids": student_id
+            }
+
+            if status:
+                query["status"] = status
+
+            count = await self.collection.count_documents(query)
+            return count
+        except Exception as e:
+            logger.error("Failed to get student assignments count", error=str(e))
+            raise DatabaseException(f"Failed to get assignments count: {str(e)}")
+
+    async def get_student_assignments_paginated(
+        self,
+        student_id: str,
+        tutor_id: str,
+        status: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 10
+    ) -> List[Assignment]:
+        """Get paginated assignments for a student"""
+        try:
+            query = {
+                "tutor_id": tutor_id,
+                "student_ids": student_id
+            }
+
+            if status:
+                query["status"] = status
+
+            cursor = self.collection.find(query).sort("created_at", -1).skip(skip).limit(limit)
+            assignments_data = await cursor.to_list(length=limit)
+
+            assignments = []
+            for assignment_data in assignments_data:
+                assignments.append(Assignment(**assignment_data))
+
+            return assignments
+        except Exception as e:
+            logger.error("Failed to get paginated student assignments", error=str(e))
+            raise DatabaseException(f"Failed to get assignments: {str(e)}")

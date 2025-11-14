@@ -12,11 +12,14 @@ logger = structlog.get_logger()
 
 
 class VisibilityService:
-    """Service for managing visibility rules across roles"""
-    
+    """Service for managing visibility rules across roles with role-specific collections"""
+
     def __init__(self, database: AsyncIOMotorDatabase):
         self.database = database
-        self.users = database.users
+        # Role-specific collections
+        self.tutors = database.tutors
+        self.students = database.students
+        self.parents = database.parents
         self.conversations = database.conversations
     
     async def get_visible_users_for_student(self, student_clerk_id: str) -> List[str]:
@@ -27,8 +30,8 @@ class VisibilityService:
         - Their linked parents
         """
         try:
-            # Get student record
-            student = await self.users.find_one({"clerk_id": student_clerk_id})
+            # Get student record from students collection
+            student = await self.students.find_one({"clerk_id": student_clerk_id})
             if not student:
                 raise NotFoundError("Student", student_clerk_id)
             
@@ -64,15 +67,15 @@ class VisibilityService:
         - Their children's teacher (tutor)
         """
         try:
-            # Get parent record
-            parent = await self.users.find_one({"clerk_id": parent_clerk_id})
+            # Get parent record from parents collection
+            parent = await self.parents.find_one({"clerk_id": parent_clerk_id})
             if not parent:
                 raise NotFoundError("Parent", parent_clerk_id)
-            
+
             visible_users = []
-            
-            # Get children
-            children = await self.users.find({
+
+            # Get children from students collection
+            children = await self.students.find({
                 "parent_ids": parent_clerk_id
             }).to_list(length=None)
             
@@ -112,11 +115,10 @@ class VisibilityService:
         """
         try:
             visible_users = []
-            
-            # Get all students for this tutor
-            students = await self.users.find({
-                "tutor_id": tutor_clerk_id,
-                "role": UserRole.STUDENT.value
+
+            # Get all students for this tutor from students collection
+            students = await self.students.find({
+                "tutor_id": tutor_clerk_id
             }).to_list(length=None)
             
             # Add student IDs
@@ -256,27 +258,25 @@ class VisibilityService:
         """
         try:
             if user_role == UserRole.TUTOR:
-                # Tutors see all their students
-                students = await self.users.find({
-                    "tutor_id": user_id,
-                    "role": UserRole.STUDENT.value
+                # Tutors see all their students from students collection
+                students = await self.students.find({
+                    "tutor_id": user_id
                 }).to_list(length=None)
-                
+
             elif user_role == UserRole.PARENT:
-                # Parents see only their children
-                students = await self.users.find({
-                    "parent_ids": user_id,
-                    "role": UserRole.STUDENT.value
+                # Parents see only their children from students collection
+                students = await self.students.find({
+                    "parent_ids": user_id
                 }).to_list(length=None)
-                
+
             elif user_role == UserRole.STUDENT:
                 # Students don't see other students
                 students = []
             else:
                 students = []
-            
+
             return students
-            
+
         except Exception as e:
             logger.error("Failed to get visible students", error=str(e))
             return []

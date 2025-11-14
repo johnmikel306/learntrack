@@ -5,6 +5,10 @@ import { Input } from '@/components/ui/input'
 import { Search, Plus, Pencil, Trash2 } from 'lucide-react'
 import { useAuth } from '@clerk/clerk-react'
 import { toast } from 'sonner'
+import { CreateGroupModal } from '@/components/modals/CreateGroupModal'
+import { EditGroupModal } from '@/components/modals/EditGroupModal'
+import { ViewGroupDetailsModal } from '@/components/modals/ViewGroupDetailsModal'
+import { ConfirmDeleteModal } from '@/components/modals/ConfirmDeleteModal'
 
 interface StudentGroup {
   _id: string
@@ -22,6 +26,11 @@ export default function GroupsManagementView() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [showViewModal, setShowViewModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [selectedGroup, setSelectedGroup] = useState<any>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     loadGroups()
@@ -51,14 +60,15 @@ export default function GroupsManagementView() {
     }
   }
 
-  const handleDeleteGroup = async (groupId: string) => {
-    if (!confirm('Are you sure you want to delete this group?')) return
+  const handleDeleteGroup = async () => {
+    if (!selectedGroup) return
 
     try {
+      setDeleting(true)
       const token = await getToken()
       const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
-      const response = await fetch(`${API_BASE}/students/groups/${groupId}`, {
+      const response = await fetch(`${API_BASE}/students/groups/${selectedGroup._id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -68,21 +78,30 @@ export default function GroupsManagementView() {
       if (!response.ok) throw new Error('Failed to delete group')
 
       toast.success('Group deleted successfully')
+      setShowDeleteModal(false)
+      setSelectedGroup(null)
       loadGroups()
     } catch (error) {
       console.error('Failed to delete group:', error)
       toast.error('Failed to delete group')
+    } finally {
+      setDeleting(false)
     }
   }
 
-  const handleEditGroup = (groupId: string) => {
-    // TODO: Implement edit functionality
-    toast.info('Edit functionality coming soon')
+  const openDeleteModal = (group: any) => {
+    setSelectedGroup(group)
+    setShowDeleteModal(true)
   }
 
-  const handleViewDetails = (groupId: string) => {
-    // TODO: Implement view details functionality
-    toast.info('View details functionality coming soon')
+  const handleEditGroup = (group: any) => {
+    setSelectedGroup(group)
+    setShowEditModal(true)
+  }
+
+  const handleViewDetails = (group: any) => {
+    setSelectedGroup(group)
+    setShowViewModal(true)
   }
 
   // Filter groups by search term
@@ -163,7 +182,7 @@ export default function GroupsManagementView() {
                     </div>
                     <div className="flex items-center gap-1 ml-2">
                       <Button
-                        onClick={() => handleEditGroup(group._id)}
+                        onClick={() => handleEditGroup(group)}
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-foreground"
@@ -171,7 +190,7 @@ export default function GroupsManagementView() {
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
-                        onClick={() => handleDeleteGroup(group._id)}
+                        onClick={() => openDeleteModal(group)}
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-destructive"
@@ -192,7 +211,7 @@ export default function GroupsManagementView() {
 
                   {/* View Details Button */}
                   <Button
-                    onClick={() => handleViewDetails(group._id)}
+                    onClick={() => handleViewDetails(group)}
                     className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     View Details
@@ -203,6 +222,42 @@ export default function GroupsManagementView() {
           ))}
         </div>
       )}
+
+      {/* Modals */}
+      <CreateGroupModal
+        open={showCreateModal}
+        onOpenChange={setShowCreateModal}
+        onGroupCreated={() => {
+          toast.success('Group created successfully')
+          loadGroups()
+        }}
+      />
+
+      <EditGroupModal
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        group={selectedGroup}
+        onGroupUpdated={() => {
+          toast.success('Group updated successfully')
+          loadGroups()
+        }}
+      />
+
+      <ViewGroupDetailsModal
+        open={showViewModal}
+        onOpenChange={setShowViewModal}
+        group={selectedGroup}
+      />
+
+      <ConfirmDeleteModal
+        open={showDeleteModal}
+        onOpenChange={setShowDeleteModal}
+        onConfirm={handleDeleteGroup}
+        title="Delete Group?"
+        description="Are you sure you want to delete this group? This action cannot be undone."
+        itemName={selectedGroup?.name}
+        loading={deleting}
+      />
     </div>
   )
 }

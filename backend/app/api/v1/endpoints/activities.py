@@ -10,26 +10,44 @@ from app.core.database import get_database
 from app.core.enhanced_auth import require_authenticated_user, require_tutor, ClerkUserContext
 from app.models.activity import Activity, ActivityCreate, StudentActivitySummary
 from app.services.activity_service import ActivityService
+from app.utils.pagination import PaginationParams, PaginatedResponse, paginate
 
 logger = structlog.get_logger()
 router = APIRouter()
 
 
-@router.get("/student/{student_id}", response_model=List[StudentActivitySummary])
+@router.get("/student/{student_id}", response_model=PaginatedResponse[StudentActivitySummary])
 async def get_student_activities(
     student_id: str = Path(..., description="Student ID"),
-    limit: int = Query(10, description="Maximum number of activities to return"),
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(10, ge=1, le=100, description="Items per page"),
     current_user: ClerkUserContext = Depends(require_authenticated_user),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
-    """Get activity summary for a student"""
+    """Get paginated activity summary for a student"""
     try:
         activity_service = ActivityService(database)
-        activities = await activity_service.get_student_activity_summary(
+
+        # Create pagination params
+        pagination = PaginationParams(page=page, per_page=per_page)
+
+        # Get total count
+        total = await activity_service.get_student_activities_count(student_id)
+
+        # Get paginated activities
+        activities = await activity_service.get_student_activity_summary_paginated(
             student_id=student_id,
-            limit=limit
+            skip=pagination.skip,
+            limit=pagination.limit
         )
-        return activities
+
+        # Return paginated response
+        return paginate(
+            items=activities,
+            page=page,
+            per_page=per_page,
+            total=total
+        )
     except Exception as e:
         logger.error("Failed to get student activities", error=str(e))
         raise HTTPException(

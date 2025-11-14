@@ -132,7 +132,7 @@ export default function QuestionBankManager() {
   const currentQuestions = filteredQuestions.slice(startIndex, endIndex)
 
   // Get unique subjects for filter
-  const subjects = Array.from(new Set(mockQuestions.map(q => q.subject)))
+  const subjects = Array.from(new Set(questions.map(q => q.subject)))
 
   // Handle delete
   const handleDelete = (id: string) => {

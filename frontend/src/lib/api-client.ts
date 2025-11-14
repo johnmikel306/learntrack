@@ -33,7 +33,7 @@ export class ApiClient {
   ): Promise<ApiResponse<T>> {
     try {
       const token = await this.getToken()
-      
+
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
         ...options.headers,
@@ -51,11 +51,12 @@ export class ApiClient {
       const data = await response.json().catch(() => null)
 
       if (!response.ok) {
-        throw new ApiError(
-          data?.detail || `HTTP ${response.status}: ${response.statusText}`,
-          response.status,
-          data
-        )
+        const errorMessage = data?.detail || `HTTP ${response.status}: ${response.statusText}`
+        console.error('API Error:', errorMessage, data)
+        return {
+          error: errorMessage,
+          status: response.status,
+        }
       }
 
       return {
@@ -63,10 +64,7 @@ export class ApiClient {
         status: response.status,
       }
     } catch (error) {
-      if (error instanceof ApiError) {
-        throw error
-      }
-
+      console.error('API Request Error:', error)
       return {
         error: error instanceof Error ? error.message : 'Unknown error occurred',
         status: 0,

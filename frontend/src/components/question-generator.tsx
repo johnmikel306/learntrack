@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { 
-  Brain, 
-  FileText, 
+import {
+  Brain,
+  FileText,
   Upload,
   Settings,
   Wand2,
@@ -20,7 +20,8 @@ import {
   Plus,
   BookOpen,
   Target,
-  Zap
+  Zap,
+  Edit
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"

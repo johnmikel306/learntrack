@@ -10,27 +10,48 @@ from app.core.database import get_database
 from app.core.enhanced_auth import require_authenticated_user, ClerkUserContext
 from app.models.notification import Notification, NotificationCreate, NotificationUpdate
 from app.services.notification_service import NotificationService
+from app.utils.pagination import PaginationParams, PaginatedResponse, paginate
 
 logger = structlog.get_logger()
 router = APIRouter()
 
 
-@router.get("/", response_model=List[Notification])
+@router.get("/", response_model=PaginatedResponse[Notification])
 async def get_notifications(
     unread_only: bool = Query(False, description="Get only unread notifications"),
-    limit: int = Query(50, description="Maximum number of notifications to return"),
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(10, ge=1, le=100, description="Items per page"),
     current_user: ClerkUserContext = Depends(require_authenticated_user),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
-    """Get notifications for current user"""
+    """Get paginated notifications for current user"""
     try:
         notification_service = NotificationService(database)
-        notifications = await notification_service.get_user_notifications(
+
+        # Create pagination params
+        pagination = PaginationParams(page=page, per_page=per_page)
+
+        # Get total count
+        total = await notification_service.get_notifications_count(
             user_id=current_user.clerk_id,
-            limit=limit,
             unread_only=unread_only
         )
-        return notifications
+
+        # Get paginated notifications
+        notifications = await notification_service.get_user_notifications_paginated(
+            user_id=current_user.clerk_id,
+            skip=pagination.skip,
+            limit=pagination.limit,
+            unread_only=unread_only
+        )
+
+        # Return paginated response
+        return paginate(
+            items=notifications,
+            page=page,
+            per_page=per_page,
+            total=total
+        )
     except Exception as e:
         logger.error("Failed to get notifications", error=str(e))
         raise HTTPException(

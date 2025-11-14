@@ -14,8 +14,11 @@ import IntegratedSubjectsManager from "@/components/integrated-subjects-manager"
 import QuestionReviewer from "@/components/question-reviewer"
 import QuestionBankManager from "@/components/question-bank-manager"
 import MaterialManager from "@/components/MaterialManager"
+import QuestionGenerator from "@/components/question-generator"
 import ActiveAssignmentsView from "./views/ActiveAssignmentsView"
 import CreateAssignmentView from "./views/CreateAssignmentView"
+import AssignmentTemplatesView from "./views/AssignmentTemplatesView"
+import GradingView from "./views/GradingView"
 import MessagingView from "./views/MessagingView"
 import StudentDetailsPage from "@/pages/StudentDetailsPage"
 import { Brain, Calendar, BarChart3, FileText } from "lucide-react"
@@ -39,6 +42,9 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
   const getActiveViewFromPath = () => {
     const path = location.pathname.replace('/dashboard', '').replace(/^\//, '')
     if (!path || path === '') return 'overview'
+
+    // Handle dynamic routes (e.g., /students/:slug)
+    if (path.startsWith('students/')) return 'all-students'
 
     // Map paths to view names
     const pathToView: Record<string, string> = {
@@ -112,8 +118,19 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
     navigate(route)
   }
 
-  // Get breadcrumb title
-  const getBreadcrumbTitle = () => {
+  // Get breadcrumb title and path info
+  const getBreadcrumbInfo = () => {
+    const path = location.pathname.replace('/dashboard', '').replace(/^\//, '')
+
+    // Check if we're on a student detail page
+    if (path.startsWith('students/') && path !== 'students') {
+      const studentSlug = path.split('/')[1]
+      return {
+        parent: { title: 'All Students', path: '/dashboard/students' },
+        current: studentSlug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+      }
+    }
+
     const titles: Record<string, string> = {
       "overview": "Dashboard",
       "all-students": "All Students",
@@ -132,8 +149,14 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
       "chats": "Chats",
       "emails": "Emails",
     }
-    return titles[activeView] || "Dashboard"
+
+    return {
+      parent: null,
+      current: titles[activeView] || "Dashboard"
+    }
   }
+
+  const breadcrumbInfo = getBreadcrumbInfo()
 
   return (
     <SidebarProvider>
@@ -146,14 +169,28 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="#">
+                <BreadcrumbLink href="#" onClick={() => navigate('/dashboard')}>
                   LearnTrack
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage>{getBreadcrumbTitle()}</BreadcrumbPage>
-              </BreadcrumbItem>
+              {breadcrumbInfo.parent ? (
+                <>
+                  <BreadcrumbItem className="hidden md:block">
+                    <BreadcrumbLink href="#" onClick={() => navigate(breadcrumbInfo.parent!.path)}>
+                      {breadcrumbInfo.parent.title}
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator className="hidden md:block" />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{breadcrumbInfo.current}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </>
+              ) : (
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{breadcrumbInfo.current}</BreadcrumbPage>
+                </BreadcrumbItem>
+              )}
             </BreadcrumbList>
           </Breadcrumb>
         </header>
@@ -166,13 +203,13 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
 
             {/* Students routes */}
             <Route path="students" element={<StudentManager />} />
-            <Route path="students/:studentId" element={<StudentDetailsPage />} />
+            <Route path="students/:studentSlug" element={<StudentDetailsPage />} />
             <Route path="invitations" element={<InvitationsView />} />
             <Route path="groups" element={<GroupsManagementView />} />
             <Route path="relationships" element={<RelationshipsView />} />
 
             {/* Content routes */}
-            <Route path="content/generator" element={<PlaceholderView title="AI Generator" description="Generate questions with AI" icon={Brain} message="AI question generator will be available soon" submessage="Create custom questions with AI assistance" />} />
+            <Route path="content/generator" element={<QuestionGenerator />} />
             <Route path="content/review" element={<QuestionReviewer />} />
             <Route path="content/bank" element={<QuestionBankManager />} />
             <Route path="content/materials" element={<MaterialManager />} />
@@ -181,8 +218,8 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
             {/* Assignments routes */}
             <Route path="assignments" element={<ActiveAssignmentsView />} />
             <Route path="assignments/create" element={<CreateAssignmentView />} />
-            <Route path="assignments/templates" element={<PlaceholderView title="Assignment Templates" description="Reusable assignment templates" icon={FileText} message="Assignment templates will be available soon" submessage="Create and manage reusable assignment templates" />} />
-            <Route path="assignments/grading" element={<PlaceholderView title="Grading Center" description="Grade and review student submissions" icon={FileText} message="Grading center will be available soon" submessage="Review and grade student assignments" />} />
+            <Route path="assignments/templates" element={<AssignmentTemplatesView />} />
+            <Route path="assignments/grading" element={<GradingView />} />
 
             {/* Messages routes */}
             <Route path="messages/chats" element={<MessagingView type="chats" />} />
