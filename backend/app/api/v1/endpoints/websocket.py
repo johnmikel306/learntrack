@@ -6,7 +6,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.database import get_database
 from app.core.enhanced_auth import enhanced_clerk_bearer
@@ -95,7 +95,7 @@ async def websocket_endpoint(
             "type": "connection",
             "status": "connected",
             "user_id": user_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
         # Keep connection alive and handle incoming messages
@@ -109,7 +109,7 @@ async def websocket_endpoint(
                 if message.get("type") == "ping":
                     await websocket.send_json({
                         "type": "pong",
-                        "timestamp": datetime.utcnow().isoformat()
+                        "timestamp": datetime.now(timezone.utc).isoformat()
                     })
                 elif message.get("type") == "subscribe":
                     # Client wants to subscribe to specific channels
@@ -118,7 +118,7 @@ async def websocket_endpoint(
                     await websocket.send_json({
                         "type": "subscribed",
                         "channels": channels,
-                        "timestamp": datetime.utcnow().isoformat()
+                        "timestamp": datetime.now(timezone.utc).isoformat()
                     })
                 else:
                     logger.warning("Unknown message type", user_id=user_id, message_type=message.get("type"))
@@ -146,7 +146,7 @@ async def send_notification_via_websocket(user_id: str, notification: dict):
     message = {
         "type": "notification",
         "data": notification,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
     await manager.send_personal_message(message, user_id)
 

@@ -2,7 +2,7 @@
 User service for database operations
 """
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
 
@@ -55,8 +55,8 @@ class UserService:
 
             # Create new user
             user_dict = user_data.dict()
-            user_dict["created_at"] = datetime.utcnow()
-            user_dict["updated_at"] = datetime.utcnow()
+            user_dict["created_at"] = datetime.now(timezone.utc)
+            user_dict["updated_at"] = datetime.now(timezone.utc)
 
             # Generate unique slug from name in the appropriate role collection
             user_dict["slug"] = await generate_unique_slug(
@@ -195,7 +195,7 @@ class UserService:
                 email=user_context.email,
                 name=user_context.name,
                 role=user_context.role,
-                updated_at=datetime.utcnow()
+                updated_at=datetime.now(timezone.utc)
             )
 
             # Get the appropriate collection for this role
@@ -237,7 +237,7 @@ class UserService:
             if not update_data:
                 return await self.get_user_by_id(user_id)
 
-            update_data["updated_at"] = datetime.utcnow()
+            update_data["updated_at"] = datetime.now(timezone.utc)
 
             # If name is being updated, regenerate slug
             if "name" in update_data:
@@ -281,7 +281,7 @@ class UserService:
             for collection in [self.tutors_collection, self.students_collection, self.parents_collection]:
                 result = await collection.update_one(
                     {"_id": oid},
-                    {"$set": {"is_active": False, "updated_at": datetime.utcnow()}}
+                    {"$set": {"is_active": False, "updated_at": datetime.now(timezone.utc)}}
                 )
                 if result.matched_count > 0:
                     logger.info("User deleted", user_id=user_id, collection=collection.name)
@@ -379,7 +379,7 @@ class UserService:
             student_oid = to_object_id(student_id)
             await self.students_collection.update_one(
                 {"_id": student_oid},
-                {"$addToSet": {"student_tutors": tutor_id}, "$set": {"updated_at": datetime.utcnow()}}
+                {"$addToSet": {"student_tutors": tutor_id}, "$set": {"updated_at": datetime.now(timezone.utc)}}
             )
 
             logger.info("Student assigned to tutor", student_id=student_id, tutor_id=tutor_id)
@@ -400,7 +400,7 @@ class UserService:
                         "parent_children": child_clerk_id,
                         "student_ids": child_clerk_id
                     },
-                    "$set": {"updated_at": datetime.utcnow()}
+                    "$set": {"updated_at": datetime.now(timezone.utc)}
                 }
             )
 

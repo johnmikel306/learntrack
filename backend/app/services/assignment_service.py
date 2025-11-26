@@ -2,7 +2,7 @@
 Assignment service for database operations
 """
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
 import os
@@ -19,6 +19,13 @@ logger = structlog.get_logger()
 
 # Get frontend URL from environment
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
+
+def _convert_doc_to_assignment(doc: dict) -> Assignment:
+    """Convert MongoDB document to Assignment model, handling ObjectId conversion"""
+    if doc and "_id" in doc:
+        doc["_id"] = str(doc["_id"])
+    return Assignment(**doc)
 
 
 class AssignmentService:
@@ -52,8 +59,8 @@ class AssignmentService:
             # Create assignment document
             assignment_dict = assignment_data.dict(exclude={'group_ids', 'subject_filter'})
             assignment_dict["tutor_id"] = tutor_id
-            assignment_dict["created_at"] = datetime.utcnow()
-            assignment_dict["updated_at"] = datetime.utcnow()
+            assignment_dict["created_at"] = datetime.now(timezone.utc)
+            assignment_dict["updated_at"] = datetime.now(timezone.utc)
             assignment_dict["status"] = AssignmentStatus.SCHEDULED
             assignment_dict["questions"] = []  # Will be populated later
             assignment_dict["student_ids"] = list(student_ids)
@@ -64,7 +71,7 @@ class AssignmentService:
             assignment_dict["group_average_scores"] = {}
 
             result = await self.collection.insert_one(assignment_dict)
-            assignment_dict["_id"] = result.inserted_id
+            assignment_dict["_id"] = str(result.inserted_id)
 
             logger.info(
                 "Assignment created",
@@ -113,39 +120,66 @@ class AssignmentService:
             logger.error("Failed to create assignment", error=str(e))
             raise DatabaseException(f"Failed to create assignment: {str(e)}")
     
-    async def get_assignment_by_id(self, assignment_id: str) -> Assignment:
-        """Get assignment by ID"""
+    async def get_assignment_by_id(self, assignment_id: str, tutor_id: Optional[str] = None) -> Assignment:
+        """Get assignment by ID with optional ownership validation"""
         try:
+            from app.core.exceptions import AuthorizationError
             oid = to_object_id(assignment_id)
-            assignment = await self.collection.find_one({"_id": oid})
+            query = {"_id": oid}
+
+            # Add tutor_id filter if provided for ownership validation
+            if tutor_id:
+                query["tutor_id"] = tutor_id
+
+            assignment = await self.collection.find_one(query)
             if not assignment:
+                if tutor_id:
+                    raise AuthorizationError("Not authorized to access this assignment")
                 raise NotFoundError("Assignment", assignment_id)
-            return Assignment(**assignment)
-        except NotFoundError:
+            return _convert_doc_to_assignment(assignment)
+        except (NotFoundError, AuthorizationError):
             raise
         except Exception as e:
             logger.error("Failed to get assignment", assignment_id=assignment_id, error=str(e))
             raise DatabaseException(f"Failed to get assignment: {str(e)}")
     
-    async def get_assignments_for_tutor(self, tutor_id: str, subject_id: Optional[str] = None, 
-                                       status: Optional[str] = None) -> List[Assignment]:
-        """Get assignments created by a tutor"""
+    async def get_assignments_for_tutor(
+        self,
+        tutor_id: str,
+        subject_id: Optional[str] = None,
+        status: Optional[str] = None,
+        page: int = 1,
+        per_page: int = 20
+    ) -> Dict[str, Any]:
+        """Get assignments created by a tutor with pagination"""
         try:
             query = {"tutor_id": tutor_id}
-            
+
             if subject_id:
                 query["subject_id"] = subject_id
             if status:
                 query["status"] = status
-            
-            cursor = self.collection.find(query).sort("created_at", -1)
+
+            # Get total count
+            total = await self.collection.count_documents(query)
+
+            # Calculate skip
+            skip = (page - 1) * per_page
+
+            cursor = self.collection.find(query).sort("created_at", -1).skip(skip).limit(per_page)
             assignments = []
-            
+
             async for assignment in cursor:
-                assignments.append(Assignment(**assignment))
-            
-            return assignments
-            
+                assignments.append(_convert_doc_to_assignment(assignment))
+
+            return {
+                "items": assignments,
+                "total": total,
+                "page": page,
+                "per_page": per_page,
+                "total_pages": (total + per_page - 1) // per_page if per_page > 0 else 0
+            }
+
         except Exception as e:
             logger.error("Failed to get tutor assignments", tutor_id=tutor_id, error=str(e))
             raise DatabaseException(f"Failed to get assignments: {str(e)}")
@@ -175,7 +209,7 @@ class AssignmentService:
                     question_count=len(assignment.get("questions", [])),
                     attempts_used=0,  # Would come from progress tracking
                     last_attempt_score=None,  # Would come from progress tracking
-                    is_overdue=assignment["due_date"] < datetime.utcnow() if assignment.get("due_date") else False
+                    is_overdue=assignment["due_date"] < datetime.now(timezone.utc) if assignment.get("due_date") else False
                 )
                 assignments.append(student_assignment)
             
@@ -185,110 +219,135 @@ class AssignmentService:
             logger.error("Failed to get student assignments", student_id=student_id, error=str(e))
             raise DatabaseException(f"Failed to get assignments: {str(e)}")
     
-    async def update_assignment(self, assignment_id: str, assignment_update: AssignmentUpdate) -> Assignment:
-        """Update assignment"""
+    async def update_assignment(self, assignment_id: str, assignment_update: AssignmentUpdate, tutor_id: str) -> Assignment:
+        """Update assignment (with ownership validation)"""
         try:
+            from app.core.exceptions import AuthorizationError
+
+            # Validate ownership first
+            await self.get_assignment_by_id(assignment_id, tutor_id=tutor_id)
+
             update_data = assignment_update.dict(exclude_unset=True)
             if not update_data:
                 return await self.get_assignment_by_id(assignment_id)
-            
-            update_data["updated_at"] = datetime.utcnow()
-            
+
+            update_data["updated_at"] = datetime.now(timezone.utc)
+
             oid = to_object_id(assignment_id)
             result = await self.collection.update_one(
-                {"_id": oid},
+                {"_id": oid, "tutor_id": tutor_id},
                 {"$set": update_data}
             )
-            
+
             if result.matched_count == 0:
                 raise NotFoundError("Assignment", assignment_id)
-            
-            logger.info("Assignment updated", assignment_id=assignment_id)
+
+            logger.info("Assignment updated", assignment_id=assignment_id, tutor_id=tutor_id)
             return await self.get_assignment_by_id(assignment_id)
-            
-        except NotFoundError:
+
+        except (NotFoundError, AuthorizationError):
             raise
         except Exception as e:
             logger.error("Failed to update assignment", assignment_id=assignment_id, error=str(e))
             raise DatabaseException(f"Failed to update assignment: {str(e)}")
-    
-    async def delete_assignment(self, assignment_id: str) -> bool:
-        """Delete assignment (soft delete)"""
+
+    async def delete_assignment(self, assignment_id: str, tutor_id: str) -> bool:
+        """Delete assignment (soft delete with ownership validation)"""
         try:
+            from app.core.exceptions import AuthorizationError
+
+            # Validate ownership first
+            await self.get_assignment_by_id(assignment_id, tutor_id=tutor_id)
+
             oid = to_object_id(assignment_id)
             result = await self.collection.update_one(
-                {"_id": oid},
-                {"$set": {"status": AssignmentStatus.ARCHIVED, "updated_at": datetime.utcnow()}}
+                {"_id": oid, "tutor_id": tutor_id},
+                {"$set": {"status": AssignmentStatus.ARCHIVED, "updated_at": datetime.now(timezone.utc)}}
             )
-            
+
             if result.matched_count == 0:
                 raise NotFoundError("Assignment", assignment_id)
-            
-            logger.info("Assignment deleted", assignment_id=assignment_id)
+
+            logger.info("Assignment deleted", assignment_id=assignment_id, tutor_id=tutor_id)
             return True
-            
-        except NotFoundError:
+
+        except (NotFoundError, AuthorizationError):
             raise
         except Exception as e:
             logger.error("Failed to delete assignment", assignment_id=assignment_id, error=str(e))
             raise DatabaseException(f"Failed to delete assignment: {str(e)}")
     
-    async def add_questions_to_assignment(self, assignment_id: str, question_ids: List[str]) -> Assignment:
-        """Add questions to an assignment"""
+    async def add_questions_to_assignment(self, assignment_id: str, question_ids: List[str], tutor_id: str) -> Assignment:
+        """Add questions to an assignment (with ownership validation)"""
         try:
+            from app.core.exceptions import AuthorizationError
+
+            # Validate ownership first
+            await self.get_assignment_by_id(assignment_id, tutor_id=tutor_id)
+
             questions = [QuestionAssignment(question_id=qid, order=i) for i, qid in enumerate(question_ids)]
             question_dicts = [q.dict() for q in questions]
-            
+
             oid = to_object_id(assignment_id)
             result = await self.collection.update_one(
-                {"_id": oid},
+                {"_id": oid, "tutor_id": tutor_id},
                 {
                     "$set": {
                         "questions": question_dicts,
-                        "updated_at": datetime.utcnow()
+                        "updated_at": datetime.now(timezone.utc)
                     }
                 }
             )
-            
+
             if result.matched_count == 0:
                 raise NotFoundError("Assignment", assignment_id)
-            
+
             logger.info("Questions added to assignment", assignment_id=assignment_id, question_count=len(question_ids))
             return await self.get_assignment_by_id(assignment_id)
-            
-        except NotFoundError:
+
+        except (NotFoundError, AuthorizationError):
             raise
         except Exception as e:
             logger.error("Failed to add questions to assignment", assignment_id=assignment_id, error=str(e))
             raise DatabaseException(f"Failed to add questions: {str(e)}")
-    
-    async def assign_to_students(self, assignment_id: str, student_ids: List[str]) -> Assignment:
-        """Assign assignment to students"""
+
+    async def assign_to_students(self, assignment_id: str, student_ids: List[str], tutor_id: str) -> Assignment:
+        """Assign assignment to students (with ownership validation)"""
         try:
+            from app.core.exceptions import AuthorizationError
+
+            # Validate ownership first
+            await self.get_assignment_by_id(assignment_id, tutor_id=tutor_id)
+
             oid = to_object_id(assignment_id)
             result = await self.collection.update_one(
-                {"_id": oid},
+                {"_id": oid, "tutor_id": tutor_id},
                 {
                     "$addToSet": {"student_ids": {"$each": student_ids}},
-                    "$set": {"updated_at": datetime.utcnow()}
+                    "$set": {"updated_at": datetime.now(timezone.utc)}
                 }
             )
-            
+
             if result.matched_count == 0:
                 raise NotFoundError("Assignment", assignment_id)
-            
+
             logger.info("Assignment assigned to students", assignment_id=assignment_id, student_count=len(student_ids))
             return await self.get_assignment_by_id(assignment_id)
-            
-        except NotFoundError:
+
+        except (NotFoundError, AuthorizationError):
             raise
         except Exception as e:
             logger.error("Failed to assign to students", assignment_id=assignment_id, error=str(e))
             raise DatabaseException(f"Failed to assign to students: {str(e)}")
 
-    async def assign_to_group(self, assignment_id: str, group_id: str) -> Assignment:
-        """Assign assignment to a student group"""
+    async def assign_to_group(self, assignment_id: str, group_id: str, tutor_id: str) -> Assignment:
+        """Assign assignment to a student group (with ownership validation)"""
         try:
+            from app.core.exceptions import AuthorizationError
+
+            # Validate ownership first
+            await self.get_assignment_by_id(assignment_id, tutor_id=tutor_id)
+
             # Get students from group
             group_students = await self._get_students_from_group(group_id)
 
@@ -298,7 +357,7 @@ class AssignmentService:
             # Update assignment
             oid = to_object_id(assignment_id)
             result = await self.collection.update_one(
-                {"_id": oid},
+                {"_id": oid, "tutor_id": tutor_id},
                 {
                     "$addToSet": {
                         "student_ids": {"$each": list(group_students)},
@@ -306,7 +365,7 @@ class AssignmentService:
                     },
                     "$set": {
                         "is_group_assignment": True,
-                        "updated_at": datetime.utcnow()
+                        "updated_at": datetime.now(timezone.utc)
                     }
                 }
             )
@@ -317,16 +376,19 @@ class AssignmentService:
             logger.info("Assignment assigned to group", assignment_id=assignment_id, group_id=group_id, student_count=len(group_students))
             return await self.get_assignment_by_id(assignment_id)
 
-        except (NotFoundError, ValidationError):
+        except (NotFoundError, ValidationError, AuthorizationError):
             raise
         except Exception as e:
             logger.error("Failed to assign to group", assignment_id=assignment_id, error=str(e))
             raise DatabaseException(f"Failed to assign to group: {str(e)}")
 
-    async def get_group_performance(self, assignment_id: str, group_id: str) -> Dict:
-        """Get performance statistics for a specific group on an assignment"""
+    async def get_group_performance(self, assignment_id: str, group_id: str, tutor_id: str) -> Dict:
+        """Get performance statistics for a specific group on an assignment (with ownership validation)"""
         try:
-            assignment = await self.get_assignment_by_id(assignment_id)
+            from app.core.exceptions import AuthorizationError
+
+            # Validate ownership
+            assignment = await self.get_assignment_by_id(assignment_id, tutor_id=tutor_id)
             group_students = await self._get_students_from_group(group_id)
 
             # Get progress for group students
@@ -352,7 +414,7 @@ class AssignmentService:
                 "lowest_score": min(scores) if scores else 0
             }
 
-        except NotFoundError:
+        except (NotFoundError, AuthorizationError):
             raise
         except Exception as e:
             logger.error("Failed to get group performance", assignment_id=assignment_id, group_id=group_id, error=str(e))
@@ -439,7 +501,7 @@ class AssignmentService:
 
             assignments = []
             for assignment_data in assignments_data:
-                assignments.append(Assignment(**assignment_data))
+                assignments.append(_convert_doc_to_assignment(assignment_data))
 
             return assignments
         except Exception as e:

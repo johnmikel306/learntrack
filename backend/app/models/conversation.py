@@ -1,7 +1,7 @@
 """
 Conversation model for real-time chat system
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict
 from pydantic import BaseModel, Field
 
@@ -33,8 +33,8 @@ class Conversation(BaseModel):
     last_message: Optional[str] = Field(None, description="Last message content")
     last_message_at: Optional[datetime] = Field(None, description="Timestamp of last message")
     unread_count: Dict[str, int] = Field(default_factory=dict, description="Unread message count per user")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
-    updated_at: datetime = Field(default_factory=datetime.utcnow, description="Last update timestamp")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp")
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Last update timestamp")
     
     class Config:
         populate_by_name = True

@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useState, useEffect } from "react"
-import { useApiClient } from "@/lib/api-client"
+import { useState } from "react"
+import { useAssignments } from "@/hooks/useQueries"
 
 interface CalendarDay {
   day: number
@@ -14,34 +14,10 @@ interface CalendarDay {
 
 export function SubjectPerformance() {
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [assignments, setAssignments] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const client = useApiClient()
 
-  useEffect(() => {
-    const fetchAssignments = async () => {
-      try {
-        setLoading(true)
-        const response = await client.get('/assignments/')
-
-        if (response.error) {
-          throw new Error(response.error)
-        }
-
-        setAssignments((response.data as any[]) || [])
-      } catch (err: any) {
-        console.error('Failed to fetch assignments:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchAssignments()
-
-    // Refresh every 5 minutes
-    const interval = setInterval(fetchAssignments, 5 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, [])
+  // Use React Query for assignments
+  const { data: assignmentsData, isLoading: loading } = useAssignments(1, 100)
+  const assignments = assignmentsData?.items || []
 
   const daysOfWeek = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]
 

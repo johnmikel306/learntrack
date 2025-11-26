@@ -197,7 +197,7 @@ export function useUnreadNotificationCount() {
 export function useMarkNotificationRead() {
   const client = useApiClient()
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: async (notificationId: string) => {
       const response = await client.put(`/notifications/${notificationId}/read`, {})
@@ -208,6 +208,220 @@ export function useMarkNotificationRead() {
       // Invalidate and refetch notifications
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
       queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] })
+    },
+  })
+}
+
+// ============================================
+// Dashboard Queries
+// ============================================
+
+/**
+ * Hook to fetch dashboard statistics
+ */
+export function useDashboardStats() {
+  const client = useApiClient()
+
+  return useQuery({
+    queryKey: ['dashboard', 'stats'],
+    queryFn: async () => {
+      const response = await client.get('/dashboard/stats')
+      if (response.error) throw new Error(response.error)
+      return response.data
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  })
+}
+
+// ============================================
+// Assignment Queries
+// ============================================
+
+/**
+ * Hook to fetch tutor assignments with pagination
+ */
+export function useAssignments(
+  page: number = 1,
+  perPage: number = 20,
+  filters?: { subjectId?: string; status?: string }
+) {
+  const client = useApiClient()
+
+  return useQuery<PaginatedResponse<any>>({
+    queryKey: ['assignments', page, perPage, filters],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        per_page: perPage.toString(),
+      })
+      if (filters?.subjectId) params.append('subject_id', filters.subjectId)
+      if (filters?.status) params.append('status', filters.status)
+
+      const response = await client.get(`/assignments?${params.toString()}`)
+      if (response.error) throw new Error(response.error)
+      return response.data as PaginatedResponse<any>
+    },
+  })
+}
+
+/**
+ * Hook to fetch current student's assignments
+ */
+export function useMyAssignments() {
+  const client = useApiClient()
+
+  return useQuery({
+    queryKey: ['assignments', 'my'],
+    queryFn: async () => {
+      const response = await client.get('/assignments/student/')
+      if (response.error) throw new Error(response.error)
+      return response.data
+    },
+  })
+}
+
+// ============================================
+// Subject Queries
+// ============================================
+
+/**
+ * Hook to fetch all subjects
+ */
+export function useSubjects() {
+  const client = useApiClient()
+
+  return useQuery({
+    queryKey: ['subjects'],
+    queryFn: async () => {
+      const response = await client.get('/subjects')
+      if (response.error) throw new Error(response.error)
+      return response.data
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes - subjects don't change often
+  })
+}
+
+// ============================================
+// Question Queries
+// ============================================
+
+/**
+ * Hook to fetch questions with pagination
+ */
+export function useQuestions(
+  page: number = 1,
+  perPage: number = 20,
+  filters?: { subjectId?: string; topic?: string; difficulty?: string; status?: string }
+) {
+  const client = useApiClient()
+
+  return useQuery<PaginatedResponse<any>>({
+    queryKey: ['questions', page, perPage, filters],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        per_page: perPage.toString(),
+      })
+      if (filters?.subjectId) params.append('subject_id', filters.subjectId)
+      if (filters?.topic) params.append('topic', filters.topic)
+      if (filters?.difficulty) params.append('difficulty', filters.difficulty)
+      if (filters?.status) params.append('status', filters.status)
+
+      const response = await client.get(`/questions?${params.toString()}`)
+      if (response.error) throw new Error(response.error)
+      return response.data as PaginatedResponse<any>
+    },
+  })
+}
+
+/**
+ * Hook to fetch pending questions for review
+ */
+export function usePendingQuestions(page: number = 1, perPage: number = 20) {
+  const client = useApiClient()
+
+  return useQuery<PaginatedResponse<any>>({
+    queryKey: ['questions', 'pending', page, perPage],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        per_page: perPage.toString(),
+      })
+      const response = await client.get(`/questions/pending?${params.toString()}`)
+      if (response.error) throw new Error(response.error)
+      return response.data as PaginatedResponse<any>
+    },
+  })
+}
+
+// ============================================
+// Material Queries
+// ============================================
+
+/**
+ * Hook to fetch materials with pagination
+ */
+export function useMaterials(
+  page: number = 1,
+  perPage: number = 20,
+  filters?: { subjectId?: string; materialType?: string; status?: string }
+) {
+  const client = useApiClient()
+
+  return useQuery<PaginatedResponse<any>>({
+    queryKey: ['materials', page, perPage, filters],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        per_page: perPage.toString(),
+      })
+      if (filters?.subjectId) params.append('subject_id', filters.subjectId)
+      if (filters?.materialType) params.append('material_type', filters.materialType)
+      if (filters?.status) params.append('status', filters.status)
+
+      const response = await client.get(`/materials?${params.toString()}`)
+      if (response.error) throw new Error(response.error)
+      return response.data as PaginatedResponse<any>
+    },
+  })
+}
+
+// ============================================
+// Group Queries
+// ============================================
+
+/**
+ * Hook to fetch all groups
+ */
+export function useGroups(limit: number = 200) {
+  const client = useApiClient()
+
+  return useQuery({
+    queryKey: ['groups', limit],
+    queryFn: async () => {
+      const response = await client.get(`/groups?limit=${limit}`)
+      if (response.error) throw new Error(response.error)
+      return response.data
+    },
+  })
+}
+
+// ============================================
+// Parent Progress Queries
+// ============================================
+
+/**
+ * Hook to fetch parent's children progress
+ */
+export function useParentProgress() {
+  const client = useApiClient()
+
+  return useQuery({
+    queryKey: ['progress', 'parent'],
+    queryFn: async () => {
+      const response = await client.get('/progress/parent')
+      if (response.error) throw new Error(response.error)
+      return response.data
     },
   })
 }

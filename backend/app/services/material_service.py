@@ -1,8 +1,8 @@
 """
 Material service for database operations
 """
-from typing import List, Optional, Dict
-from datetime import datetime
+from typing import List, Optional, Dict, Any
+from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
 
@@ -27,8 +27,8 @@ class MaterialService:
         try:
             material_dict = material_data.dict()
             material_dict["tutor_id"] = tutor_id
-            material_dict["created_at"] = datetime.utcnow()
-            material_dict["updated_at"] = datetime.utcnow()
+            material_dict["created_at"] = datetime.now(timezone.utc)
+            material_dict["updated_at"] = datetime.now(timezone.utc)
             material_dict["status"] = MaterialStatus.ACTIVE
             material_dict["view_count"] = 0
             material_dict["download_count"] = 0
@@ -69,33 +69,46 @@ class MaterialService:
         subject_id: Optional[str] = None,
         material_type: Optional[str] = None,
         status: Optional[str] = None,
-        limit: int = 100
-    ) -> List[Material]:
-        """Get materials for a tutor with optional filters"""
+        page: int = 1,
+        per_page: int = 20
+    ) -> Dict[str, Any]:
+        """Get materials for a tutor with optional filters and pagination"""
         try:
             query = {"tutor_id": tutor_id}
-            
+
             if subject_id:
                 query["subject_id"] = subject_id
-            
+
             if material_type:
                 query["material_type"] = material_type
-            
+
             if status:
                 query["status"] = status
             else:
                 # Default to active materials
                 query["status"] = MaterialStatus.ACTIVE
-            
-            cursor = self.collection.find(query).limit(limit).sort("created_at", -1)
+
+            # Get total count
+            total = await self.collection.count_documents(query)
+
+            # Calculate skip
+            skip = (page - 1) * per_page
+
+            cursor = self.collection.find(query).sort("created_at", -1).skip(skip).limit(per_page)
             materials = []
-            
+
             async for material in cursor:
                 materials.append(Material(**material))
-            
+
             logger.info("Retrieved materials for tutor", tutor_id=tutor_id, count=len(materials))
-            return materials
-            
+            return {
+                "items": materials,
+                "total": total,
+                "page": page,
+                "per_page": per_page,
+                "total_pages": (total + per_page - 1) // per_page if per_page > 0 else 0
+            }
+
         except Exception as e:
             logger.error("Failed to get materials for tutor", tutor_id=tutor_id, error=str(e))
             raise DatabaseException(f"Failed to get materials: {str(e)}")
@@ -104,7 +117,7 @@ class MaterialService:
         """Update a material"""
         try:
             update_dict = update_data.dict(exclude_unset=True)
-            update_dict["updated_at"] = datetime.utcnow()
+            update_dict["updated_at"] = datetime.now(timezone.utc)
             
             oid = to_object_id(material_id)
             result = await self.collection.update_one(
@@ -130,7 +143,7 @@ class MaterialService:
             oid = to_object_id(material_id)
             result = await self.collection.update_one(
                 {"_id": oid},
-                {"$set": {"status": MaterialStatus.ARCHIVED, "updated_at": datetime.utcnow()}}
+                {"$set": {"status": MaterialStatus.ARCHIVED, "updated_at": datetime.now(timezone.utc)}}
             )
             
             if result.matched_count == 0:
@@ -153,7 +166,7 @@ class MaterialService:
                 {"_id": oid},
                 {
                     "$addToSet": {"linked_questions": question_id},
-                    "$set": {"updated_at": datetime.utcnow()}
+                    "$set": {"updated_at": datetime.now(timezone.utc)}
                 }
             )
             
@@ -177,7 +190,7 @@ class MaterialService:
                 {"_id": oid},
                 {
                     "$addToSet": {"linked_assignments": assignment_id},
-                    "$set": {"updated_at": datetime.utcnow()}
+                    "$set": {"updated_at": datetime.now(timezone.utc)}
                 }
             )
             

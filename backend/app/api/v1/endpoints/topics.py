@@ -131,7 +131,7 @@ async def update_topic(
     """Update a topic"""
     try:
         update_dict = topic_data.dict()
-        update_dict["updated_at"] = datetime.utcnow()
+        update_dict["updated_at"] = datetime.now(timezone.utc)
         
         result = await database.topics.update_one(
             {"_id": ObjectId(topic_id)},

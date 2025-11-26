@@ -1,11 +1,12 @@
-import { render, screen } from '@testing-library/react'
+import { render } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import App from '../App'
 import { MemoryRouter } from 'react-router-dom'
+import { ReactNode } from 'react'
 
 // Mock Clerk provider
 vi.mock('@clerk/clerk-react', () => ({
-  ClerkProvider: ({ children }) => <div>{children}</div>,
+  ClerkProvider: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   useUser: () => ({ isSignedIn: false, user: null, isLoaded: true }),
 }))
 

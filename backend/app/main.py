@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -16,6 +16,7 @@ from app.core.exceptions import (
     validation_exception_handler,
     general_exception_handler
 )
+from app.core.rate_limit import setup_rate_limiting, limiter
 from app.websocket import get_socket_app
 
 logger = structlog.get_logger()
@@ -72,6 +73,9 @@ app.add_exception_handler(LearnTrackException, learntrack_exception_handler)
 app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
+
+# Setup rate limiting
+setup_rate_limiting(app)
 
 app.add_middleware(
     CORSMiddleware,

@@ -176,7 +176,7 @@ class InvitationService:
                 )
 
             # Check if expired
-            if invitation.expires_at < datetime.utcnow():
+            if invitation.expires_at < datetime.now(timezone.utc):
                 # Update status to expired
                 await self.collection.update_one(
                     {"token": token},
@@ -254,7 +254,7 @@ class InvitationService:
                 {
                     "$set": {
                         "status": InvitationStatus.ACCEPTED.value,
-                        "accepted_at": datetime.utcnow()
+                        "accepted_at": datetime.now(timezone.utc)
                     }
                 }
             )
@@ -331,7 +331,7 @@ class InvitationService:
                 {
                     "$set": {
                         "status": InvitationStatus.REVOKED.value,
-                        "revoked_at": datetime.utcnow()
+                        "revoked_at": datetime.now(timezone.utc)
                     }
                 }
             )

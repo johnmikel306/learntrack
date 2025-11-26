@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Path
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from typing import List
 from pydantic import BaseModel
+from datetime import datetime, timezone
 
 from app.core.database import get_database
 from app.core.enhanced_auth import require_tutor, ClerkUserContext
@@ -119,14 +120,13 @@ async def update_parent_students(
                 raise HTTPException(status_code=403, detail=f"Student {student_id} does not belong to this tutor")
         
         # Update parent's student_ids in parents collection
-        from datetime import datetime
         result = await db.parents.update_one(
             {"clerk_id": parent_clerk_id},
             {
                 "$set": {
                     "student_ids": payload.student_ids,
                     "parent_children": payload.student_ids,  # Keep both fields in sync
-                    "updated_at": datetime.utcnow()
+                    "updated_at": datetime.now(timezone.utc)
                 }
             }
         )
@@ -176,7 +176,6 @@ async def unlink_student_from_parent(
             raise HTTPException(status_code=403, detail="Student does not belong to this tutor")
         
         # Remove student from parent's lists in parents collection
-        from datetime import datetime
         result = await db.parents.update_one(
             {"clerk_id": parent_clerk_id},
             {
@@ -185,7 +184,7 @@ async def unlink_student_from_parent(
                     "parent_children": student_clerk_id
                 },
                 "$set": {
-                    "updated_at": datetime.utcnow()
+                    "updated_at": datetime.now(timezone.utc)
                 }
             }
         )
@@ -233,7 +232,6 @@ async def link_student_to_parent(
             raise HTTPException(status_code=403, detail="Student does not belong to this tutor")
         
         # Add student to parent's lists in parents collection
-        from datetime import datetime
         result = await db.parents.update_one(
             {"clerk_id": parent_clerk_id},
             {
@@ -242,7 +240,7 @@ async def link_student_to_parent(
                     "parent_children": student_clerk_id
                 },
                 "$set": {
-                    "updated_at": datetime.utcnow()
+                    "updated_at": datetime.now(timezone.utc)
                 }
             }
         )

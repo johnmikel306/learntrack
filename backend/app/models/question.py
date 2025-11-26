@@ -1,7 +1,7 @@
 """
 Question models and schemas
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from enum import Enum
 from pydantic import BaseModel, Field, validator, ConfigDict
@@ -91,8 +91,8 @@ class QuestionInDB(QuestionBase):
     options: List[QuestionOption] = []
     correct_answer: Optional[str] = None
     status: QuestionStatus = QuestionStatus.ACTIVE
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     # AI Generation metadata
     ai_generated: bool = False
@@ -115,6 +115,15 @@ class QuestionInDB(QuestionBase):
 
     # Reference materials
     reference_materials: List[str] = []  # Material IDs
+
+    # RAG-specific fields
+    source_documents: List[str] = []  # Document IDs used for generation
+    source_chunks: List[Dict[str, Any]] = []  # Chunk metadata with references
+    rag_context_used: Optional[str] = None  # Context fed to LLM
+    web_search_used: bool = False
+    web_search_results: List[Dict[str, Any]] = []
+    generation_model: Optional[str] = None  # e.g., "groq/llama-3.1-70b"
+    rag_generation_id: Optional[str] = None  # Links to RAG generation batch
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -192,4 +201,4 @@ class QuestionBatch(BaseModel):
     ai_provider: str
     questions: List[QuestionCreate]
     processing_time: Optional[float] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

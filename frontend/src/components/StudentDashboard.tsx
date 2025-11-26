@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -8,16 +8,14 @@ import { Progress } from "@/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, BookOpen, Clock, CheckCircle, Star, Calendar, Trophy, MoreHorizontal, Target, Flame } from "lucide-react"
+import { ArrowLeft, BookOpen, Clock, CheckCircle, Star, Calendar, Trophy, Target, Flame } from "lucide-react"
+import { toast } from "sonner"
 
-import { useApiClient } from '@/lib/api-client'
-import UserCard from "@/components/UserCard"
 import Announcements from "@/components/Announcements"
 import EventCalendar from "@/components/EventCalendar"
 
-import { format } from "date-fns"
-import { toast } from "sonner"
 import { ThemeToggle } from '@/components/ui/theme-toggle'
+import { useMyAssignments } from '@/hooks/useQueries'
 
 interface StudentDashboardProps {
   onBack?: () => void
@@ -45,34 +43,11 @@ interface Question {
 }
 
 export default function StudentDashboard({ onBack }: StudentDashboardProps) {
-
-  const [assignments, setAssignments] = useState<Assignment[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const client = useApiClient()
-
-  // Load assignments from FastAPI
-  useEffect(() => {
-    const loadAssignments = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const res = await client.get<Assignment[]>('/assignments/student/')
-        if (res.error) throw new Error(res.error)
-        setAssignments(res.data || [])
-      } catch (e: any) {
-        setError(e.message)
-        toast("Failed to load assignments: " + e.message)
-      } finally {
-        setLoading(false)
-      }
-    }
-    loadAssignments()
-  }, [])
+  // Use React Query for assignments
+  const { data: assignments = [], isLoading: loading, error } = useMyAssignments()
 
   // All assignments now come from API
-  const displayAssignments = assignments
+  const displayAssignments = assignments as Assignment[]
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState("")

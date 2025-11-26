@@ -7,6 +7,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
 
 from app.core.database import get_database
+from app.core.dependencies import get_assignment_service
 from app.core.enhanced_auth import require_tutor, require_authenticated_user, ClerkUserContext
 from app.models.assignment import Assignment, AssignmentCreate, AssignmentUpdate
 from app.services.assignment_service import AssignmentService
@@ -20,33 +21,40 @@ router = APIRouter()
 async def create_assignment(
     assignment_data: AssignmentCreate,
     current_user: ClerkUserContext = Depends(require_tutor),
-    database: AsyncIOMotorDatabase = Depends(get_database)
+    assignment_service: AssignmentService = Depends(get_assignment_service)
 ):
     """Create a new assignment (tutor only)"""
     try:
-        assignment_service = AssignmentService(database)
         assignment = await assignment_service.create_assignment(assignment_data, current_user.clerk_id)
         return assignment
     except Exception as e:
         logger.error("Failed to create assignment", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to create assignment")
 
-@router.get("/")
+@router.get("/", response_model=PaginatedResponse[Assignment])
 async def get_assignments(
     subject_id: Optional[str] = Query(None, description="Filter by subject ID"),
     status: Optional[str] = Query(None, description="Filter by status"),
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(20, ge=1, le=100, description="Items per page"),
     current_user: ClerkUserContext = Depends(require_tutor),
-    database: AsyncIOMotorDatabase = Depends(get_database)
+    assignment_service: AssignmentService = Depends(get_assignment_service)
 ):
-    """Get assignments for current user (tutor only)"""
+    """Get paginated assignments for current user (tutor only)"""
     try:
-        assignment_service = AssignmentService(database)
-        assignments = await assignment_service.get_assignments_for_tutor(
+        result = await assignment_service.get_assignments_for_tutor(
             tutor_id=current_user.clerk_id,
             subject_id=subject_id,
-            status=status
+            status=status,
+            page=page,
+            per_page=per_page
         )
-        return assignments
+        return paginate(
+            items=result["items"],
+            page=page,
+            per_page=per_page,
+            total=result["total"]
+        )
     except Exception as e:
         logger.error("Failed to get assignments", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to get assignments")
@@ -58,12 +66,10 @@ async def get_student_assignments(
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(10, ge=1, le=100, description="Items per page"),
     current_user: ClerkUserContext = Depends(require_authenticated_user),
-    database: AsyncIOMotorDatabase = Depends(get_database)
+    assignment_service: AssignmentService = Depends(get_assignment_service)
 ):
     """Get paginated assignments for a specific student"""
     try:
-        assignment_service = AssignmentService(database)
-
         # Create pagination params
         pagination = PaginationParams(page=page, per_page=per_page)
 
@@ -98,12 +104,18 @@ async def get_student_assignments(
 async def get_assignment(
     assignment_id: str = Path(..., description="Assignment ID"),
     current_user: ClerkUserContext = Depends(require_authenticated_user),
-    database: AsyncIOMotorDatabase = Depends(get_database)
+    assignment_service: AssignmentService = Depends(get_assignment_service)
 ):
     """Get assignment by ID"""
     try:
-        assignment_service = AssignmentService(database)
-        assignment = await assignment_service.get_assignment_by_id(assignment_id, current_user)
+        # For tutors, validate ownership. For students, they can view if assigned.
+        tutor_id = current_user.clerk_id if current_user.role == "tutor" else None
+        assignment = await assignment_service.get_assignment_by_id(assignment_id, tutor_id=tutor_id)
+
+        # For students, verify they are assigned to this assignment
+        if current_user.role == "student" and current_user.clerk_id not in (assignment.student_ids or []):
+            raise HTTPException(status_code=403, detail="Not authorized to view this assignment")
+
         if not assignment:
             raise HTTPException(status_code=404, detail="Assignment not found")
         return assignment
@@ -118,11 +130,10 @@ async def update_assignment(
     assignment_update: AssignmentUpdate,
     assignment_id: str = Path(..., description="Assignment ID"),
     current_user: ClerkUserContext = Depends(require_tutor),
-    database: AsyncIOMotorDatabase = Depends(get_database)
+    assignment_service: AssignmentService = Depends(get_assignment_service)
 ):
     """Update assignment"""
     try:
-        assignment_service = AssignmentService(database)
         assignment = await assignment_service.update_assignment(assignment_id, assignment_update, current_user.clerk_id)
         if not assignment:
             raise HTTPException(status_code=404, detail="Assignment not found")
@@ -137,11 +148,10 @@ async def update_assignment(
 async def delete_assignment(
     assignment_id: str = Path(..., description="Assignment ID"),
     current_user: ClerkUserContext = Depends(require_tutor),
-    database: AsyncIOMotorDatabase = Depends(get_database)
+    assignment_service: AssignmentService = Depends(get_assignment_service)
 ):
     """Delete assignment"""
     try:
-        assignment_service = AssignmentService(database)
         success = await assignment_service.delete_assignment(assignment_id, current_user.clerk_id)
         if not success:
             raise HTTPException(status_code=404, detail="Assignment not found")
@@ -152,42 +162,16 @@ async def delete_assignment(
         logger.error("Failed to delete assignment", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to delete assignment")
 
-@router.get("/student/{student_id}", response_model=List[Assignment])
-async def get_student_assignments(
-    student_id: str = Path(..., description="Student ID"),
-    status: Optional[str] = Query(None, description="Filter by status"),
-    current_user: ClerkUserContext = Depends(require_authenticated_user),
-    database: AsyncIOMotorDatabase = Depends(get_database)
-):
-    """Get assignments for a specific student"""
-    try:
-        # Security check: ensure the current user can view this student's assignments
-        if current_user.role == "student" and current_user.clerk_id != student_id:
-            raise HTTPException(status_code=403, detail="Forbidden")
-        
-        assignment_service = AssignmentService(database)
-        assignments = await assignment_service.get_assignments_for_student(
-            student_id=student_id,
-            status=status,
-            current_user=current_user
-        )
-        return assignments
-    except Exception as e:
-        logger.error("Failed to get student assignments", error=str(e))
-        raise HTTPException(status_code=500, detail="Failed to get student assignments")
-
-
 @router.post("/{assignment_id}/assign-to-group", response_model=Assignment)
 async def assign_to_group(
     assignment_id: str = Path(..., description="Assignment ID"),
     group_id: str = Query(..., description="Group ID to assign to"),
     current_user: ClerkUserContext = Depends(require_tutor),
-    database: AsyncIOMotorDatabase = Depends(get_database)
+    assignment_service: AssignmentService = Depends(get_assignment_service)
 ):
     """Assign an assignment to a student group"""
     try:
-        assignment_service = AssignmentService(database)
-        assignment = await assignment_service.assign_to_group(assignment_id, group_id)
+        assignment = await assignment_service.assign_to_group(assignment_id, group_id, current_user.clerk_id)
         return assignment
     except HTTPException:
         raise
@@ -201,12 +185,11 @@ async def get_group_performance(
     assignment_id: str = Path(..., description="Assignment ID"),
     group_id: str = Path(..., description="Group ID"),
     current_user: ClerkUserContext = Depends(require_tutor),
-    database: AsyncIOMotorDatabase = Depends(get_database)
+    assignment_service: AssignmentService = Depends(get_assignment_service)
 ):
     """Get performance statistics for a specific group on an assignment"""
     try:
-        assignment_service = AssignmentService(database)
-        performance = await assignment_service.get_group_performance(assignment_id, group_id)
+        performance = await assignment_service.get_group_performance(assignment_id, group_id, current_user.clerk_id)
         return performance
     except HTTPException:
         raise

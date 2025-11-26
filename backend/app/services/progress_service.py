@@ -2,7 +2,7 @@
 Progress tracking service for database operations
 """
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
 
@@ -40,9 +40,9 @@ class ProgressService:
             
             # Create new progress record
             progress_dict = progress_data.dict()
-            progress_dict["created_at"] = datetime.utcnow()
-            progress_dict["updated_at"] = datetime.utcnow()
-            progress_dict["started_at"] = datetime.utcnow()
+            progress_dict["created_at"] = datetime.now(timezone.utc)
+            progress_dict["updated_at"] = datetime.now(timezone.utc)
+            progress_dict["started_at"] = datetime.now(timezone.utc)
             progress_dict["status"] = SubmissionStatus.IN_PROGRESS
             progress_dict["answers"] = []
             progress_dict["points_earned"] = 0.0
@@ -92,7 +92,7 @@ class ProgressService:
             if not update_data:
                 return await self.get_progress_by_id(progress_id)
             
-            update_data["updated_at"] = datetime.utcnow()
+            update_data["updated_at"] = datetime.now(timezone.utc)
             
             oid = to_object_id(progress_id)
             result = await self.collection.update_one(
@@ -135,7 +135,7 @@ class ProgressService:
                     max_attempts=3,
                     started_at=progress.get("started_at"),
                     submitted_at=progress.get("submitted_at"),
-                    due_date=datetime.utcnow() + timedelta(days=7),  # Would come from assignment
+                    due_date=datetime.now(timezone.utc) + timedelta(days=7),  # Would come from assignment
                     is_overdue=False
                 )
                 progress_list.append(student_progress)
@@ -231,36 +231,36 @@ class ProgressService:
                     "student_id": "student_1",
                     "student_name": "Sarah Johnson",
                     "subject_scores": {"math": 85, "physics": 78, "chemistry": 92},
-                    "created_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow()
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
                 },
                 {
                     "student_id": "student_2",
                     "student_name": "Mike Chen",
                     "subject_scores": {"math": 92, "physics": 88, "chemistry": 85},
-                    "created_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow()
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
                 },
                 {
                     "student_id": "student_3",
                     "student_name": "Emma Davis",
                     "subject_scores": {"math": 78, "physics": 82, "chemistry": 89},
-                    "created_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow()
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
                 },
                 {
                     "student_id": "student_4",
                     "student_name": "John Smith",
                     "subject_scores": {"math": 88, "physics": 95, "chemistry": 76},
-                    "created_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow()
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
                 },
                 {
                     "student_id": "student_5",
                     "student_name": "Lisa Wang",
                     "subject_scores": {"math": 94, "physics": 87, "chemistry": 91},
-                    "created_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow()
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
                 }
             ]
 
@@ -313,7 +313,7 @@ class ProgressService:
             update_data = {
                 "student_name": student_name,
                 "subject_scores": subject_scores,
-                "updated_at": datetime.utcnow()
+                "updated_at": datetime.now(timezone.utc)
             }
 
             result = await self.performance_collection.update_one(
@@ -322,7 +322,7 @@ class ProgressService:
                     "$set": update_data,
                     "$setOnInsert": {
                         "student_id": student_id,
-                        "created_at": datetime.utcnow()
+                        "created_at": datetime.now(timezone.utc)
                     }
                 },
                 upsert=True

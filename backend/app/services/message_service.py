@@ -2,7 +2,7 @@
 Message service for managing chat messages
 """
 from typing import List, Optional, Dict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 import structlog
@@ -64,8 +64,8 @@ class MessageService:
             "content": message_data.content,
             "message_type": message_data.message_type.value,
             "tutor_id": tutor_id,
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
             "edited": False,
             "read_by": [sender_id],  # Sender has read their own message
             "deleted": False
@@ -210,12 +210,12 @@ class MessageService:
         
         # Check time limit
         created_at = message["created_at"]
-        if datetime.utcnow() - created_at > self.EDIT_TIME_LIMIT:
+        if datetime.now(timezone.utc) - created_at > self.EDIT_TIME_LIMIT:
             raise ValidationError("Message can only be edited within 5 minutes of creation")
-        
+
         # Update message
         update_data = {
-            "updated_at": datetime.utcnow(),
+            "updated_at": datetime.now(timezone.utc),
             "edited": True
         }
         
@@ -266,7 +266,7 @@ class MessageService:
                 "$set": {
                     "deleted": True,
                     "content": "[Message deleted]",
-                    "updated_at": datetime.utcnow()
+                    "updated_at": datetime.now(timezone.utc)
                 }
             }
         )

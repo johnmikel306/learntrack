@@ -1,7 +1,7 @@
 """
 Progress tracking models and schemas
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from enum import Enum
 from pydantic import BaseModel, Field, ConfigDict
@@ -64,7 +64,7 @@ class ProgressInDB(ProgressBase):
     answers: List[QuestionAnswer] = []
     
     # Timing
-    started_at: datetime = Field(default_factory=datetime.utcnow)
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     submitted_at: Optional[datetime] = None
     time_spent: Optional[int] = None  # total seconds
     
@@ -74,8 +74,8 @@ class ProgressInDB(ProgressBase):
     points_possible: float = 0.0
     
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -150,8 +150,8 @@ class StudentPerformanceInDB(BaseModel):
     student_name: str
     subject_scores: Dict[str, int] = {}  # subject_name -> score
     tutor_id: str = Field(..., description="Tutor ID - references the tutor's Clerk user ID")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     model_config = ConfigDict(
         populate_by_name=True,

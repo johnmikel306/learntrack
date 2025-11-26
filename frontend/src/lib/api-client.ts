@@ -37,9 +37,9 @@ export class ApiClient {
     try {
       const token = await this.getToken()
 
-      const headers: HeadersInit = {
+      const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        ...options.headers,
+        ...(options.headers as Record<string, string>),
       }
 
       if (token) {

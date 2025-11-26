@@ -104,7 +104,7 @@ class StudentAssignment(BaseModel):
     """Student assignment relationship"""
     student_id: str
     tutor_id: str
-    assigned_at: datetime = Field(default_factory=datetime.utcnow)
+    assigned_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     is_active: bool = True
 
 
@@ -113,5 +113,5 @@ class ParentChildRelation(BaseModel):
     parent_id: str
     child_id: str
     relation_type: str = "parent"  # parent, guardian, etc.
-    assigned_at: datetime = Field(default_factory=datetime.utcnow)
+    assigned_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     is_active: bool = True

@@ -4,48 +4,27 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { TrendingUp, Clock, CheckCircle, AlertCircle, Calendar, Mail, ArrowLeft, BookOpen, Users, Trophy, Target } from "lucide-react"
+import { TrendingUp, Clock, CheckCircle, AlertCircle, Calendar, Mail, ArrowLeft, Users, Target } from "lucide-react"
+import { toast } from "sonner"
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart"
-import UserCard from "@/components/UserCard"
 import Announcements from "@/components/Announcements"
 import EventCalendar from "@/components/EventCalendar"
-import { toast } from "sonner"
 import { ThemeToggle } from '@/components/ui/theme-toggle'
+import { useParentProgress } from '@/hooks/useQueries'
+import { useApiClient } from '@/lib/api-client'
 
 interface ParentDashboardProps {
   onBack?: () => void
 }
 
 export default function ParentDashboard({ onBack }: ParentDashboardProps) {
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"
-  const [progressData, setProgressData] = useState<any>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [selectedChild, setSelectedChild] = useState<string>("Emma Wilson")
 
-  // Load progress data from API
-  useEffect(() => {
-    const loadProgressData = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const res = await fetch(`${API_BASE}/progress/parent`)
-        if (!res.ok) throw new Error(await res.text())
-        const data = await res.json()
-        setProgressData(data[0]) // Assuming first child for now
-      } catch (e: any) {
-        setError(e.message)
-        console.error("Failed to load progress data:", e.message)
-      } finally {
-        setLoading(false)
-      }
-    }
-    loadProgressData()
-  }, [])
+  // Use React Query for progress data
+  const { data: progressDataArray, isLoading: loading, error } = useParentProgress()
+  const progressData = progressDataArray?.[0] // Assuming first child for now
 
   // Default data structure for when API is not available
   const defaultData = {
@@ -99,47 +78,29 @@ export default function ParentDashboard({ onBack }: ParentDashboardProps) {
   const currentData = progressData || defaultData
   const weeklyProgressData = currentData.analytics?.weekly_progress || defaultData.analytics.weekly_progress
   const subjectPerformanceData = currentData.analytics?.subject_performance || defaultData.analytics.subject_performance
-  const assignmentHistory = currentData.recent_assignments || defaultData.recent_assignments
 
-const chartConfig = {
-  completed: {
-    label: "Completed",
-    color: "hsl(var(--chart-1))",
-  },
-  assigned: {
-    label: "Assigned",
-    color: "hsl(var(--chart-2))",
-  },
-  score: {
-    label: "Score",
-    color: "hsl(var(--chart-3))",
-  },
-  thisWeek: {
-    label: "This Week",
-    color: "hsl(var(--chart-1))",
-  },
-  lastWeek: {
-    label: "Last Week",
-    color: "hsl(var(--chart-2))",
-  },
-}
-
-  // Load selected child from API
-  useEffect(() => {
-    const loadSelectedChild = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/children/selected`)
-        if (!res.ok) throw new Error(await res.text())
-        const data = await res.json()
-        setSelectedChild(data.name)
-      } catch (e: any) {
-        console.error("Failed to load selected child:", e.message)
-        // Could set a default or show error state
-      }
-    }
-    loadSelectedChild()
-  }, [])
-  const [selectedAssignment, setSelectedAssignment] = useState<any>(null)
+  const chartConfig = {
+    completed: {
+      label: "Completed",
+      color: "hsl(var(--chart-1))",
+    },
+    assigned: {
+      label: "Assigned",
+      color: "hsl(var(--chart-2))",
+    },
+    score: {
+      label: "Score",
+      color: "hsl(var(--chart-3))",
+    },
+    thisWeek: {
+      label: "This Week",
+      color: "hsl(var(--chart-1))",
+    },
+    lastWeek: {
+      label: "Last Week",
+      color: "hsl(var(--chart-2))",
+    },
+  }
 
   if (loading) {
     return (

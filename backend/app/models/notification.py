@@ -1,7 +1,7 @@
 """
 Notification models and schemas
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from pydantic import BaseModel, Field, ConfigDict
 from bson import ObjectId
@@ -53,7 +53,7 @@ class NotificationInDB(NotificationBase):
     """Notification model as stored in database"""
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     is_read: bool = Field(default=False, description="Whether notification has been read")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     read_at: Optional[datetime] = Field(None, description="When notification was read")
 
     model_config = ConfigDict(

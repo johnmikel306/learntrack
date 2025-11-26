@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
@@ -22,8 +22,7 @@ import GradingView from "./views/GradingView"
 import MessagingView from "./views/MessagingView"
 import StudentDetailsPage from "@/pages/StudentDetailsPage"
 import { Brain, Calendar, BarChart3, FileText } from "lucide-react"
-import { useApiClient } from "@/lib/api-client"
-import { toast } from "sonner"
+import { useDashboardStats } from "@/hooks/useQueries"
 
 interface TutorDashboardProps {
   onBack?: () => void
@@ -32,11 +31,9 @@ interface TutorDashboardProps {
 export default function TutorDashboard({ onBack }: TutorDashboardProps) {
   const navigate = useNavigate()
   const location = useLocation()
-  const client = useApiClient()
 
-  // Dashboard data state
-  const [dashboardStats, setDashboardStats] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  // Use React Query for dashboard stats
+  const { data: dashboardStats, isLoading: loading } = useDashboardStats()
 
   // Determine active view from URL path
   const getActiveViewFromPath = () => {
@@ -69,27 +66,6 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
   }
 
   const activeView = getActiveViewFromPath()
-
-  // Fetch dashboard data from API
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true)
-        const response = await client.get('/dashboard/stats')
-        if (response.error) {
-          throw new Error(response.error)
-        }
-        setDashboardStats(response.data)
-      } catch (err: any) {
-        console.error('Failed to fetch dashboard data:', err)
-        toast.error('Failed to load dashboard data')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchDashboardData()
-  }, [])
 
   // Handle view navigation
   const handleViewChange = (view: string) => {

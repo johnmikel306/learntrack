@@ -4,7 +4,7 @@ File processing service for UploadThing integration
 import asyncio
 import httpx
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
 
@@ -58,8 +58,8 @@ class FileService:
 
             # Insert into database
             file_dict = file_data.dict()
-            file_dict["created_at"] = datetime.utcnow()
-            file_dict["updated_at"] = datetime.utcnow()
+            file_dict["created_at"] = datetime.now(timezone.utc)
+            file_dict["updated_at"] = datetime.now(timezone.utc)
             file_dict["status"] = FileStatus.UPLOADED
 
             result = await self.collection.insert_one(file_dict)
@@ -122,7 +122,7 @@ class FileService:
             oid = to_object_id(file_id)
             result = await self.collection.update_one(
                 {"_id": oid, "uploaded_by": user_id},
-                {"$set": {"status": "deleted", "updated_at": datetime.utcnow()}}
+                {"$set": {"status": "deleted", "updated_at": datetime.now(timezone.utc)}}
             )
 
             return result.matched_count > 0
@@ -150,11 +150,11 @@ class FileService:
             # Update file status to processing
             await self._update_file_status(file_id, {
                 "status": FileStatus.PROCESSING,
-                "processing_started_at": datetime.utcnow(),
+                "processing_started_at": datetime.now(timezone.utc),
                 "ai_provider_used": ai_provider
             })
 
-            start_time = datetime.utcnow()
+            start_time = datetime.now(timezone.utc)
 
             # Download and extract text from UploadThing file
             text_content = await self._download_and_extract_text(file, ai_manager)
@@ -188,12 +188,12 @@ class FileService:
                     except Exception as e:
                         logger.warning("Failed to save question", error=str(e))
 
-            processing_time = (datetime.utcnow() - start_time).total_seconds()
+            processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
 
             # Update file status to processed
             await self._update_file_status(file_id, {
                 "status": FileStatus.PROCESSED,
-                "processing_completed_at": datetime.utcnow(),
+                "processing_completed_at": datetime.now(timezone.utc),
                 "extracted_text": text_content[:1000],  # Store first 1000 chars
                 "generated_questions_count": len(questions),
                 "processing_time": processing_time
@@ -271,7 +271,7 @@ class FileService:
     async def _update_file_status(self, file_id: str, updates: dict) -> bool:
         """Update file status in database"""
         try:
-            updates["updated_at"] = datetime.utcnow()
+            updates["updated_at"] = datetime.now(timezone.utc)
             oid = to_object_id(file_id)
             result = await self.collection.update_one(
                 {"_id": oid},

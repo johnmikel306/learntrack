@@ -2,7 +2,7 @@
 Conversation service for managing chat conversations
 """
 from typing import List, Optional, Dict
-from datetime import datetime
+from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 import structlog
@@ -81,8 +81,8 @@ class ConversationService:
             "last_message": None,
             "last_message_at": None,
             "unread_count": {pid: 0 for pid in participant_ids},
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
         }
         
         result = await self.collection.insert_one(conversation_doc)
@@ -182,8 +182,8 @@ class ConversationService:
             {
                 "$set": {
                     "last_message": message_content[:100],  # Truncate to 100 chars
-                    "last_message_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow(),
+                    "last_message_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc),
                     **unread_updates
                 }
             }
@@ -206,7 +206,7 @@ class ConversationService:
             {
                 "$set": {
                     f"unread_count.{user_id}": 0,
-                    "updated_at": datetime.utcnow()
+                    "updated_at": datetime.now(timezone.utc)
                 }
             }
         )

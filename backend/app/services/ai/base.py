@@ -16,6 +16,8 @@ class AIProvider(str, Enum):
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     GOOGLE = "google"
+    GROQ = "groq"
+    GEMINI = "gemini"
 
 
 class BaseAIProvider(ABC):

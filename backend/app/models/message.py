@@ -1,7 +1,7 @@
 """
 Message model for real-time chat system
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 from pydantic import BaseModel, Field
 from enum import Enum
@@ -55,8 +55,8 @@ class Message(BaseModel):
     content: str = Field(..., description="Message content")
     message_type: MessageType = Field(default=MessageType.TEXT, description="Message type")
     tutor_id: str = Field(..., description="Tutor ID for tenant isolation")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
-    updated_at: datetime = Field(default_factory=datetime.utcnow, description="Last update timestamp")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp")
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Last update timestamp")
     edited: bool = Field(default=False, description="Whether message was edited")
     read_by: List[str] = Field(default_factory=list, description="List of user IDs who read the message")
     deleted: bool = Field(default=False, description="Whether message is deleted")

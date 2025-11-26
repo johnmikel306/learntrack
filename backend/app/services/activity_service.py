@@ -2,7 +2,7 @@
 Activity service for tracking user activities
 """
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 import structlog
@@ -29,7 +29,7 @@ class ActivityService:
         """Create a new activity record"""
         try:
             activity_dict = activity_data.model_dump()
-            activity_dict["created_at"] = datetime.utcnow()
+            activity_dict["created_at"] = datetime.now(timezone.utc)
             
             result = await self.collection.insert_one(activity_dict)
             activity_dict["_id"] = str(result.inserted_id)
@@ -167,7 +167,7 @@ class ActivityService:
     ) -> List[Activity]:
         """Get recent activities for a tutor's students"""
         try:
-            since_date = datetime.utcnow() - timedelta(days=days)
+            since_date = datetime.now(timezone.utc) - timedelta(days=days)
             
             cursor = self.collection.find({
                 "tutor_id": tutor_id,

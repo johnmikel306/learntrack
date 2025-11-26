@@ -2,7 +2,7 @@
 Student service for database operations
 """
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 import structlog
@@ -58,8 +58,8 @@ class StudentService:
             if current_user:
                 doc["tutor_id"] = current_user.clerk_id
 
-            doc["created_at"] = datetime.utcnow()
-            doc["updated_at"] = datetime.utcnow()
+            doc["created_at"] = datetime.now(timezone.utc)
+            doc["updated_at"] = datetime.now(timezone.utc)
             result = await self.students.insert_one(doc)
             doc["_id"] = result.inserted_id
             return Student(**doc)
@@ -97,7 +97,7 @@ class StudentService:
     async def update_student(self, student_id: str, update: StudentUpdate, current_user=None) -> Student:
         try:
             update_data = update.dict(exclude_unset=True)
-            update_data["updated_at"] = datetime.utcnow()
+            update_data["updated_at"] = datetime.now(timezone.utc)
             oid = to_object_id(student_id)
 
             # Build filter based on user role
@@ -184,8 +184,8 @@ class StudentService:
     async def create_group(self, data: StudentGroupCreate) -> StudentGroup:
         try:
             doc = data.dict()
-            doc["created_at"] = datetime.utcnow()
-            doc["updated_at"] = datetime.utcnow()
+            doc["created_at"] = datetime.now(timezone.utc)
+            doc["updated_at"] = datetime.now(timezone.utc)
             result = await self.groups.insert_one(doc)
             doc["_id"] = result.inserted_id
             return StudentGroup(**doc)
@@ -209,7 +209,7 @@ class StudentService:
     async def update_group(self, group_id: str, update: StudentGroupUpdate) -> StudentGroup:
         try:
             update_data = update.dict(exclude_unset=True)
-            update_data["updated_at"] = datetime.utcnow()
+            update_data["updated_at"] = datetime.now(timezone.utc)
             oid = to_object_id(group_id)
             result = await self.groups.update_one({"_id": oid}, {"$set": update_data})
             if result.matched_count == 0:

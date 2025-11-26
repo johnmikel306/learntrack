@@ -2,7 +2,7 @@
 Subject service for database operations
 """
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
 
@@ -36,8 +36,8 @@ class SubjectService:
             
             subject_dict = subject_data.dict()
             subject_dict["tutor_id"] = tutor_id
-            subject_dict["created_at"] = datetime.utcnow()
-            subject_dict["updated_at"] = datetime.utcnow()
+            subject_dict["created_at"] = datetime.now(timezone.utc)
+            subject_dict["updated_at"] = datetime.now(timezone.utc)
             subject_dict["question_count"] = 0
             subject_dict["is_active"] = True
             
@@ -141,7 +141,7 @@ class SubjectService:
             if not update_data:
                 return subject
             
-            update_data["updated_at"] = datetime.utcnow()
+            update_data["updated_at"] = datetime.now(timezone.utc)
             
             oid = to_object_id(subject_id)
             result = await self.collection.update_one(
@@ -181,7 +181,7 @@ class SubjectService:
             oid = to_object_id(subject_id)
             result = await self.collection.update_one(
                 {"_id": oid},
-                {"$set": {"is_active": False, "updated_at": datetime.utcnow()}}
+                {"$set": {"is_active": False, "updated_at": datetime.now(timezone.utc)}}
             )
             
             if result.matched_count == 0:
@@ -214,7 +214,7 @@ class SubjectService:
                 {"_id": oid},
                 {
                     "$addToSet": {"topics": topic},
-                    "$set": {"updated_at": datetime.utcnow()}
+                    "$set": {"updated_at": datetime.now(timezone.utc)}
                 }
             )
             
@@ -254,7 +254,7 @@ class SubjectService:
                 {"_id": oid},
                 {
                     "$pull": {"topics": topic},
-                    "$set": {"updated_at": datetime.utcnow()}
+                    "$set": {"updated_at": datetime.now(timezone.utc)}
                 }
             )
             

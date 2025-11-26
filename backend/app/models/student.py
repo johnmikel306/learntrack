@@ -130,9 +130,9 @@ class StudentGroupUpdate(BaseModel):
 
 class StudentGroupInDB(StudentGroupBase):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    createdDate: datetime = Field(default_factory=datetime.utcnow)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    createdDate: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     # Coerce legacy ObjectId values to strings for compatibility
     @field_validator('id', mode='before')

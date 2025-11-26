@@ -1,7 +1,7 @@
 """
 Activity/Event tracking models and schemas
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict
 from bson import ObjectId
@@ -47,7 +47,7 @@ class ActivityCreate(ActivityBase):
 class ActivityInDB(ActivityBase):
     """Activity model as stored in database"""
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     model_config = ConfigDict(
         populate_by_name=True,

@@ -10,6 +10,7 @@ from app.core.database import get_database
 from app.core.enhanced_auth import require_tutor, require_authenticated_user, ClerkUserContext
 from app.models.material import Material, MaterialCreate, MaterialUpdate
 from app.services.material_service import MaterialService
+from app.utils.pagination import PaginatedResponse, paginate
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -31,24 +32,33 @@ async def create_material(
         raise HTTPException(status_code=500, detail="Failed to create material")
 
 
-@router.get("/", response_model=List[Material])
+@router.get("/", response_model=PaginatedResponse[Material])
 async def get_materials(
     subject_id: Optional[str] = Query(None, description="Filter by subject ID"),
     material_type: Optional[str] = Query(None, description="Filter by material type"),
     status: Optional[str] = Query(None, description="Filter by status"),
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(20, ge=1, le=100, description="Items per page"),
     current_user: ClerkUserContext = Depends(require_tutor),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
-    """Get materials for current tutor"""
+    """Get paginated materials for current tutor"""
     try:
         material_service = MaterialService(database)
-        materials = await material_service.get_materials_for_tutor(
+        result = await material_service.get_materials_for_tutor(
             tutor_id=current_user.clerk_id,
             subject_id=subject_id,
             material_type=material_type,
-            status=status
+            status=status,
+            page=page,
+            per_page=per_page
         )
-        return materials
+        return paginate(
+            items=result["items"],
+            page=page,
+            per_page=per_page,
+            total=result["total"]
+        )
     except Exception as e:
         logger.error("Failed to get materials", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to get materials")

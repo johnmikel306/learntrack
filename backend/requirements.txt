@@ -23,6 +23,24 @@ openai
 anthropic
 google-generativeai
 
+# LangChain for RAG (pinned compatible versions)
+langchain==0.2.16
+langchain-core==0.2.40
+langchain-community==0.2.16
+langchain-groq==0.1.9
+langchain-google-genai==1.0.10
+langchain-openai==0.1.25
+langchain-text-splitters==0.2.4
+
+# Vector Database
+qdrant-client>=1.13.0
+
+# Web Search
+tavily-python>=0.3.0
+
+# Document Processing
+pypdf>=3.17.0
+
 # HTTP Client
 httpx
 aiohttp
@@ -41,6 +59,9 @@ flake8
 
 # Logging
 structlog
+
+# Rate Limiting
+slowapi
 
 # Webhooks
 svix==1.22.0

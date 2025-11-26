@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.database import get_database
 from app.core.enhanced_auth import require_tutor, require_authenticated_user, ClerkUserContext
@@ -337,10 +337,10 @@ async def get_performance_chart(
 ):
     """Calculate performance chart data dynamically from submissions"""
     try:
-        from datetime import datetime, timedelta
+        from datetime import timedelta
 
         # Calculate date range (last 30 days)
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=days)
 
         # Get all subjects for this tutor

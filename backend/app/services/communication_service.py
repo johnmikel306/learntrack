@@ -1,7 +1,7 @@
 """
 Communication service to send messages (email/SMS) - development stub
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Literal
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
@@ -34,7 +34,7 @@ class CommunicationService:
             "body": body,
             "metadata": metadata or {},
             "status": "queued",
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
         }
         result = await self.messages.insert_one(payload)
         logger.info("Message queued", message_id=str(result.inserted_id), channel=channel)

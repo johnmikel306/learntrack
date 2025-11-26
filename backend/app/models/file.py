@@ -1,7 +1,7 @@
 """
 File handling models for UploadThing integration
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 from enum import Enum
 from pydantic import BaseModel, Field, HttpUrl, ConfigDict
@@ -27,6 +27,14 @@ class FileStatus(str, Enum):
     ERROR = "error"
 
 
+class EmbeddingStatus(str, Enum):
+    """RAG embedding status for files"""
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
 class UploadedFile(BaseModel):
     """UploadThing file model"""
     id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
@@ -40,7 +48,7 @@ class UploadedFile(BaseModel):
 
     # User and metadata
     uploaded_by: str  # user_id
-    uploaded_at: datetime = Field(default_factory=datetime.utcnow)
+    uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     tutor_id: str = Field(..., description="Tutor ID - references the tutor's Clerk user ID")
 
     # Processing metadata
@@ -58,6 +66,16 @@ class UploadedFile(BaseModel):
     # Subject/topic assignment
     subject_id: Optional[str] = None
     topic: Optional[str] = None
+
+    # RAG-specific fields
+    qdrant_collection_id: Optional[str] = None
+    embedding_status: EmbeddingStatus = EmbeddingStatus.PENDING
+    chunk_count: int = 0
+    embedding_model_used: Optional[str] = None
+    last_embedded_at: Optional[datetime] = None
+    tags: List[str] = []
+    category: Optional[str] = None
+    embedding_error: Optional[str] = None
 
     model_config = ConfigDict(
         populate_by_name=True,

@@ -2,7 +2,7 @@
 Notification service for managing notifications
 """
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 import structlog
@@ -30,7 +30,7 @@ class NotificationService:
         try:
             notification_dict = notification_data.model_dump()
             notification_dict["is_read"] = False
-            notification_dict["created_at"] = datetime.utcnow()
+            notification_dict["created_at"] = datetime.now(timezone.utc)
             notification_dict["read_at"] = None
 
             result = await self.collection.insert_one(notification_dict)
@@ -94,7 +94,7 @@ class NotificationService:
                 {
                     "$set": {
                         "is_read": True,
-                        "read_at": datetime.utcnow()
+                        "read_at": datetime.now(timezone.utc)
                     }
                 },
                 return_document=True
@@ -119,7 +119,7 @@ class NotificationService:
                 {
                     "$set": {
                         "is_read": True,
-                        "read_at": datetime.utcnow()
+                        "read_at": datetime.now(timezone.utc)
                     }
                 }
             )
