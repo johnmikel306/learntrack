@@ -7,7 +7,7 @@
 
 # testing
 /coverage
-pytest.ini/
+pytest
 
 # next.js
 /.next/

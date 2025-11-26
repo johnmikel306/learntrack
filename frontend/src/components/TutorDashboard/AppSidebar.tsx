@@ -159,7 +159,7 @@ const menuItems = [
     icon: MessageSquare,
     items: [
       {
-        title: "Chats",
+        title: "Conversations",
         icon: MessageSquare,
         view: "chats",
       },
