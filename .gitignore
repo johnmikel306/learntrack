@@ -1,4 +1,4 @@
-# frontend/backend/docs/test/scripts/
+# frontend/backend/docs/tests/scripts/
 
 # dependencies
 /node_modules
@@ -7,6 +7,7 @@
 
 # testing
 /coverage
+pytest.ini/
 
 # next.js
 /.next/
@@ -53,6 +54,6 @@ build/
 
 # Development scripts and mock data (exclude from commits)
 
-test/
+tests/
 docs/
 scripts/
