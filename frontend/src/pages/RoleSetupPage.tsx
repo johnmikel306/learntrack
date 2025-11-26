@@ -2,6 +2,7 @@ import { useUser } from '@clerk/clerk-react'
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { GraduationCap, BookOpen, Users } from "lucide-react"
+import { toast } from 'sonner'
 
 export default function RoleSetupPage() {
   const { user } = useUser()
@@ -29,7 +30,9 @@ export default function RoleSetupPage() {
       navigate('/dashboard')
     } catch (error) {
       console.error('Error updating role:', error)
-      alert('Failed to set role. Please try again.')
+      toast.error('Failed to set role', {
+        description: 'Please try again or contact support if the issue persists.'
+      })
     } finally {
       setIsLoading(false)
     }

@@ -447,7 +447,7 @@ export default function MaterialManager() {
         <div className="border border-border rounded-lg overflow-hidden bg-card">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
                 <TableHead className="w-12">
                   <input
                     type="checkbox"
@@ -456,11 +456,11 @@ export default function MaterialManager() {
                     className="w-4 h-4 accent-primary rounded focus:ring-primary"
                   />
                 </TableHead>
-                <TableHead className="font-semibold text-foreground">Name</TableHead>
-                <TableHead className="font-semibold text-foreground">Subject</TableHead>
-                <TableHead className="font-semibold text-foreground">Date Uploaded</TableHead>
-                <TableHead className="font-semibold text-foreground">Version</TableHead>
-                <TableHead className="font-semibold text-foreground text-right">Actions</TableHead>
+                <TableHead className="font-semibold text-muted-foreground uppercase text-xs">Name</TableHead>
+                <TableHead className="font-semibold text-muted-foreground uppercase text-xs">Subject</TableHead>
+                <TableHead className="font-semibold text-muted-foreground uppercase text-xs">Date Uploaded</TableHead>
+                <TableHead className="font-semibold text-muted-foreground uppercase text-xs">Version</TableHead>
+                <TableHead className="font-semibold text-muted-foreground uppercase text-xs text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

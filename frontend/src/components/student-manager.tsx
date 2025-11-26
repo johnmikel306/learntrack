@@ -23,7 +23,6 @@ import {
   UserPlus,
   MoreVertical,
   MessageCircle,
-  Eye,
   Edit,
   Trash2,
   ArrowUpDown,
@@ -234,7 +233,11 @@ export default function StudentManager() {
                       </TableRow>
                     ) : (
                       filteredStudents.map((student) => (
-                        <TableRow key={student.id} className="hover:bg-muted/30 transition-colors">
+                        <TableRow
+                          key={student.id}
+                          className="hover:bg-muted/30 transition-colors cursor-pointer"
+                          onClick={() => navigate(`/dashboard/students/${student.slug}`)}
+                        >
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <Avatar className="w-10 h-10">
@@ -260,7 +263,7 @@ export default function StudentManager() {
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -276,15 +279,6 @@ export default function StudentManager() {
                                 >
                                   <MessageCircle className="h-4 w-4 mr-2" />
                                   Send a message
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    console.log('View details clicked for student:', student)
-                                    navigate(`/dashboard/students/${student.slug}`)
-                                  }}
-                                >
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  View details
                                 </DropdownMenuItem>
                                 <DropdownMenuItem>
                                   <Edit className="h-4 w-4 mr-2" />

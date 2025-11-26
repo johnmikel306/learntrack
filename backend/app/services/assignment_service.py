@@ -85,7 +85,7 @@ class AssignmentService:
                 # Send to each student
                 for student_id in student_ids:
                     try:
-                        student = await self.db.users.find_one({"clerk_id": student_id})
+                        student = await self.db.students.find_one({"clerk_id": student_id})
                         if student and student.get("email"):
                             email_service.send_assignment_notification(
                                 to_email=student["email"],

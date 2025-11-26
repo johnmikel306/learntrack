@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { UserPlus } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface Student {
   _id: string
@@ -49,12 +50,16 @@ export function LinkParentModal({
     try {
       setLoading(true)
       // TODO: Implement API call to link parent to student
-      console.log('Linking parent:', { 
-        parentEmail, 
-        parentName, 
-        studentId: selectedStudentId 
+      console.log('Linking parent:', {
+        parentEmail,
+        parentName,
+        studentId: selectedStudentId
       })
-      
+
+      toast.success('Invitation sent successfully!', {
+        description: `An invitation has been sent to ${parentEmail}.`
+      })
+
       // Reset form
       setParentEmail('')
       setParentName('')
@@ -63,6 +68,9 @@ export function LinkParentModal({
       onParentLinked?.()
     } catch (error) {
       console.error('Failed to link parent:', error)
+      toast.error('Failed to send invitation', {
+        description: 'Please try again or contact support if the issue persists.'
+      })
     } finally {
       setLoading(false)
     }

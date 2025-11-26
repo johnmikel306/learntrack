@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Users } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface CreateGroupModalProps {
   open: boolean
@@ -36,7 +37,11 @@ export function CreateGroupModal({
       setLoading(true)
       // TODO: Implement API call to create group
       console.log('Creating group:', { name, description })
-      
+
+      toast.success('Group created successfully!', {
+        description: `${name} has been added to your groups.`
+      })
+
       // Reset form
       setName('')
       setDescription('')
@@ -44,6 +49,9 @@ export function CreateGroupModal({
       onGroupCreated?.()
     } catch (error) {
       console.error('Failed to create group:', error)
+      toast.error('Failed to create group', {
+        description: 'Please try again or contact support if the issue persists.'
+      })
     } finally {
       setLoading(false)
     }

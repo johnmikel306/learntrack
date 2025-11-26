@@ -335,37 +335,37 @@ export default function ActiveAssignmentsView() {
         <div className="border border-border rounded-lg overflow-hidden bg-card">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/30 hover:bg-muted/30">
-                <TableHead className="font-semibold text-foreground">Assignment Title</TableHead>
-                <TableHead className="font-semibold text-foreground">Class/Group</TableHead>
-                <TableHead className="font-semibold text-foreground">
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                <TableHead className="font-semibold text-muted-foreground uppercase text-xs">Assignment Title</TableHead>
+                <TableHead className="font-semibold text-muted-foreground uppercase text-xs">Class/Group</TableHead>
+                <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
                   <button
                     onClick={() => handleSort('submissions')}
-                    className="flex items-center hover:text-primary transition-colors"
+                    className="flex items-center gap-1 hover:text-foreground transition-colors"
                   >
                     Submissions
                     {getSortIcon('submissions')}
                   </button>
                 </TableHead>
-                <TableHead className="font-semibold text-foreground">
+                <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
                   <button
                     onClick={() => handleSort('dueDate')}
-                    className="flex items-center hover:text-primary transition-colors"
+                    className="flex items-center gap-1 hover:text-foreground transition-colors"
                   >
                     Due Date
                     {getSortIcon('dueDate')}
                   </button>
                 </TableHead>
-                <TableHead className="font-semibold text-foreground">
+                <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
                   <button
                     onClick={() => handleSort('status')}
-                    className="flex items-center hover:text-primary transition-colors"
+                    className="flex items-center gap-1 hover:text-foreground transition-colors"
                   >
                     Status
                     {getSortIcon('status')}
                   </button>
                 </TableHead>
-                <TableHead className="font-semibold text-foreground text-right">Actions</TableHead>
+                <TableHead className="font-semibold text-muted-foreground uppercase text-xs text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

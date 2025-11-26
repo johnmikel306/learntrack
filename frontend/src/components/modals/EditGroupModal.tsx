@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Edit } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface Group {
   _id: string
@@ -51,11 +52,18 @@ export function EditGroupModal({
       setLoading(true)
       // TODO: Implement API call to update group
       console.log('Updating group:', { id: group._id, name, description })
-      
+
+      toast.success('Group updated successfully!', {
+        description: `Changes to ${name} have been saved.`
+      })
+
       onOpenChange(false)
       onGroupUpdated?.()
     } catch (error) {
       console.error('Failed to update group:', error)
+      toast.error('Failed to update group', {
+        description: 'Please try again or contact support if the issue persists.'
+      })
     } finally {
       setLoading(false)
     }

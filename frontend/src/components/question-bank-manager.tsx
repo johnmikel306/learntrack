@@ -255,13 +255,13 @@ export default function QuestionBankManager() {
       <div className="border border-border rounded-lg overflow-hidden bg-card">
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/30 hover:bg-muted/30">
-              <TableHead className="font-semibold text-foreground">Question Text</TableHead>
-              <TableHead className="font-semibold text-foreground">Subject</TableHead>
-              <TableHead className="font-semibold text-foreground">Type</TableHead>
-              <TableHead className="font-semibold text-foreground">Difficulty</TableHead>
-              <TableHead className="font-semibold text-foreground">Last Modified</TableHead>
-              <TableHead className="font-semibold text-foreground text-right">Actions</TableHead>
+            <TableRow className="bg-muted/50 hover:bg-muted/50">
+              <TableHead className="font-semibold text-muted-foreground uppercase text-xs">Question Text</TableHead>
+              <TableHead className="font-semibold text-muted-foreground uppercase text-xs">Subject</TableHead>
+              <TableHead className="font-semibold text-muted-foreground uppercase text-xs">Type</TableHead>
+              <TableHead className="font-semibold text-muted-foreground uppercase text-xs">Difficulty</TableHead>
+              <TableHead className="font-semibold text-muted-foreground uppercase text-xs">Last Modified</TableHead>
+              <TableHead className="font-semibold text-muted-foreground uppercase text-xs text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
