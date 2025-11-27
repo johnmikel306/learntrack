@@ -151,6 +151,46 @@ class QuestionService:
             logger.error("Failed to get questions for tutor", tutor_id=tutor_id, error=str(e))
             raise DatabaseException(f"Failed to get questions: {str(e)}")
 
+    async def get_generation_history(
+        self,
+        tutor_id: str,
+        page: int = 1,
+        per_page: int = 20
+    ) -> Dict[str, Any]:
+        """Get AI-generated questions history for tutor (both pending and approved)"""
+        try:
+            # Query for AI-generated questions only
+            query = {
+                "tutor_id": tutor_id,
+                "ai_generated": True,
+                "status": {"$ne": "deleted"}
+            }
+
+            # Get total count
+            total = await self.collection.count_documents(query)
+
+            # Calculate skip
+            skip = (page - 1) * per_page
+
+            # Get paginated results sorted by creation date (newest first)
+            cursor = self.collection.find(query).sort("created_at", -1).skip(skip).limit(per_page)
+
+            questions = []
+            async for question in cursor:
+                questions.append(_convert_doc_to_question(question))
+
+            return {
+                "items": questions,
+                "total": total,
+                "page": page,
+                "per_page": per_page,
+                "total_pages": (total + per_page - 1) // per_page if per_page > 0 else 0
+            }
+
+        except Exception as e:
+            logger.error("Failed to get generation history", tutor_id=tutor_id, error=str(e))
+            raise DatabaseException(f"Failed to get generation history: {str(e)}")
+
     async def get_questions_count_for_tutor(
         self,
         tutor_id: str,

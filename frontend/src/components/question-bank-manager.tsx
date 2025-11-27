@@ -73,11 +73,21 @@ export default function QuestionBankManager() {
       try {
         setLoading(true)
         const response = await client.get('/questions')
+
+        if (response.error) {
+          console.error('Failed to fetch questions:', response.error)
+          toast.error('Failed to load questions')
+          setQuestions([])
+          return
+        }
+
         if (response.data) {
-          const mappedQuestions = (response.data as any[]).map((q: any) => ({
+          // Handle paginated response: { items: [...], total, page, per_page }
+          const questionsArray = response.data?.items || (Array.isArray(response.data) ? response.data : [])
+          const mappedQuestions = questionsArray.map((q: any) => ({
             id: q._id,
             text: q.text,
-            subject: q.subject_id?.name || 'Unknown',
+            subject: q.subject_id?.name || q.subject_id || 'Unknown',
             type: q.type,
             difficulty: q.difficulty,
             lastModified: q.updated_at || q.created_at

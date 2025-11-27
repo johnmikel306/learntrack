@@ -66,7 +66,9 @@ async def get_questions(
         logger.error("Failed to get questions", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to get questions")
 
-# NOTE: /pending must be defined BEFORE /{question_id} to avoid being caught by the dynamic route
+# NOTE: Static routes like /pending and /generation-history must be defined BEFORE /{question_id}
+# to avoid being caught by the dynamic route
+
 @router.get("/pending", response_model=PaginatedResponse[Question])
 async def get_pending_questions(
     page: int = Query(1, ge=1, description="Page number"),
@@ -91,6 +93,32 @@ async def get_pending_questions(
     except Exception as e:
         logger.error("Failed to get pending questions", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to get pending questions")
+
+
+@router.get("/generation-history", response_model=PaginatedResponse[Question])
+async def get_generation_history(
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(20, ge=1, le=100, description="Items per page"),
+    current_user: ClerkUserContext = Depends(require_tutor),
+    question_service: QuestionService = Depends(get_question_service)
+):
+    """Get AI-generated questions history (both pending and approved)"""
+    try:
+        result = await question_service.get_generation_history(
+            tutor_id=current_user.clerk_id,
+            page=page,
+            per_page=per_page
+        )
+        return paginate(
+            items=result["items"],
+            page=page,
+            per_page=per_page,
+            total=result["total"]
+        )
+    except Exception as e:
+        logger.error("Failed to get generation history", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to get generation history")
+
 
 @router.get("/{question_id}", response_model=Question)
 async def get_question(

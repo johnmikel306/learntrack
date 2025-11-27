@@ -506,82 +506,6 @@ export function useAnnouncements() {
 }
 
 // ============================================
-// Student Details Queries (for modals)
-// ============================================
-
-/**
- * Hook to fetch student progress data
- */
-export function useStudentProgress(studentId: string | undefined) {
-  const client = useApiClient()
-
-  return useQuery({
-    queryKey: ['progress', 'student', studentId],
-    queryFn: async () => {
-      if (!studentId) throw new Error('Student ID is required')
-      const response = await client.get(`/progress/student/${studentId}`)
-      if (response.error) throw new Error(response.error)
-      return response.data
-    },
-    enabled: !!studentId,
-  })
-}
-
-/**
- * Hook to fetch student assignments
- */
-export function useStudentAssignmentsList(studentId: string | undefined) {
-  const client = useApiClient()
-
-  return useQuery({
-    queryKey: ['assignments', 'student', studentId],
-    queryFn: async () => {
-      if (!studentId) throw new Error('Student ID is required')
-      const response = await client.get(`/assignments?student_id=${studentId}`)
-      if (response.error) throw new Error(response.error)
-      return response.data?.items || response.data || []
-    },
-    enabled: !!studentId,
-  })
-}
-
-/**
- * Hook to fetch student activities
- */
-export function useStudentActivities(studentId: string | undefined) {
-  const client = useApiClient()
-
-  return useQuery({
-    queryKey: ['activities', 'student', studentId],
-    queryFn: async () => {
-      if (!studentId) throw new Error('Student ID is required')
-      const response = await client.get(`/activity?user_id=${studentId}&limit=10`)
-      if (response.error) throw new Error(response.error)
-      return response.data?.items || response.data || []
-    },
-    enabled: !!studentId,
-  })
-}
-
-/**
- * Hook to fetch student groups
- */
-export function useStudentGroups(studentId: string | undefined) {
-  const client = useApiClient()
-
-  return useQuery({
-    queryKey: ['groups', 'student', studentId],
-    queryFn: async () => {
-      if (!studentId) throw new Error('Student ID is required')
-      const response = await client.get(`/groups?member_id=${studentId}`)
-      if (response.error) throw new Error(response.error)
-      return response.data?.items || response.data || []
-    },
-    enabled: !!studentId,
-  })
-}
-
-// ============================================
 // Generation History Queries
 // ============================================
 
@@ -600,4 +524,24 @@ export function useGenerationHistory() {
     },
   })
 }
+
+/**
+ * Hook to fetch student assignments list
+ */
+export function useStudentAssignmentsList(studentId: string | undefined) {
+  const client = useApiClient()
+
+  return useQuery({
+    queryKey: ['assignments', 'student', studentId],
+    queryFn: async () => {
+      if (!studentId) throw new Error('Student ID is required')
+      const response = await client.get(`/assignments?student_id=${studentId}`)
+      if (response.error) throw new Error(response.error)
+      return response.data?.items || response.data || []
+    },
+    enabled: !!studentId,
+  })
+}
+
+
 
