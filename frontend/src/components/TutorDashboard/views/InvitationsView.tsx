@@ -184,18 +184,10 @@ export default function InvitationsView() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
-                    Student Email
-                  </TableHead>
-                  <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
-                    Status
-                  </TableHead>
-                  <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
-                    Date Sent
-                  </TableHead>
-                  <TableHead className="font-semibold text-muted-foreground uppercase text-xs text-right">
-                    Actions
-                  </TableHead>
+                  <TableHead>Student Email</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Date Sent</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

@@ -26,58 +26,10 @@ export default function ParentDashboard({ onBack }: ParentDashboardProps) {
   const { data: progressDataArray, isLoading: loading, error } = useParentProgress()
   const progressData = progressDataArray?.[0] // Assuming first child for now
 
-  // Default data structure for when API is not available
-  const defaultData = {
-    analytics: {
-      weekly_progress: [
-        { date: "Dec 18", completed: 8, assigned: 10, score: 85 },
-        { date: "Dec 19", completed: 12, assigned: 12, score: 92 },
-        { date: "Dec 20", completed: 6, assigned: 8, score: 78 },
-        { date: "Dec 21", completed: 10, assigned: 10, score: 88 },
-        { date: "Dec 22", completed: 15, assigned: 15, score: 94 },
-        { date: "Dec 23", completed: 7, assigned: 10, score: 82 },
-        { date: "Dec 24", completed: 5, assigned: 8, score: 90 },
-      ],
-      subject_performance: [
-        { subject: "Math", thisWeek: 88, lastWeek: 82 },
-        { subject: "Physics", thisWeek: 92, lastWeek: 89 },
-        { subject: "Chemistry", thisWeek: 85, lastWeek: 87 },
-      ]
-    },
-    recent_assignments: [
-      {
-        id: "1",
-        title: "Algebra Practice Set 1",
-        subject: "Mathematics",
-        status: "In Progress",
-        dueDate: "Dec 25, 2024",
-        progress: 70,
-        completed: 7,
-        total: 10,
-      },
-      {
-        id: "2",
-        title: "Chemistry Basics",
-        subject: "Chemistry",
-        status: "Completed",
-        completedDate: "Dec 20, 2024",
-        score: 85,
-      },
-      {
-        id: "3",
-        title: "Physics Mechanics Quiz",
-        subject: "Physics",
-        status: "Pending",
-        dueDate: "Dec 28, 2024",
-        questions: 15,
-      },
-    ]
-  }
-
-  // Use API data if available, fallback to default for demo
-  const currentData = progressData || defaultData
-  const weeklyProgressData = currentData.analytics?.weekly_progress || defaultData.analytics.weekly_progress
-  const subjectPerformanceData = currentData.analytics?.subject_performance || defaultData.analytics.subject_performance
+  // Use API data - no fallback to mock data
+  const weeklyProgressData = progressData?.analytics?.weekly_progress || []
+  const subjectPerformanceData = progressData?.analytics?.subject_performance || []
+  const recentAssignments = progressData?.recent_assignments || []
 
   const chartConfig = {
     completed: {
@@ -108,6 +60,18 @@ export default function ParentDashboard({ onBack }: ParentDashboardProps) {
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading progress data...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background text-foreground p-4 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+          <p className="text-lg font-semibold text-foreground mb-2">Failed to load data</p>
+          <p className="text-muted-foreground">Please try again later</p>
         </div>
       </div>
     )
@@ -292,42 +256,48 @@ export default function ParentDashboard({ onBack }: ParentDashboardProps) {
               </CardHeader>
               <CardContent className="overflow-y-auto">
                 <div className="space-y-4">
-                  <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 hover:shadow-md transition-all duration-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <CheckCircle className="h-5 w-5 text-green-600" />
-                        <div>
-                          <p className="font-semibold text-gray-900 dark:text-white">Chemistry Basics Completed</p>
-                          <p className="text-sm text-gray-600 dark:text-slate-400">Score: 85% • 2 hours ago</p>
-                        </div>
-                      </div>
-                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 border-0">Completed</Badge>
+                  {recentAssignments.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No recent activity</p>
                     </div>
-                  </div>
-                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 hover:shadow-md transition-all duration-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Clock className="h-5 w-5 text-blue-600" />
-                        <div>
-                          <p className="font-semibold text-gray-900 dark:text-white">Math Practice In Progress</p>
-                          <p className="text-sm text-gray-600 dark:text-slate-400">7 of 10 questions completed</p>
+                  ) : (
+                    recentAssignments.map((assignment: any) => {
+                      const isCompleted = assignment.status === 'Completed' || assignment.status === 'completed'
+                      const isInProgress = assignment.status === 'In Progress' || assignment.status === 'in_progress'
+                      const isPending = assignment.status === 'Pending' || assignment.status === 'pending'
+
+                      const bgColor = isCompleted ? 'bg-green-50 dark:bg-green-900/20' :
+                                     isInProgress ? 'bg-blue-50 dark:bg-blue-900/20' :
+                                     'bg-yellow-50 dark:bg-yellow-900/20'
+                      const iconColor = isCompleted ? 'text-green-600' :
+                                       isInProgress ? 'text-blue-600' :
+                                       'text-yellow-600'
+                      const badgeColor = isCompleted ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                                        isInProgress ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
+                                        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+                      const Icon = isCompleted ? CheckCircle : isInProgress ? Clock : AlertCircle
+
+                      return (
+                        <div key={assignment.id} className={`${bgColor} rounded-lg p-4 hover:shadow-md transition-all duration-200`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <Icon className={`h-5 w-5 ${iconColor}`} />
+                              <div>
+                                <p className="font-semibold text-gray-900 dark:text-white">{assignment.title}</p>
+                                <p className="text-sm text-gray-600 dark:text-slate-400">
+                                  {isCompleted && assignment.score ? `Score: ${assignment.score}%` : ''}
+                                  {isInProgress && assignment.completed && assignment.total ? `${assignment.completed} of ${assignment.total} completed` : ''}
+                                  {isPending && assignment.dueDate ? `Due: ${assignment.dueDate}` : ''}
+                                </p>
+                              </div>
+                            </div>
+                            <Badge className={`${badgeColor} border-0`}>{assignment.status}</Badge>
+                          </div>
                         </div>
-                      </div>
-                      <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 border-0">In Progress</Badge>
-                    </div>
-                  </div>
-                  <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 hover:shadow-md transition-all duration-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <AlertCircle className="h-5 w-5 text-yellow-600" />
-                        <div>
-                          <p className="font-semibold text-gray-900 dark:text-white">Physics Quiz Due Tomorrow</p>
-                          <p className="text-sm text-gray-600 dark:text-slate-400">15 questions • Not started</p>
-                        </div>
-                      </div>
-                      <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400 border-0">Pending</Badge>
-                    </div>
-                  </div>
+                      )
+                    })
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -336,7 +306,7 @@ export default function ParentDashboard({ onBack }: ParentDashboardProps) {
 
         {/* RIGHT */}
         <div className="w-full lg:w-1/3 flex flex-col gap-6">
-          {/* Teacher Messages */}
+          {/* Teacher Messages - Uses conversations from API */}
           <Card className="shadow-lg border-0 bg-white dark:bg-slate-900">
             <CardHeader>
               <CardTitle className="text-lg font-semibold flex items-center">
@@ -346,48 +316,38 @@ export default function ParentDashboard({ onBack }: ParentDashboardProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {[
-                  {
-                    teacher: "Ms. Johnson",
-                    subject: "Mathematics",
-                    message: "Emma is showing excellent progress in algebra. Keep up the great work!",
-                    time: "2 hours ago",
-                    priority: "high",
-                    color: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                  },
-                  {
-                    teacher: "Mr. Smith",
-                    subject: "Physics",
-                    message: "Please review the lab safety guidelines with Emma before next class.",
-                    time: "1 day ago",
-                    priority: "medium",
-                    color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-                  },
-                  {
-                    teacher: "Dr. Brown",
-                    subject: "Chemistry",
-                    message: "Emma's participation in class discussions has been outstanding.",
-                    time: "2 days ago",
-                    priority: "low",
-                    color: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
-                  }
-                ].map((message, index) => (
-                  <div key={index} className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg hover:shadow-md transition-all duration-200">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <p className="font-semibold text-gray-900 dark:text-white text-sm">{message.teacher}</p>
-                          <Badge className={`text-xs border-0 ${message.color}`}>
-                            {message.priority}
-                          </Badge>
+                {progressData?.teacher_messages && progressData.teacher_messages.length > 0 ? (
+                  progressData.teacher_messages.map((message: any, index: number) => {
+                    const priorityColor = message.priority === 'high'
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                      : message.priority === 'medium'
+                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+                      : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+
+                    return (
+                      <div key={index} className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg hover:shadow-md transition-all duration-200">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <p className="font-semibold text-gray-900 dark:text-white text-sm">{message.teacher}</p>
+                              <Badge className={`text-xs border-0 ${priorityColor}`}>
+                                {message.priority || 'normal'}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-gray-600 dark:text-slate-400">{message.subject}</p>
+                          </div>
                         </div>
-                        <p className="text-xs text-gray-600 dark:text-slate-400">{message.subject}</p>
+                        <p className="text-sm text-gray-700 dark:text-slate-300 mb-2">{message.message}</p>
+                        <p className="text-xs text-gray-500 dark:text-slate-500">{message.time}</p>
                       </div>
-                    </div>
-                    <p className="text-sm text-gray-700 dark:text-slate-300 mb-2">{message.message}</p>
-                    <p className="text-xs text-gray-500 dark:text-slate-500">{message.time}</p>
+                    )
+                  })
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Mail className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No messages from teachers</p>
                   </div>
-                ))}
+                )}
               </div>
               <Button className="w-full mt-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0">
                 <Mail className="w-4 h-4 mr-2" />

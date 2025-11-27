@@ -1,14 +1,18 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { 
+import { Skeleton } from "@/components/ui/skeleton"
+import {
   Search,
   MessageSquare,
   Mail,
+  AlertCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useConversations } from "@/hooks/useQueries"
+import { formatDistanceToNow } from "date-fns"
 
 interface Message {
   id: string
@@ -25,137 +29,33 @@ interface MessagingViewProps {
   type: "chats" | "emails"
 }
 
-const mockChats: Message[] = [
-  {
-    id: "1",
-    sender: "William Smith",
-    senderAvatar: "WS",
-    subject: "Meeting Tomorrow",
-    preview: "Hi team, just a reminder about our meeting tomorrow at 10 AM...",
-    timestamp: "09:34 AM",
-    isRead: false,
-    isUnread: true,
-  },
-  {
-    id: "2",
-    sender: "Alice Smith",
-    senderAvatar: "AS",
-    subject: "Re: Project Update",
-    preview: "Thanks for the update. The progress looks great so far...",
-    timestamp: "Yesterday",
-    isRead: true,
-    isUnread: false,
-  },
-  {
-    id: "3",
-    sender: "Bob Johnson",
-    senderAvatar: "BJ",
-    subject: "Weekend Plans",
-    preview: "Hey everyone! I'm thinking of organizing a team outing this weekend...",
-    timestamp: "2 days ago",
-    isRead: true,
-    isUnread: false,
-  },
-  {
-    id: "4",
-    sender: "Emily Davis",
-    senderAvatar: "ED",
-    subject: "Re: Question about Budget",
-    preview: "I've reviewed the budget numbers you sent over...",
-    timestamp: "2 days ago",
-    isRead: true,
-    isUnread: false,
-  },
-  {
-    id: "5",
-    sender: "Michael Wilson",
-    senderAvatar: "MW",
-    subject: "Important Announcement",
-    preview: "Please join us for an all hands meeting this Friday at 3 PM...",
-    timestamp: "1 week ago",
-    isRead: true,
-    isUnread: false,
-  },
-  {
-    id: "6",
-    sender: "Sarah Brown",
-    senderAvatar: "SB",
-    subject: "Re: Feedback on Proposal",
-    preview: "Thank you for sending over the proposal. I've reviewed it and have some thoughts...",
-    timestamp: "1 week ago",
-    isRead: true,
-    isUnread: false,
-  },
-  {
-    id: "7",
-    sender: "David Lee",
-    senderAvatar: "DL",
-    subject: "New Project Idea",
-    preview: "I've been brainstorming and came up with an interesting project concept...",
-    timestamp: "1 week ago",
-    isRead: true,
-    isUnread: false,
-  },
-]
-
-const mockEmails: Message[] = [
-  {
-    id: "e1",
-    sender: "John Doe",
-    senderAvatar: "JD",
-    subject: "Assignment Submission",
-    preview: "I've completed the assignment and attached it to this email...",
-    timestamp: "10:15 AM",
-    isRead: false,
-    isUnread: true,
-  },
-  {
-    id: "e2",
-    sender: "Jane Smith",
-    senderAvatar: "JS",
-    subject: "Question about Homework",
-    preview: "I have a question about problem 5 in the homework assignment...",
-    timestamp: "Yesterday",
-    isRead: true,
-    isUnread: false,
-  },
-  {
-    id: "e3",
-    sender: "Parent - Tom Wilson",
-    senderAvatar: "TW",
-    subject: "Progress Update Request",
-    preview: "Could you please provide an update on my child's progress this semester...",
-    timestamp: "3 days ago",
-    isRead: true,
-    isUnread: false,
-  },
-  {
-    id: "e4",
-    sender: "Sarah Johnson",
-    senderAvatar: "SJ",
-    subject: "Re: Test Results",
-    preview: "Thank you for sharing the test results. I'm pleased with the improvement...",
-    timestamp: "4 days ago",
-    isRead: true,
-    isUnread: false,
-  },
-  {
-    id: "e5",
-    sender: "Mark Davis",
-    senderAvatar: "MD",
-    subject: "Absence Notification",
-    preview: "I wanted to inform you that I will be absent next week due to...",
-    timestamp: "1 week ago",
-    isRead: true,
-    isUnread: false,
-  },
-]
-
 export default function MessagingView({ type }: MessagingViewProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null)
 
-  const messages = type === "chats" ? mockChats : mockEmails
+  const { data: conversations, isLoading, isError } = useConversations()
+
+  // Transform conversations to messages format
+  const messages: Message[] = useMemo(() => {
+    if (!conversations || !Array.isArray(conversations)) return []
+
+    return conversations.map((conv: any) => {
+      const otherParticipant = conv.participant_names?.[0] || 'Unknown'
+      const initials = otherParticipant.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+
+      return {
+        id: conv._id || conv.id,
+        sender: otherParticipant,
+        senderAvatar: initials,
+        subject: conv.title || 'No subject',
+        preview: conv.last_message || 'No messages yet',
+        timestamp: conv.updated_at ? formatDistanceToNow(new Date(conv.updated_at), { addSuffix: true }) : '',
+        isRead: conv.is_read !== false,
+        isUnread: conv.is_read === false
+      }
+    })
+  }, [conversations])
+
   const unreadCount = messages.filter(m => m.isUnread).length
   const icon = type === "chats" ? MessageSquare : Mail
 
@@ -166,6 +66,50 @@ export default function MessagingView({ type }: MessagingViewProps) {
   )
 
   const Icon = icon
+
+  // Loading skeleton
+  if (isLoading) {
+    return (
+      <div className="flex h-[calc(100vh-8rem)] bg-background">
+        <div className="w-80 border-r border-border flex flex-col bg-card">
+          <div className="p-4 border-b border-border">
+            <div className="flex items-center gap-2 mb-4">
+              <Skeleton className="h-8 w-8 rounded-lg" />
+              <Skeleton className="h-5 w-20" />
+            </div>
+            <Skeleton className="h-9 w-full" />
+          </div>
+          <div className="p-2 space-y-2">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-start gap-3 p-3">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-3/4" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <Skeleton className="h-8 w-48" />
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (isError) {
+    return (
+      <div className="flex h-[calc(100vh-8rem)] bg-background items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground">Failed to load messages</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-[calc(100vh-8rem)] bg-background">
@@ -196,7 +140,12 @@ export default function MessagingView({ type }: MessagingViewProps) {
         </div>
         <ScrollArea className="flex-1">
           <div className="p-2">
-            {filteredMessages.map((message) => (
+            {filteredMessages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Icon className="h-8 w-8 text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">No messages yet</p>
+              </div>
+            ) : filteredMessages.map((message) => (
               <div
                 key={message.id}
                 onClick={() => setSelectedMessage(message)}

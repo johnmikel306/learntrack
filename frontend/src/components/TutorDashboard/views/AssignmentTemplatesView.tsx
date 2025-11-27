@@ -187,24 +187,12 @@ export default function AssignmentTemplatesView() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
-                    Template Name
-                  </TableHead>
-                  <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
-                    Subject
-                  </TableHead>
-                  <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
-                    Questions
-                  </TableHead>
-                  <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
-                    Used
-                  </TableHead>
-                  <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
-                    Status
-                  </TableHead>
-                  <TableHead className="font-semibold text-muted-foreground uppercase text-xs text-right">
-                    Actions
-                  </TableHead>
+                  <TableHead>Template Name</TableHead>
+                  <TableHead>Subject</TableHead>
+                  <TableHead>Questions</TableHead>
+                  <TableHead>Used</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

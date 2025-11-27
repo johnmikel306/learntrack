@@ -45,7 +45,7 @@ export function useStudents(page: number = 1, perPage: number = 10) {
  */
 export function useStudent(slug: string | undefined) {
   const client = useApiClient()
-  
+
   return useQuery({
     queryKey: ['students', slug],
     queryFn: async () => {
@@ -55,6 +55,26 @@ export function useStudent(slug: string | undefined) {
       return response.data
     },
     enabled: !!slug, // Only run query if slug is provided
+  })
+}
+
+/**
+ * Hook to delete a student
+ */
+export function useDeleteStudent() {
+  const client = useApiClient()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (studentClerkId: string) => {
+      const response = await client.delete(`/students/${studentClerkId}`)
+      if (response.error) throw new Error(response.error)
+      return response.data
+    },
+    onSuccess: () => {
+      // Invalidate students list to refetch
+      queryClient.invalidateQueries({ queryKey: ['students'] })
+    },
   })
 }
 
@@ -422,6 +442,161 @@ export function useParentProgress() {
       const response = await client.get('/progress/parent')
       if (response.error) throw new Error(response.error)
       return response.data
+    },
+  })
+}
+
+// ============================================
+// Conversation & Message Queries
+// ============================================
+
+/**
+ * Hook to fetch all conversations for the current user
+ */
+export function useConversations() {
+  const client = useApiClient()
+
+  return useQuery({
+    queryKey: ['conversations'],
+    queryFn: async () => {
+      const response = await client.get('/conversations')
+      if (response.error) throw new Error(response.error)
+      return response.data?.items || response.data || []
+    },
+  })
+}
+
+/**
+ * Hook to fetch messages for a specific conversation
+ */
+export function useMessages(conversationId: string | undefined, page: number = 1, pageSize: number = 50) {
+  const client = useApiClient()
+
+  return useQuery({
+    queryKey: ['messages', conversationId, page],
+    queryFn: async () => {
+      if (!conversationId) throw new Error('Conversation ID is required')
+      const response = await client.get(`/messages/conversation/${conversationId}?page=${page}&page_size=${pageSize}`)
+      if (response.error) throw new Error(response.error)
+      return response.data
+    },
+    enabled: !!conversationId,
+  })
+}
+
+// ============================================
+// Announcements Queries
+// ============================================
+
+/**
+ * Hook to fetch announcements/notifications
+ */
+export function useAnnouncements() {
+  const client = useApiClient()
+
+  return useQuery({
+    queryKey: ['announcements'],
+    queryFn: async () => {
+      // Use notifications endpoint as announcements
+      const response = await client.get('/notifications?per_page=10')
+      if (response.error) throw new Error(response.error)
+      return response.data?.items || response.data || []
+    },
+  })
+}
+
+// ============================================
+// Student Details Queries (for modals)
+// ============================================
+
+/**
+ * Hook to fetch student progress data
+ */
+export function useStudentProgress(studentId: string | undefined) {
+  const client = useApiClient()
+
+  return useQuery({
+    queryKey: ['progress', 'student', studentId],
+    queryFn: async () => {
+      if (!studentId) throw new Error('Student ID is required')
+      const response = await client.get(`/progress/student/${studentId}`)
+      if (response.error) throw new Error(response.error)
+      return response.data
+    },
+    enabled: !!studentId,
+  })
+}
+
+/**
+ * Hook to fetch student assignments
+ */
+export function useStudentAssignmentsList(studentId: string | undefined) {
+  const client = useApiClient()
+
+  return useQuery({
+    queryKey: ['assignments', 'student', studentId],
+    queryFn: async () => {
+      if (!studentId) throw new Error('Student ID is required')
+      const response = await client.get(`/assignments?student_id=${studentId}`)
+      if (response.error) throw new Error(response.error)
+      return response.data?.items || response.data || []
+    },
+    enabled: !!studentId,
+  })
+}
+
+/**
+ * Hook to fetch student activities
+ */
+export function useStudentActivities(studentId: string | undefined) {
+  const client = useApiClient()
+
+  return useQuery({
+    queryKey: ['activities', 'student', studentId],
+    queryFn: async () => {
+      if (!studentId) throw new Error('Student ID is required')
+      const response = await client.get(`/activity?user_id=${studentId}&limit=10`)
+      if (response.error) throw new Error(response.error)
+      return response.data?.items || response.data || []
+    },
+    enabled: !!studentId,
+  })
+}
+
+/**
+ * Hook to fetch student groups
+ */
+export function useStudentGroups(studentId: string | undefined) {
+  const client = useApiClient()
+
+  return useQuery({
+    queryKey: ['groups', 'student', studentId],
+    queryFn: async () => {
+      if (!studentId) throw new Error('Student ID is required')
+      const response = await client.get(`/groups?member_id=${studentId}`)
+      if (response.error) throw new Error(response.error)
+      return response.data?.items || response.data || []
+    },
+    enabled: !!studentId,
+  })
+}
+
+// ============================================
+// Generation History Queries
+// ============================================
+
+/**
+ * Hook to fetch question generation history
+ */
+export function useGenerationHistory() {
+  const client = useApiClient()
+
+  return useQuery({
+    queryKey: ['generation-history'],
+    queryFn: async () => {
+      const response = await client.get('/questions/generation-history')
+      if (response.error) throw new Error(response.error)
+      return response.data?.items || response.data || []
     },
   })
 }

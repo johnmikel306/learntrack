@@ -195,27 +195,13 @@ export default function GradingView() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
-                    Student
-                  </TableHead>
-                  <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
-                    Assignment
-                  </TableHead>
-                  <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
-                    Subject
-                  </TableHead>
-                  <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
-                    Submitted
-                  </TableHead>
-                  <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
-                    Score
-                  </TableHead>
-                  <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
-                    Status
-                  </TableHead>
-                  <TableHead className="font-semibold text-muted-foreground uppercase text-xs text-right">
-                    Actions
-                  </TableHead>
+                  <TableHead>Student</TableHead>
+                  <TableHead>Assignment</TableHead>
+                  <TableHead>Subject</TableHead>
+                  <TableHead>Submitted</TableHead>
+                  <TableHead>Score</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

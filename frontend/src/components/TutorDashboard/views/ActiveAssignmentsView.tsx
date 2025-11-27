@@ -90,8 +90,8 @@ export default function ActiveAssignmentsView() {
         throw new Error(response.error)
       }
       
-      // Store raw backend data
-      const rawData = (response.data as any[]) || []
+      // Store raw backend data - API returns paginated response with items array
+      const rawData = (response.data?.items as any[]) || (Array.isArray(response.data) ? response.data : [])
       setRawAssignments(rawData)
 
       // Map API response to Assignment interface for display
@@ -336,36 +336,36 @@ export default function ActiveAssignmentsView() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead className="font-semibold text-muted-foreground uppercase text-xs">Assignment Title</TableHead>
-                <TableHead className="font-semibold text-muted-foreground uppercase text-xs">Class/Group</TableHead>
-                <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
+                <TableHead>Assignment Title</TableHead>
+                <TableHead>Class/Group</TableHead>
+                <TableHead>
                   <button
                     onClick={() => handleSort('submissions')}
-                    className="flex items-center gap-1 hover:text-foreground transition-colors"
+                    className="flex items-center gap-1 hover:text-foreground transition-colors uppercase"
                   >
                     Submissions
                     {getSortIcon('submissions')}
                   </button>
                 </TableHead>
-                <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
+                <TableHead>
                   <button
                     onClick={() => handleSort('dueDate')}
-                    className="flex items-center gap-1 hover:text-foreground transition-colors"
+                    className="flex items-center gap-1 hover:text-foreground transition-colors uppercase"
                   >
                     Due Date
                     {getSortIcon('dueDate')}
                   </button>
                 </TableHead>
-                <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
+                <TableHead>
                   <button
                     onClick={() => handleSort('status')}
-                    className="flex items-center gap-1 hover:text-foreground transition-colors"
+                    className="flex items-center gap-1 hover:text-foreground transition-colors uppercase"
                   >
                     Status
                     {getSortIcon('status')}
                   </button>
                 </TableHead>
-                <TableHead className="font-semibold text-muted-foreground uppercase text-xs text-right">Actions</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

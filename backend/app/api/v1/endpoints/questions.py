@@ -66,6 +66,32 @@ async def get_questions(
         logger.error("Failed to get questions", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to get questions")
 
+# NOTE: /pending must be defined BEFORE /{question_id} to avoid being caught by the dynamic route
+@router.get("/pending", response_model=PaginatedResponse[Question])
+async def get_pending_questions(
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(20, ge=1, le=100, description="Items per page"),
+    current_user: ClerkUserContext = Depends(require_tutor),
+    question_service: QuestionService = Depends(get_question_service)
+):
+    """Get paginated pending questions awaiting approval"""
+    try:
+        result = await question_service.get_questions_for_tutor(
+            tutor_id=current_user.clerk_id,
+            status="pending",
+            page=page,
+            per_page=per_page
+        )
+        return paginate(
+            items=result["items"],
+            page=page,
+            per_page=per_page,
+            total=result["total"]
+        )
+    except Exception as e:
+        logger.error("Failed to get pending questions", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to get pending questions")
+
 @router.get("/{question_id}", response_model=Question)
 async def get_question(
     question_id: str = Path(..., description="Question ID"),
@@ -74,7 +100,7 @@ async def get_question(
 ):
     """Get question by ID"""
     try:
-        question = await question_service.get_question_by_id(question_id, current_user)
+        question = await question_service.get_question_by_id(question_id, current_user.clerk_id)
         if not question:
             raise HTTPException(status_code=404, detail="Question not found")
         return question
@@ -179,32 +205,6 @@ async def generate_questions(
     except Exception as e:
         logger.error("Failed to generate questions", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to generate questions")
-
-
-@router.get("/pending", response_model=PaginatedResponse[Question])
-async def get_pending_questions(
-    page: int = Query(1, ge=1, description="Page number"),
-    per_page: int = Query(20, ge=1, le=100, description="Items per page"),
-    current_user: ClerkUserContext = Depends(require_tutor),
-    question_service: QuestionService = Depends(get_question_service)
-):
-    """Get paginated pending questions awaiting approval"""
-    try:
-        result = await question_service.get_questions_for_tutor(
-            tutor_id=current_user.clerk_id,
-            status="pending",
-            page=page,
-            per_page=per_page
-        )
-        return paginate(
-            items=result["items"],
-            page=page,
-            per_page=per_page,
-            total=result["total"]
-        )
-    except Exception as e:
-        logger.error("Failed to get pending questions", error=str(e))
-        raise HTTPException(status_code=500, detail="Failed to get pending questions")
 
 
 @router.put("/{question_id}/approve", response_model=Question)

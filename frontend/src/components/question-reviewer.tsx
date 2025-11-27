@@ -31,6 +31,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { toast } from 'sonner'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import { Skeleton } from "@/components/ui/skeleton"
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
@@ -96,7 +97,8 @@ export default function QuestionReviewer() {
 
       if (response.ok) {
         const data = await response.json()
-        setQuestions(data)
+        // Handle paginated response: { items: [...], total, page, per_page }
+        setQuestions(data?.items || (Array.isArray(data) ? data : []))
       } else {
         console.error('Failed to fetch pending questions')
       }
@@ -473,9 +475,64 @@ export default function QuestionReviewer() {
             </CardHeader>
             <CardContent className="p-6">
               {loading ? (
-                <div className="text-center py-12">
-                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-                  <p className="mt-4 text-muted-foreground">Loading questions...</p>
+                /* Question Card Skeletons */
+                <div className="space-y-6">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Card key={i} className="border-border overflow-hidden">
+                      <CardContent className="p-0">
+                        {/* Header skeleton */}
+                        <div className="flex items-center justify-between gap-4 px-6 py-4 bg-muted/30 border-b border-border">
+                          <div className="flex items-center gap-3">
+                            <Skeleton className="h-5 w-5 rounded" />
+                            <Skeleton className="h-6 w-20 rounded-full" />
+                            <Skeleton className="h-6 w-16 rounded-full" />
+                            <Skeleton className="h-6 w-24 rounded-full" />
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Skeleton className="h-4 w-12" />
+                            <div className="flex gap-1">
+                              {Array.from({ length: 5 }).map((_, j) => (
+                                <Skeleton key={j} className="h-4 w-4" />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        {/* Question text skeleton */}
+                        <div className="px-6 py-6 space-y-2">
+                          <Skeleton className="h-5 w-full" />
+                          <Skeleton className="h-5 w-4/5" />
+                          <Skeleton className="h-5 w-3/5" />
+                        </div>
+                        {/* Options skeleton */}
+                        <div className="px-6 pb-6">
+                          <Skeleton className="h-4 w-32 mb-3" />
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {Array.from({ length: 4 }).map((_, k) => (
+                              <div key={k} className="p-4 rounded-lg border-2 border-border">
+                                <div className="flex items-start gap-3">
+                                  <Skeleton className="h-6 w-6 shrink-0" />
+                                  <Skeleton className="h-4 w-full" />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        {/* Action buttons skeleton */}
+                        <div className="flex items-center justify-between gap-4 px-6 py-4 bg-muted/20 border-t border-border">
+                          <div className="flex items-center gap-2">
+                            <Skeleton className="h-4 w-4" />
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-4 w-20" />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Skeleton className="h-9 w-24 rounded-md" />
+                            <Skeleton className="h-9 w-24 rounded-md" />
+                            <Skeleton className="h-9 w-9 rounded-md" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               ) : filteredQuestions.length === 0 ? (
                 <div className="text-center py-12">

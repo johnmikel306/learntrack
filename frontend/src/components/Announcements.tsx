@@ -1,4 +1,5 @@
-import { ChevronRight } from "lucide-react"
+import { Bell, AlertCircle } from "lucide-react"
+import { useAnnouncements } from "@/hooks/useQueries"
 
 interface Announcement {
   id: string
@@ -8,59 +9,38 @@ interface Announcement {
   type: "info" | "warning" | "success"
 }
 
-interface AnnouncementsProps {
-  announcements?: Announcement[]
-  isLoading?: boolean
-}
+const Announcements = () => {
+  const { data: announcements, isLoading, isError } = useAnnouncements()
 
-const Announcements = ({ announcements = [], isLoading = false }: AnnouncementsProps) => {
   const getBackgroundColor = (type: string, index: number) => {
     const typeColors = {
       info: "bg-lamaSkyLight",
-      warning: "bg-lamaYellowLight", 
+      warning: "bg-lamaYellowLight",
       success: "bg-lamaPurpleLight"
     }
-    
+
     if (type in typeColors) {
       return typeColors[type as keyof typeof typeColors]
     }
-    
+
     // Fallback to alternating colors
     const colors = ["bg-lamaSkyLight", "bg-lamaPurpleLight", "bg-lamaYellowLight"]
     return colors[index % colors.length]
   }
 
-  // Default announcements if none provided
-  const defaultAnnouncements: Announcement[] = [
-    {
-      id: "1",
-      title: "Welcome to the new semester!",
-      description: "We're excited to start this new academic year with enhanced learning tools and resources.",
-      date: "2025-01-15",
-      type: "info"
-    },
-    {
-      id: "2", 
-      title: "Assignment deadline reminder",
-      description: "Don't forget to submit your assignments by the end of this week.",
-      date: "2025-01-14",
-      type: "warning"
-    },
-    {
-      id: "3",
-      title: "Great progress this month!",
-      description: "Students have shown excellent improvement in their performance metrics.",
-      date: "2025-01-13", 
-      type: "success"
-    }
-  ]
-
-  const displayAnnouncements = announcements.length > 0 ? announcements : defaultAnnouncements
+  // Transform API data to Announcement format
+  const displayAnnouncements: Announcement[] = (announcements || []).map((item: any) => ({
+    id: item._id || item.id,
+    title: item.title || item.message || 'Notification',
+    description: item.description || item.message || '',
+    date: item.created_at || item.date || new Date().toISOString(),
+    type: item.type || 'info'
+  }))
 
   return (
-    <div className="bg-white p-4 rounded-md">
+    <div className="bg-white dark:bg-slate-900 p-4 rounded-md">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Announcements</h1>
+        <h1 className="text-xl font-semibold text-foreground">Announcements</h1>
         <span className="text-xs text-gray-400 cursor-pointer hover:text-gray-600">
           View All
         </span>
@@ -69,11 +49,21 @@ const Announcements = ({ announcements = [], isLoading = false }: AnnouncementsP
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-gray-100 rounded-md p-4 animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-full"></div>
+              <div key={i} className="bg-gray-100 dark:bg-slate-800 rounded-md p-4 animate-pulse">
+                <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-gray-200 dark:bg-slate-700 rounded w-full"></div>
               </div>
             ))}
+          </div>
+        ) : isError ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">Failed to load announcements</p>
+          </div>
+        ) : displayAnnouncements.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No announcements</p>
           </div>
         ) : (
           displayAnnouncements.map((announcement, index) => (

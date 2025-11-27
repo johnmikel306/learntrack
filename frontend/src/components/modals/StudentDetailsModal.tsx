@@ -111,68 +111,81 @@ export function StudentDetailsModal({
         studentId: userData._id?.slice(-6).toUpperCase() || 'ST84321',
         grade: userData.student_profile?.grade || '10th Grade',
         parentEmail: userData.student_profile?.parentEmail,
-        parentName: userData.student_profile?.parentName || 'Sarah Reed',
+        parentName: userData.student_profile?.parentName,
         averageScore: userData.student_profile?.averageScore || 0,
         completionRate: userData.student_profile?.completionRate || 0,
         totalAssignments: userData.student_profile?.totalAssignments || 0,
         completedAssignments: userData.student_profile?.completedAssignments || 0
       })
 
-      // Generate mock progress data (replace with real API call)
-      const mockProgress: ProgressData[] = [
-        { month: 'Jan', score: 78 },
-        { month: 'Feb', score: 82 },
-        { month: 'Mar', score: 80 },
-        { month: 'Apr', score: 88 },
-        { month: 'May', score: 85 },
-        { month: 'Jun', score: 92 }
-      ]
-      setProgressData(mockProgress)
-
-      // Fetch assignments (mock for now)
-      const mockAssignments: Assignment[] = [
-        {
-          id: '1',
-          title: 'Geometry Homework 5.3',
-          subject: 'Mathematics',
-          dueDate: new Date(Date.now() + 86400000).toISOString(),
-          status: 'pending'
-        },
-        {
-          id: '2',
-          title: 'Biology Lab Report',
-          subject: 'Biology',
-          dueDate: new Date(Date.now() + 259200000).toISOString(),
-          status: 'pending'
+      // Fetch progress data from API
+      try {
+        const progressRes = await client.get(`/progress/student/${studentId}`)
+        if (!progressRes.error && progressRes.data) {
+          const progressItems = progressRes.data?.items || progressRes.data || []
+          setProgressData(progressItems.map((item: any) => ({
+            month: item.month || format(new Date(item.date || item.created_at), 'MMM'),
+            score: item.score || item.average_score || 0
+          })))
         }
-      ]
-      setAssignments(mockAssignments)
+      } catch (e) {
+        console.log('No progress data available')
+        setProgressData([])
+      }
 
-      // Fetch groups (mock for now)
-      const mockGroups: Group[] = [
-        { id: '1', name: 'History Study Group', color: 'blue' }
-      ]
-      setGroups(mockGroups)
-
-      // Fetch recent activity (mock for now)
-      const mockActivities: Activity[] = [
-        {
-          id: '1',
-          type: 'assignment',
-          title: 'Algebra Basics Quiz',
-          timestamp: new Date(Date.now() - 86400000).toISOString(),
-          score: 95,
-          status: 'completed'
-        },
-        {
-          id: '2',
-          type: 'submission',
-          title: 'World War II Essay',
-          timestamp: new Date(Date.now() - 172800000).toISOString(),
-          status: 'awaiting_grade'
+      // Fetch assignments from API
+      try {
+        const assignmentsRes = await client.get(`/assignments?student_id=${studentId}`)
+        if (!assignmentsRes.error && assignmentsRes.data) {
+          const assignmentItems = assignmentsRes.data?.items || assignmentsRes.data || []
+          setAssignments(assignmentItems.map((item: any) => ({
+            id: item._id || item.id,
+            title: item.title,
+            subject: item.subject,
+            dueDate: item.due_date,
+            status: item.status,
+            score: item.score
+          })))
         }
-      ]
-      setActivities(mockActivities)
+      } catch (e) {
+        console.log('No assignments available')
+        setAssignments([])
+      }
+
+      // Fetch groups from API
+      try {
+        const groupsRes = await client.get(`/groups?member_id=${studentId}`)
+        if (!groupsRes.error && groupsRes.data) {
+          const groupItems = groupsRes.data?.items || groupsRes.data || []
+          setGroups(groupItems.map((item: any) => ({
+            id: item._id || item.id,
+            name: item.name,
+            color: item.color || 'blue'
+          })))
+        }
+      } catch (e) {
+        console.log('No groups available')
+        setGroups([])
+      }
+
+      // Fetch recent activity from API
+      try {
+        const activityRes = await client.get(`/activity?user_id=${studentId}&limit=10`)
+        if (!activityRes.error && activityRes.data) {
+          const activityItems = activityRes.data?.items || activityRes.data || []
+          setActivities(activityItems.map((item: any) => ({
+            id: item._id || item.id,
+            type: item.activity_type === 'assignment_completed' ? 'assignment' : 'submission',
+            title: item.title || item.description,
+            timestamp: item.created_at,
+            score: item.score,
+            status: item.status
+          })))
+        }
+      } catch (e) {
+        console.log('No activity available')
+        setActivities([])
+      }
 
     } catch (error: any) {
       console.error('Failed to fetch student details:', error)

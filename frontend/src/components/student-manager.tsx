@@ -33,7 +33,7 @@ import { toast } from "sonner"
 import { SendMessageModal } from "@/components/modals/SendMessageModal"
 import InviteUserModal from "@/components/InviteUserModal"
 import { ConfirmDeleteModal } from "@/components/modals/ConfirmDeleteModal"
-import { useStudents } from "@/hooks/useQueries"
+import { useStudents, useDeleteStudent } from "@/hooks/useQueries"
 import { Pagination } from "@/components/Pagination"
 import { StudentTableSkeleton } from "@/components/skeletons"
 
@@ -55,12 +55,14 @@ export default function StudentManager() {
   const [inviteModalOpen, setInviteModalOpen] = useState(false)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
-  const [deleting, setDeleting] = useState(false)
 
   const navigate = useNavigate()
 
   // Fetch students using React Query with pagination
   const { data, isLoading, isError, error } = useStudents(currentPage, itemsPerPage)
+
+  // Delete mutation
+  const deleteStudentMutation = useDeleteStudent()
 
   // Helper function to format last active time
   const formatLastActive = (updatedAt: string) => {
@@ -124,16 +126,13 @@ export default function StudentManager() {
     if (!selectedStudent) return
 
     try {
-      setDeleting(true)
-      // TODO: Implement actual delete API call with React Query mutation
+      await deleteStudentMutation.mutateAsync(selectedStudent.id)
       toast.success('Student deleted successfully')
       setDeleteModalOpen(false)
       setSelectedStudent(null)
     } catch (error) {
       console.error('Failed to delete student:', error)
       toast.error('Failed to delete student')
-    } finally {
-      setDeleting(false)
     }
   }
 
@@ -178,33 +177,27 @@ export default function StudentManager() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50 hover:bg-muted/50">
-                      <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
-                        Student Name
-                      </TableHead>
-                      <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
-                        Email
-                      </TableHead>
-                      <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
+                      <TableHead>Student Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>
                         <button
                           onClick={() => handleSort('lastActive')}
-                          className="flex items-center gap-1 hover:text-foreground transition-colors"
+                          className="flex items-center gap-1 hover:text-foreground transition-colors uppercase"
                         >
                           Last Active
                           <ArrowUpDown className="h-3 w-3" />
                         </button>
                       </TableHead>
-                      <TableHead className="font-semibold text-muted-foreground uppercase text-xs">
+                      <TableHead>
                         <button
                           onClick={() => handleSort('progress')}
-                          className="flex items-center gap-1 hover:text-foreground transition-colors"
+                          className="flex items-center gap-1 hover:text-foreground transition-colors uppercase"
                         >
                           Progress
                           <ArrowUpDown className="h-3 w-3" />
                         </button>
                       </TableHead>
-                      <TableHead className="font-semibold text-muted-foreground uppercase text-xs text-right">
-                        Actions
-                      </TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -346,7 +339,7 @@ export default function StudentManager() {
         title="Delete Student?"
         description="Are you sure you want to delete this student? This action cannot be undone."
         itemName={selectedStudent?.name}
-        loading={deleting}
+        loading={deleteStudentMutation.isPending}
       />
     </div>
   )

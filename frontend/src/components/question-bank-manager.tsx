@@ -25,29 +25,11 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
   Plus,
   Search,
   Edit,
   Eye,
   Trash2,
-  ChevronLeft,
-  ChevronRight,
-  MoreVertical,
 } from "lucide-react"
 
 interface Question {
@@ -63,13 +45,13 @@ interface Question {
 const getDifficultyColor = (difficulty: string) => {
   switch (difficulty.toLowerCase()) {
     case 'easy':
-      return 'bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-0 font-medium'
+      return 'bg-emerald-500/20 text-emerald-400 border-0 font-medium px-3 py-1'
     case 'medium':
-      return 'bg-yellow-100 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400 border-0 font-medium'
+      return 'bg-amber-500/20 text-amber-400 border-0 font-medium px-3 py-1'
     case 'hard':
-      return 'bg-red-100 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-0 font-medium'
+      return 'bg-red-500/20 text-red-400 border-0 font-medium px-3 py-1'
     default:
-      return 'bg-muted text-muted-foreground border-0'
+      return 'bg-muted text-muted-foreground border-0 px-3 py-1'
   }
 }
 
@@ -194,7 +176,8 @@ export default function QuestionBankManager() {
 
       {/* Search and Filters */}
       <div className="bg-muted/30 border border-border rounded-lg p-4">
-        <div className="flex flex-col md:flex-row gap-3">
+        <div className="flex flex-col lg:flex-row gap-3">
+          {/* Search */}
           <div className="flex-1">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -206,48 +189,51 @@ export default function QuestionBankManager() {
               />
             </div>
           </div>
-          <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-            <SelectTrigger className="w-full md:w-[150px] h-10 border-border bg-background">
-              <SelectValue placeholder="Subject" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Subjects</SelectItem>
-              {subjects.map(subject => (
-                <SelectItem key={subject} value={subject}>{subject}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={topicFilter} onValueChange={setTopicFilter}>
-            <SelectTrigger className="w-full md:w-[150px] h-10 border-border bg-background">
-              <SelectValue placeholder="Topic" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Topics</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
-            <SelectTrigger className="w-full md:w-[150px] h-10 border-border bg-background">
-              <SelectValue placeholder="Difficulty" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Levels</SelectItem>
-              <SelectItem value="Easy">Easy</SelectItem>
-              <SelectItem value="Medium">Medium</SelectItem>
-              <SelectItem value="Hard">Hard</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-full md:w-[150px] h-10 border-border bg-background">
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="Multiple Choice">Multiple Choice</SelectItem>
-              <SelectItem value="Short Answer">Short Answer</SelectItem>
-              <SelectItem value="True/False">True/False</SelectItem>
-              <SelectItem value="Calculation">Calculation</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Filters */}
+          <div className="flex flex-wrap gap-2">
+            <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+              <SelectTrigger className="w-[140px] h-10 border-border bg-background">
+                <SelectValue placeholder="Subject" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Subjects</SelectItem>
+                {subjects.map(subject => (
+                  <SelectItem key={subject} value={subject}>{subject}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={topicFilter} onValueChange={setTopicFilter}>
+              <SelectTrigger className="w-[130px] h-10 border-border bg-background">
+                <SelectValue placeholder="Topic" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Topics</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
+              <SelectTrigger className="w-[130px] h-10 border-border bg-background">
+                <SelectValue placeholder="Difficulty" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Levels</SelectItem>
+                <SelectItem value="Easy">Easy</SelectItem>
+                <SelectItem value="Medium">Medium</SelectItem>
+                <SelectItem value="Hard">Hard</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-[130px] h-10 border-border bg-background">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="Multiple Choice">Multiple Choice</SelectItem>
+                <SelectItem value="Short Answer">Short Answer</SelectItem>
+                <SelectItem value="True/False">True/False</SelectItem>
+                <SelectItem value="Calculation">Calculation</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -256,60 +242,68 @@ export default function QuestionBankManager() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50 hover:bg-muted/50">
-              <TableHead className="font-semibold text-muted-foreground uppercase text-xs">Question Text</TableHead>
-              <TableHead className="font-semibold text-muted-foreground uppercase text-xs">Subject</TableHead>
-              <TableHead className="font-semibold text-muted-foreground uppercase text-xs">Type</TableHead>
-              <TableHead className="font-semibold text-muted-foreground uppercase text-xs">Difficulty</TableHead>
-              <TableHead className="font-semibold text-muted-foreground uppercase text-xs">Last Modified</TableHead>
-              <TableHead className="font-semibold text-muted-foreground uppercase text-xs text-right">Actions</TableHead>
+              <TableHead>Question Text</TableHead>
+              <TableHead>Subject</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Difficulty</TableHead>
+              <TableHead>Last Modified</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {currentQuestions.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                   No questions found
                 </TableCell>
               </TableRow>
             ) : (
               currentQuestions.map((question) => (
-                <TableRow key={question.id} className="hover:bg-muted/20">
-                  <TableCell className="font-medium text-foreground max-w-md truncate">
-                    {question.text}
+                <TableRow key={question.id} className="hover:bg-muted/30 transition-colors">
+                  <TableCell className="font-medium text-foreground max-w-sm">
+                    <span className="line-clamp-2">{question.text}</span>
                   </TableCell>
                   <TableCell className="text-foreground">{question.subject}</TableCell>
-                  <TableCell className="text-foreground">{question.type}</TableCell>
+                  <TableCell className="text-muted-foreground">{question.type}</TableCell>
                   <TableCell>
                     <Badge className={getDifficultyColor(question.difficulty)}>
                       {question.difficulty}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{question.lastModified}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {new Date(question.lastModified).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: '2-digit',
+                      year: 'numeric'
+                    })}
+                  </TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleView(question.id)}>
-                          <Eye className="w-4 h-4 mr-2" />
-                          View
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleEdit(question.id)}>
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleDelete(question.id)}
-                          className="text-red-600 dark:text-red-500"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center gap-1 justify-end">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        onClick={() => handleEdit(question.id)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        onClick={() => handleView(question.id)}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDelete(question.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -320,18 +314,17 @@ export default function QuestionBankManager() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <Button
-            variant="ghost"
+        <div className="flex items-center justify-between pt-4 border-t border-border">
+          <button
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
-            className="text-muted-foreground hover:text-foreground"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            Previous
-          </Button>
-          
-          <div className="flex items-center gap-2">
+            <span className="text-lg">←</span>
+            <span>Previous</span>
+          </button>
+
+          <div className="flex items-center gap-1">
             {getPageNumbers().map((page, index) => (
               page === '...' ? (
                 <span key={`ellipsis-${index}`} className="px-2 text-muted-foreground">...</span>
@@ -339,9 +332,9 @@ export default function QuestionBankManager() {
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page as number)}
-                  className={`w-8 h-8 rounded transition-colors ${
+                  className={`w-8 h-8 rounded-full text-sm transition-colors ${
                     currentPage === page
-                      ? 'bg-primary text-primary-foreground'
+                      ? 'bg-amber-500/20 text-amber-400 font-medium'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
                 >
@@ -351,15 +344,14 @@ export default function QuestionBankManager() {
             ))}
           </div>
 
-          <Button
-            variant="ghost"
+          <button
             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages}
-            className="text-muted-foreground hover:text-foreground"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            Next
-            <ChevronRight className="w-4 h-4 ml-2" />
-          </Button>
+            <span>Next</span>
+            <span className="text-lg">→</span>
+          </button>
         </div>
       )}
     </div>

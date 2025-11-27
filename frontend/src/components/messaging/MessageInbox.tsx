@@ -1,21 +1,21 @@
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect, useMemo } from "react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { 
-  Mail, 
-  Search, 
-  Star, 
-  Archive, 
-  Trash2, 
-  Send,
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Mail,
+  Search,
+  Star,
+  Archive,
   MailOpen,
-  Clock
+  AlertCircle
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useConversations } from "@/hooks/useQueries"
+import { formatDistanceToNow } from "date-fns"
 
 interface Message {
   id: string
@@ -29,68 +29,34 @@ interface Message {
   category: "inbox" | "sent" | "archived"
 }
 
-const mockMessages: Message[] = [
-  {
-    id: "1",
-    sender: "William Smith",
-    senderAvatar: "WS",
-    subject: "Meeting Tomorrow",
-    preview: "Hi team, just a reminder about our meeting tomorrow at 10 AM...",
-    timestamp: "09:34 AM",
-    isRead: false,
-    isStarred: true,
-    category: "inbox"
-  },
-  {
-    id: "2",
-    sender: "Alice Smith",
-    senderAvatar: "AS",
-    subject: "Re: Project Update",
-    preview: "Thanks for the update. The progress looks great so far...",
-    timestamp: "Yesterday",
-    isRead: false,
-    isStarred: false,
-    category: "inbox"
-  },
-  {
-    id: "3",
-    sender: "Bob Johnson",
-    senderAvatar: "BJ",
-    subject: "Weekend Plans",
-    preview: "Hey everyone! I'm thinking of organizing a team outing this weekend...",
-    timestamp: "2 days ago",
-    isRead: true,
-    isStarred: false,
-    category: "inbox"
-  },
-  {
-    id: "4",
-    sender: "Emily Davis",
-    senderAvatar: "ED",
-    subject: "Re: Question about Budget",
-    preview: "I've reviewed the budget numbers you sent over...",
-    timestamp: "2 days ago",
-    isRead: true,
-    isStarred: true,
-    category: "inbox"
-  },
-  {
-    id: "5",
-    sender: "Michael Wilson",
-    senderAvatar: "MW",
-    subject: "Important Announcement",
-    preview: "Please join us for an all-hands meeting this Friday at 3 PM...",
-    timestamp: "1 week ago",
-    isRead: true,
-    isStarred: false,
-    category: "inbox"
-  }
-]
-
 export function MessageInbox() {
-  const [messages, setMessages] = useState<Message[]>(mockMessages)
+  const { data: conversations, isLoading, isError } = useConversations()
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
+  const [starredIds, setStarredIds] = useState<Set<string>>(new Set())
+  const [readIds, setReadIds] = useState<Set<string>>(new Set())
+
+  // Transform conversations to messages format
+  const messages: Message[] = useMemo(() => {
+    if (!conversations || !Array.isArray(conversations)) return []
+
+    return conversations.map((conv: any) => {
+      const otherParticipant = conv.participant_names?.[0] || 'Unknown'
+      const initials = otherParticipant.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+
+      return {
+        id: conv._id || conv.id,
+        sender: otherParticipant,
+        senderAvatar: initials,
+        subject: conv.title || 'No subject',
+        preview: conv.last_message || 'No messages yet',
+        timestamp: conv.updated_at ? formatDistanceToNow(new Date(conv.updated_at), { addSuffix: true }) : '',
+        isRead: readIds.has(conv._id || conv.id) || conv.is_read !== false,
+        isStarred: starredIds.has(conv._id || conv.id),
+        category: "inbox" as const
+      }
+    })
+  }, [conversations, starredIds, readIds])
 
   const unreadCount = messages.filter(m => !m.isRead).length
 
@@ -101,20 +67,52 @@ export function MessageInbox() {
   )
 
   const toggleStar = (messageId: string) => {
-    setMessages(messages.map(msg =>
-      msg.id === messageId ? { ...msg, isStarred: !msg.isStarred } : msg
-    ))
+    setStarredIds(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(messageId)) {
+        newSet.delete(messageId)
+      } else {
+        newSet.add(messageId)
+      }
+      return newSet
+    })
   }
 
   const markAsRead = (messageId: string) => {
-    setMessages(messages.map(msg =>
-      msg.id === messageId ? { ...msg, isRead: true } : msg
-    ))
+    setReadIds(prev => new Set(prev).add(messageId))
   }
 
   const handleMessageClick = (message: Message) => {
     setSelectedMessage(message)
     markAsRead(message.id)
+  }
+
+  // Loading skeleton
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-8 w-8 rounded-lg" />
+          <Skeleton className="h-4 w-20" />
+        </div>
+        <Skeleton className="h-8 w-full" />
+        <div className="space-y-2">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-lg" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 text-center">
+        <AlertCircle className="h-8 w-8 text-muted-foreground mb-2" />
+        <p className="text-sm text-muted-foreground">Failed to load messages</p>
+      </div>
+    )
   }
 
   return (
@@ -155,7 +153,12 @@ export function MessageInbox() {
       {/* Message List */}
       <ScrollArea className="h-[400px]">
         <div className="space-y-2">
-          {filteredMessages.map((message) => (
+          {filteredMessages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Mail className="h-8 w-8 text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">No messages yet</p>
+            </div>
+          ) : filteredMessages.map((message) => (
             <div
               key={message.id}
               onClick={() => handleMessageClick(message)}

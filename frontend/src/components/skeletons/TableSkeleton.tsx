@@ -81,30 +81,15 @@ export function TableSkeleton({
  */
 export function StudentTableSkeleton({ rows = 5 }: { rows?: number }) {
   return (
-    <div className="rounded-md border">
+    <div className="rounded-lg border border-border overflow-hidden">
       <Table>
         <TableHeader>
-          <TableRow>
-            {/* Student Name */}
-            <TableHead>
-              <div className="h-4 w-28 bg-gray-700 rounded animate-pulse"></div>
-            </TableHead>
-            {/* Email */}
-            <TableHead>
-              <div className="h-4 w-20 bg-gray-700 rounded animate-pulse"></div>
-            </TableHead>
-            {/* Last Active */}
-            <TableHead>
-              <div className="h-4 w-24 bg-gray-700 rounded animate-pulse"></div>
-            </TableHead>
-            {/* Progress */}
-            <TableHead>
-              <div className="h-4 w-24 bg-gray-700 rounded animate-pulse"></div>
-            </TableHead>
-            {/* Actions */}
-            <TableHead>
-              <div className="h-4 w-20 bg-gray-700 rounded animate-pulse"></div>
-            </TableHead>
+          <TableRow className="bg-muted/50 hover:bg-muted/50">
+            <TableHead>Student Name</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Last Active</TableHead>
+            <TableHead>Progress</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

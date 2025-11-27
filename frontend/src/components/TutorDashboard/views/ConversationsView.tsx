@@ -52,6 +52,7 @@ export default function ConversationsView() {
   const [newMessage, setNewMessage] = useState("")
   const [isTyping, setIsTyping] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [messagesLoading, setMessagesLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -135,6 +136,7 @@ export default function ConversationsView() {
 
   const loadMessages = async (conversationId: string) => {
     try {
+      setMessagesLoading(true)
       const token = await getToken()
       const response = await fetch(
         `${API_BASE}/messages/conversation/${conversationId}?page=1&page_size=50`,
@@ -146,6 +148,8 @@ export default function ConversationsView() {
       markConversationAsRead(conversationId)
     } catch (error) {
       console.error("Failed to load messages:", error)
+    } finally {
+      setMessagesLoading(false)
     }
   }
 
@@ -273,8 +277,25 @@ export default function ConversationsView() {
         <ScrollArea className="flex-1">
           <div className="p-2">
             {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              /* Conversation List Skeleton */
+              <div className="space-y-1">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex items-start gap-3 p-3 rounded-lg"
+                  >
+                    {/* Avatar skeleton */}
+                    <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+                    {/* Content skeleton */}
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Skeleton className="h-4 w-28" />
+                        <Skeleton className="h-3 w-12" />
+                      </div>
+                      <Skeleton className="h-3 w-full" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : filteredConversations.length === 0 ? (
               <div className="text-center py-8">
@@ -368,40 +389,84 @@ export default function ConversationsView() {
             {/* Messages Area */}
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-4 max-w-3xl mx-auto">
-                {messages.map((message) => {
-                  const isOwnMessage = message.sender_id === userId
-
-                  return (
-                    <div
-                      key={message._id}
-                      className={cn("flex gap-3", isOwnMessage ? "justify-end" : "justify-start")}
-                    >
-                      {!isOwnMessage && (
-                        <Avatar className="h-8 w-8 shrink-0 mt-1">
-                          <AvatarFallback className="bg-muted text-muted-foreground text-xs">
-                            {getInitials(getOtherParticipant(selectedConversation).name)}
-                          </AvatarFallback>
-                        </Avatar>
-                      )}
-                      <div
-                        className={cn(
-                          "max-w-[70%] rounded-2xl px-4 py-2.5",
-                          isOwnMessage
-                            ? "bg-accent text-accent-foreground rounded-br-md"
-                            : "bg-card border border-border text-foreground rounded-bl-md"
-                        )}
-                      >
-                        <p className="text-sm leading-relaxed">{message.content}</p>
-                        <p className={cn(
-                          "text-[10px] mt-1",
-                          isOwnMessage ? "text-accent-foreground/70" : "text-muted-foreground"
-                        )}>
-                          {formatMessageTime(message.created_at)}
-                        </p>
+                {messagesLoading ? (
+                  /* Messages Skeleton */
+                  <>
+                    {/* Incoming message skeleton */}
+                    <div className="flex gap-3 justify-start">
+                      <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-16 w-64 rounded-2xl rounded-bl-md" />
+                        <Skeleton className="h-2 w-12" />
                       </div>
                     </div>
-                  )
-                })}
+                    {/* Outgoing message skeleton */}
+                    <div className="flex gap-3 justify-end">
+                      <div className="space-y-2 flex flex-col items-end">
+                        <Skeleton className="h-12 w-48 rounded-2xl rounded-br-md" />
+                        <Skeleton className="h-2 w-12" />
+                      </div>
+                    </div>
+                    {/* Incoming message skeleton */}
+                    <div className="flex gap-3 justify-start">
+                      <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-20 w-72 rounded-2xl rounded-bl-md" />
+                        <Skeleton className="h-2 w-12" />
+                      </div>
+                    </div>
+                    {/* Outgoing message skeleton */}
+                    <div className="flex gap-3 justify-end">
+                      <div className="space-y-2 flex flex-col items-end">
+                        <Skeleton className="h-10 w-56 rounded-2xl rounded-br-md" />
+                        <Skeleton className="h-2 w-12" />
+                      </div>
+                    </div>
+                    {/* Incoming message skeleton */}
+                    <div className="flex gap-3 justify-start">
+                      <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-14 w-60 rounded-2xl rounded-bl-md" />
+                        <Skeleton className="h-2 w-12" />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  messages.map((message) => {
+                    const isOwnMessage = message.sender_id === userId
+
+                    return (
+                      <div
+                        key={message._id}
+                        className={cn("flex gap-3", isOwnMessage ? "justify-end" : "justify-start")}
+                      >
+                        {!isOwnMessage && (
+                          <Avatar className="h-8 w-8 shrink-0 mt-1">
+                            <AvatarFallback className="bg-muted text-muted-foreground text-xs">
+                              {getInitials(getOtherParticipant(selectedConversation).name)}
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
+                        <div
+                          className={cn(
+                            "max-w-[70%] rounded-2xl px-4 py-2.5",
+                            isOwnMessage
+                              ? "bg-accent text-accent-foreground rounded-br-md"
+                              : "bg-card border border-border text-foreground rounded-bl-md"
+                          )}
+                        >
+                          <p className="text-sm leading-relaxed">{message.content}</p>
+                          <p className={cn(
+                            "text-[10px] mt-1",
+                            isOwnMessage ? "text-accent-foreground/70" : "text-muted-foreground"
+                          )}>
+                            {formatMessageTime(message.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
                 {isTyping && (
                   <div className="flex justify-start">
                     <div className="bg-muted rounded-2xl px-4 py-2.5 rounded-bl-md">

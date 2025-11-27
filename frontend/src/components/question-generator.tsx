@@ -1,9 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Brain,
   FileText,
@@ -28,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
+import { useGenerationHistory } from "@/hooks/useQueries"
 
 interface GenerationRequest {
   id: string
@@ -67,71 +69,30 @@ export default function QuestionGenerator() {
   const [customPrompt, setCustomPrompt] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
 
-  // Sample generation history
-  const generationHistory: GenerationRequest[] = [
-    {
-      id: "1",
-      subject: "Mathematics",
-      topic: "Algebra",
-      questionCount: 15,
-      difficulty: "intermediate",
-      questionTypes: ["multiple-choice", "short-answer"],
-      status: "completed",
-      progress: 100,
-      aiProvider: "openai",
-      createdAt: "2024-01-10T10:30:00Z",
-      questionsGenerated: 15
-    },
-    {
-      id: "2",
-      subject: "Physics",
-      topic: "Mechanics",
-      questionCount: 10,
-      difficulty: "advanced",
-      questionTypes: ["multiple-choice"],
-      status: "generating",
-      progress: 60,
-      aiProvider: "anthropic",
-      createdAt: "2024-01-10T11:15:00Z"
-    },
-    {
-      id: "3",
-      subject: "Chemistry",
-      topic: "Atomic Structure",
-      questionCount: 8,
-      difficulty: "beginner",
-      questionTypes: ["true-false", "short-answer"],
-      status: "failed",
-      progress: 0,
-      aiProvider: "google",
-      createdAt: "2024-01-10T09:45:00Z"
-    }
-  ]
+  // Fetch generation history from API
+  const { data: historyData, isLoading: historyLoading, isError: historyError } = useGenerationHistory()
 
-  // Sample generated questions
-  const sampleQuestions: GeneratedQuestion[] = [
-    {
-      id: "1",
-      text: "What is the solution to the equation 2x + 5 = 13?",
-      type: "multiple-choice",
-      difficulty: "intermediate",
-      options: ["x = 3", "x = 4", "x = 5", "x = 6"],
-      correctAnswer: "x = 4",
-      explanation: "To solve 2x + 5 = 13, subtract 5 from both sides to get 2x = 8, then divide by 2 to get x = 4.",
-      points: 2,
-      tags: ["algebra", "linear-equations"]
-    },
-    {
-      id: "2",
-      text: "Explain the concept of slope in linear equations.",
-      type: "short-answer",
-      difficulty: "intermediate",
-      correctAnswer: "Slope represents the rate of change between two variables, calculated as rise over run.",
-      explanation: "Slope is a fundamental concept in algebra that describes how steep a line is.",
-      points: 3,
-      tags: ["algebra", "slope", "linear-equations"]
-    }
-  ]
+  // Transform API data to GenerationRequest format
+  const generationHistory: GenerationRequest[] = useMemo(() => {
+    if (!historyData || !Array.isArray(historyData)) return []
+
+    return historyData.map((item: any) => ({
+      id: item._id || item.id,
+      subject: item.subject || 'Unknown',
+      topic: item.topic || 'Unknown',
+      questionCount: item.question_count || item.questionCount || 0,
+      difficulty: item.difficulty || 'intermediate',
+      questionTypes: item.question_types || item.questionTypes || [],
+      status: item.status || 'pending',
+      progress: item.progress || 0,
+      aiProvider: item.ai_provider || item.aiProvider || 'openai',
+      createdAt: item.created_at || item.createdAt || new Date().toISOString(),
+      questionsGenerated: item.questions_generated || item.questionsGenerated
+    }))
+  }, [historyData])
+
+  // Generated questions will be fetched when viewing a specific generation
+  const [sampleQuestions, setSampleQuestions] = useState<GeneratedQuestion[]>([])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -470,70 +431,111 @@ export default function QuestionGenerator() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {generationHistory.map((request) => (
-                  <div key={request.id} className="p-4 bg-gray-50 dark:bg-slate-800 rounded-lg hover:shadow-md transition-all duration-200">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold text-gray-900 dark:text-white">
-                            {request.subject} - {request.topic}
-                          </h3>
-                          <Badge className={`border-0 ${getStatusColor(request.status)}`}>
-                            <div className="flex items-center gap-1">
-                              {getStatusIcon(request.status)}
-                              {request.status}
+                {historyLoading ? (
+                  // Loading skeleton
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="p-4 bg-gray-50 dark:bg-slate-800 rounded-lg">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 space-y-3">
+                            <div className="flex items-center gap-3">
+                              <Skeleton className="h-5 w-40" />
+                              <Skeleton className="h-5 w-20" />
                             </div>
-                          </Badge>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600 dark:text-slate-400 mb-3">
-                          <div>Questions: {request.questionsGenerated || 0}/{request.questionCount}</div>
-                          <div>Difficulty: {request.difficulty}</div>
-                          <div>Provider: {request.aiProvider}</div>
-                        </div>
-
-                        <div className="text-sm text-gray-500 dark:text-slate-500 mb-2">
-                          Types: {request.questionTypes.join(', ')}
-                        </div>
-
-                        {request.status === 'generating' && (
-                          <div className="mb-3">
-                            <div className="flex items-center justify-between text-sm mb-1">
-                              <span className="text-gray-600 dark:text-slate-400">Progress</span>
-                              <span className="text-gray-600 dark:text-slate-400">{request.progress}%</span>
+                            <div className="grid grid-cols-3 gap-4">
+                              <Skeleton className="h-4 w-24" />
+                              <Skeleton className="h-4 w-24" />
+                              <Skeleton className="h-4 w-24" />
                             </div>
-                            <Progress value={request.progress} className="h-2" />
+                            <Skeleton className="h-4 w-48" />
                           </div>
-                        )}
-
-                        <div className="text-xs text-gray-500 dark:text-slate-500">
-                          {new Date(request.createdAt).toLocaleString()}
+                          <div className="flex gap-2">
+                            <Skeleton className="h-8 w-8" />
+                            <Skeleton className="h-8 w-8" />
+                          </div>
                         </div>
                       </div>
+                    ))}
+                  </div>
+                ) : historyError ? (
+                  // Error state
+                  <div className="text-center py-8 text-muted-foreground">
+                    <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Failed to load generation history</p>
+                  </div>
+                ) : generationHistory.length === 0 ? (
+                  // Empty state
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No generation history yet</p>
+                    <p className="text-xs mt-1">Generate some questions to see them here</p>
+                  </div>
+                ) : (
+                  generationHistory.map((request) => (
+                    <div key={request.id} className="p-4 bg-gray-50 dark:bg-slate-800 rounded-lg hover:shadow-md transition-all duration-200">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="font-semibold text-gray-900 dark:text-white">
+                              {request.subject} - {request.topic}
+                            </h3>
+                            <Badge className={`border-0 ${getStatusColor(request.status)}`}>
+                              <div className="flex items-center gap-1">
+                                {getStatusIcon(request.status)}
+                                {request.status}
+                              </div>
+                            </Badge>
+                          </div>
 
-                      <div className="flex items-center gap-2 ml-4">
-                        {request.status === 'completed' && (
-                          <>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600 dark:text-slate-400 mb-3">
+                            <div>Questions: {request.questionsGenerated || 0}/{request.questionCount}</div>
+                            <div>Difficulty: {request.difficulty}</div>
+                            <div>Provider: {request.aiProvider}</div>
+                          </div>
+
+                          <div className="text-sm text-gray-500 dark:text-slate-500 mb-2">
+                            Types: {request.questionTypes.join(', ')}
+                          </div>
+
+                          {request.status === 'generating' && (
+                            <div className="mb-3">
+                              <div className="flex items-center justify-between text-sm mb-1">
+                                <span className="text-gray-600 dark:text-slate-400">Progress</span>
+                                <span className="text-gray-600 dark:text-slate-400">{request.progress}%</span>
+                              </div>
+                              <Progress value={request.progress} className="h-2" />
+                            </div>
+                          )}
+
+                          <div className="text-xs text-gray-500 dark:text-slate-500">
+                            {new Date(request.createdAt).toLocaleString()}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 ml-4">
+                          {request.status === 'completed' && (
+                            <>
+                              <Button variant="outline" size="sm" className="hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button variant="outline" size="sm" className="hover:bg-green-50 dark:hover:bg-green-900/20">
+                                <Download className="w-4 h-4" />
+                              </Button>
+                            </>
+                          )}
+                          {request.status === 'failed' && (
                             <Button variant="outline" size="sm" className="hover:bg-blue-50 dark:hover:bg-blue-900/20">
-                              <Eye className="w-4 h-4" />
+                              <RefreshCw className="w-4 h-4" />
                             </Button>
-                            <Button variant="outline" size="sm" className="hover:bg-green-50 dark:hover:bg-green-900/20">
-                              <Download className="w-4 h-4" />
-                            </Button>
-                          </>
-                        )}
-                        {request.status === 'failed' && (
-                          <Button variant="outline" size="sm" className="hover:bg-blue-50 dark:hover:bg-blue-900/20">
-                            <RefreshCw className="w-4 h-4" />
+                          )}
+                          <Button variant="outline" size="sm" className="hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600">
+                            <Trash2 className="w-4 h-4" />
                           </Button>
-                        )}
-                        <Button variant="outline" size="sm" className="hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -551,7 +553,13 @@ export default function QuestionGenerator() {
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                {sampleQuestions.map((question, index) => (
+                {sampleQuestions.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Brain className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg font-medium mb-2">No questions generated yet</p>
+                    <p className="text-sm">Use the form above to generate questions from your content</p>
+                  </div>
+                ) : sampleQuestions.map((question, index) => (
                   <Card key={question.id} className="border border-gray-200 dark:border-slate-700">
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between mb-4">
@@ -621,21 +629,23 @@ export default function QuestionGenerator() {
                   </Card>
                 ))}
 
-                <div className="flex items-center justify-between pt-4">
-                  <div className="text-sm text-gray-600 dark:text-slate-400">
-                    Showing {sampleQuestions.length} of {sampleQuestions.length} questions
+                {sampleQuestions.length > 0 && (
+                  <div className="flex items-center justify-between pt-4">
+                    <div className="text-sm text-gray-600 dark:text-slate-400">
+                      Showing {sampleQuestions.length} of {sampleQuestions.length} questions
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline">
+                        <Download className="w-4 h-4 mr-2" />
+                        Export All
+                      </Button>
+                      <Button className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Save to Question Bank
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline">
-                      <Download className="w-4 h-4 mr-2" />
-                      Export All
-                    </Button>
-                    <Button className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Save to Question Bank
-                    </Button>
-                  </div>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>

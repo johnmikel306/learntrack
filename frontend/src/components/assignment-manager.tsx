@@ -56,8 +56,9 @@ export default function AssignmentManager() {
         if (response.error) {
           throw new Error(response.error)
         }
-        // Map API response to Assignment interface
-        const assignmentsData = ((response.data as any[]) || []).map((assignment: any) => ({
+        // Map API response to Assignment interface - API returns paginated response with items array
+        const rawData = (response.data?.items as any[]) || (Array.isArray(response.data) ? response.data : [])
+        const assignmentsData = rawData.map((assignment: any) => ({
           id: assignment._id,
           title: assignment.title,
           subject: assignment.subject_id?.name || "Unknown",

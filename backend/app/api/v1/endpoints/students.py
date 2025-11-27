@@ -161,3 +161,33 @@ async def update_student(
         logger.error("Failed to update student", student_clerk_id=student_clerk_id, error=str(e))
         raise HTTPException(status_code=500, detail="Failed to update student")
 
+
+@router.delete("/{student_clerk_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_student(
+    student_clerk_id: str,
+    current_user: ClerkUserContext = Depends(require_tutor),
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Delete a student, ensuring they belong to the current tutor.
+    """
+    try:
+        user_service = UserService(db)
+
+        # First, verify the student exists and belongs to the tutor
+        student = await user_service.get_user_by_clerk_id(student_clerk_id)
+        if not student or student.role != UserRole.STUDENT:
+            raise HTTPException(status_code=404, detail="Student not found")
+
+        if student.tutor_id != current_user.clerk_id:
+            raise HTTPException(status_code=403, detail="Access forbidden: Student does not belong to this tutor.")
+
+        # Delete the student
+        await user_service.delete_user(student.id)
+        return None
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to delete student", student_clerk_id=student_clerk_id, error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to delete student")
+
