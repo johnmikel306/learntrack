@@ -1,10 +1,16 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Switch } from "@/components/ui/switch"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Brain,
   FileText,
@@ -22,14 +28,71 @@ import {
   BookOpen,
   Target,
   Zap,
-  Edit
+  Edit,
+  Globe,
+  ChevronDown,
+  Sparkles,
+  FolderOpen,
+  File,
+  FileImage,
+  FileVideo,
+  Link as LinkIcon,
+  Search,
+  X,
+  SlidersHorizontal,
+  Paperclip,
+  ArrowUp,
+  Sliders
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
-import { useGenerationHistory } from "@/hooks/useQueries"
+import { useGenerationHistory, useMaterials } from "@/hooks/useQueries"
+import { useAuth } from '@clerk/clerk-react'
+import { toast } from '@/contexts/ToastContext'
+import { cn } from "@/lib/utils"
+
+// Auto-resize textarea hook (V0-style)
+function useAutoResizeTextarea({ minHeight, maxHeight }: { minHeight: number; maxHeight?: number }) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const adjustHeight = useCallback(
+    (reset?: boolean) => {
+      const textarea = textareaRef.current
+      if (!textarea) return
+
+      if (reset) {
+        textarea.style.height = `${minHeight}px`
+        return
+      }
+
+      textarea.style.height = `${minHeight}px`
+      const newHeight = Math.max(
+        minHeight,
+        Math.min(textarea.scrollHeight, maxHeight ?? Number.POSITIVE_INFINITY)
+      )
+      textarea.style.height = `${newHeight}px`
+    },
+    [minHeight, maxHeight]
+  )
+
+  useEffect(() => {
+    const textarea = textareaRef.current
+    if (textarea) {
+      textarea.style.height = `${minHeight}px`
+    }
+  }, [minHeight])
+
+  useEffect(() => {
+    const handleResize = () => adjustHeight()
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [adjustHeight])
+
+  return { textareaRef, adjustHeight }
+}
 
 interface GenerationRequest {
   id: string
@@ -57,17 +120,55 @@ interface GeneratedQuestion {
   tags: string[]
 }
 
+interface Material {
+  _id: string
+  title: string
+  description?: string
+  material_type: 'pdf' | 'doc' | 'video' | 'link' | 'image' | 'other'
+  file_url?: string
+  file_size?: number
+  subject_id?: string
+  subject?: string
+  topic?: string
+  tags: string[]
+  status: 'active' | 'archived' | 'draft'
+  created_at: string
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+
 export default function QuestionGenerator() {
+  const { getToken } = useAuth()
   const [activeTab, setActiveTab] = useState("generate")
-  const [textContent, setTextContent] = useState("")
+  const [customPrompt, setCustomPrompt] = useState("")
   const [subject, setSubject] = useState("")
   const [topic, setTopic] = useState("")
   const [questionCount, setQuestionCount] = useState([10])
-  const [difficulty, setDifficulty] = useState("")
-  const [questionTypes, setQuestionTypes] = useState<string[]>([])
+  const [difficulty, setDifficulty] = useState("intermediate")
+  const [questionType, setQuestionType] = useState("multiple-choice") // Single select
   const [aiProvider, setAiProvider] = useState("openai")
-  const [customPrompt, setCustomPrompt] = useState("")
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
+
+  // Material selection state
+  const [selectedMaterials, setSelectedMaterials] = useState<Material[]>([])
+  const [isMaterialModalOpen, setIsMaterialModalOpen] = useState(false)
+  const [materialSearchQuery, setMaterialSearchQuery] = useState("")
+
+  // Configuration expanded state
+  const [isConfigExpanded, setIsConfigExpanded] = useState(false)
+
+  // Tools popover state
+  const [isToolsOpen, setIsToolsOpen] = useState(false)
+
+  // Auto-resize textarea hook (V0-style)
+  const { textareaRef, adjustHeight } = useAutoResizeTextarea({
+    minHeight: 60,
+    maxHeight: 200,
+  })
+
+  // Fetch materials
+  const { data: materialsData, isLoading: materialsLoading } = useMaterials()
 
   // Fetch generation history from API
   const { data: historyData, isLoading: historyLoading, isError: historyError } = useGenerationHistory()
@@ -124,21 +225,118 @@ export default function QuestionGenerator() {
     }
   }
 
+  // Get available materials from API response
+  const availableMaterials: Material[] = useMemo(() => {
+    if (!materialsData) return []
+    return materialsData.items || (Array.isArray(materialsData) ? materialsData : [])
+  }, [materialsData])
+
+  // Filter materials based on search query
+  const filteredMaterials = useMemo(() => {
+    if (!materialSearchQuery) return availableMaterials
+    const query = materialSearchQuery.toLowerCase()
+    return availableMaterials.filter(m =>
+      m.title.toLowerCase().includes(query) ||
+      m.topic?.toLowerCase().includes(query) ||
+      m.tags.some(t => t.toLowerCase().includes(query))
+    )
+  }, [availableMaterials, materialSearchQuery])
+
   const handleGenerate = async () => {
+    if (selectedMaterials.length === 0) {
+      toast.error('Please select at least one material')
+      return
+    }
+
+    // Auto-correct subject/topic from materials before generation
+    if (selectedMaterials.length > 0) {
+      const firstMaterial = selectedMaterials[0]
+      if (firstMaterial.subject) {
+        setSubject(firstMaterial.subject)
+      }
+      if (firstMaterial.topic) {
+        setTopic(firstMaterial.topic)
+      }
+    }
+
     setIsGenerating(true)
     // Simulate API call
     setTimeout(() => {
       setIsGenerating(false)
+      toast.success('Questions generated successfully!')
     }, 3000)
   }
 
-  const toggleQuestionType = (type: string) => {
-    setQuestionTypes(prev => 
-      prev.includes(type) 
-        ? prev.filter(t => t !== type)
-        : [...prev, type]
-    )
+  const toggleMaterialSelection = (material: Material) => {
+    setSelectedMaterials(prev => {
+      const isSelected = prev.some(m => m._id === material._id)
+      if (isSelected) {
+        return prev.filter(m => m._id !== material._id)
+      } else {
+        // Auto-update subject/topic from selected material
+        if (material.subject && !subject) {
+          setSubject(material.subject)
+        }
+        if (material.topic && !topic) {
+          setTopic(material.topic)
+        }
+        return [...prev, material]
+      }
+    })
   }
+
+  const removeMaterial = (materialId: string) => {
+    setSelectedMaterials(prev => prev.filter(m => m._id !== materialId))
+  }
+
+  const getMaterialIcon = (type: Material['material_type']) => {
+    switch (type) {
+      case 'pdf':
+      case 'doc':
+        return <FileText className="w-4 h-4" />
+      case 'image':
+        return <FileImage className="w-4 h-4" />
+      case 'video':
+        return <FileVideo className="w-4 h-4" />
+      case 'link':
+        return <LinkIcon className="w-4 h-4" />
+      default:
+        return <File className="w-4 h-4" />
+    }
+  }
+
+  // Get question type label for display
+  const getQuestionTypeLabel = (type: string) => {
+    const types: Record<string, string> = {
+      'multiple-choice': 'MCQ',
+      'true-false': 'T/F',
+      'short-answer': 'Short',
+      'essay': 'Essay'
+    }
+    return types[type] || type
+  }
+
+  const getConfigSummary = () => {
+    const parts = []
+    parts.push(`${questionCount[0]} questions`)
+    parts.push(difficulty)
+    parts.push(getQuestionTypeLabel(questionType))
+    return parts.join(' • ')
+  }
+
+  // Auto-correct subject/topic before generation based on materials
+  const syncSubjectTopicFromMaterials = useCallback(() => {
+    if (selectedMaterials.length > 0) {
+      // Use the first material's subject/topic if not already set or if inconsistent
+      const firstMaterial = selectedMaterials[0]
+      if (firstMaterial.subject) {
+        setSubject(firstMaterial.subject)
+      }
+      if (firstMaterial.topic) {
+        setTopic(firstMaterial.topic)
+      }
+    }
+  }, [selectedMaterials])
 
   return (
     <div className="space-y-6">
@@ -220,212 +418,432 @@ export default function QuestionGenerator() {
           <TabsTrigger value="preview">Preview & Review</TabsTrigger>
         </TabsList>
 
-        {/* Generate Questions Tab */}
-        <TabsContent value="generate" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Input Form */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Wand2 className="w-5 h-5 mr-2 text-primary" />
-                  Generation Settings
-                </CardTitle>
-                <CardDescription>Configure your question generation parameters</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Content Input */}
-                <div className="space-y-2">
-                  <Label htmlFor="content">Content Source</Label>
-                  <Textarea
-                    id="content"
-                    placeholder="Paste your educational content here or upload a file..."
-                    value={textContent}
-                    onChange={(e) => setTextContent(e.target.value)}
-                    className="min-h-[120px]"
-                  />
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">
-                      <Upload className="w-4 h-4 mr-2" />
-                      Upload File
-                    </Button>
-                    <span className="text-xs text-muted-foreground">Supports PDF, DOC, TXT files</span>
-                  </div>
-                </div>
-
-                {/* Subject and Topic */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="subject">Subject</Label>
-                    <Select value={subject} onValueChange={setSubject}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select subject" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="mathematics">Mathematics</SelectItem>
-                        <SelectItem value="physics">Physics</SelectItem>
-                        <SelectItem value="chemistry">Chemistry</SelectItem>
-                        <SelectItem value="english">English</SelectItem>
-                        <SelectItem value="history">History</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="topic">Topic</Label>
-                    <Input
-                      id="topic"
-                      placeholder="e.g., Algebra, Mechanics"
-                      value={topic}
-                      onChange={(e) => setTopic(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* Question Count */}
-                <div className="space-y-2">
-                  <Label>Number of Questions: {questionCount[0]}</Label>
-                  <Slider
-                    value={questionCount}
-                    onValueChange={setQuestionCount}
-                    max={50}
-                    min={1}
-                    step={1}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>1</span>
-                    <span>50</span>
-                  </div>
-                </div>
-
-                {/* Difficulty */}
-                <div className="space-y-2">
-                  <Label>Difficulty Level</Label>
-                  <Select value={difficulty} onValueChange={setDifficulty}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select difficulty" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="beginner">Beginner</SelectItem>
-                      <SelectItem value="intermediate">Intermediate</SelectItem>
-                      <SelectItem value="advanced">Advanced</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Question Types */}
-                <div className="space-y-2">
-                  <Label>Question Types</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { id: "multiple-choice", label: "Multiple Choice" },
-                      { id: "true-false", label: "True/False" },
-                      { id: "short-answer", label: "Short Answer" },
-                      { id: "essay", label: "Essay" }
-                    ].map((type) => (
-                      <Button
-                        key={type.id}
-                        variant={questionTypes.includes(type.id) ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => toggleQuestionType(type.id)}
-                        className="justify-start"
+        {/* Generate Questions Tab - V0-style Interface */}
+        <TabsContent value="generate" className="flex-1">
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Wand2 className="w-5 h-5 text-primary" />
+                Generation Settings
+              </CardTitle>
+              <CardDescription>
+                Configure and generate AI-powered questions from your materials
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* V0-style Chat Input */}
+              <div className="relative rounded-xl border border-border bg-muted/30">
+                {/* Selected Materials Display (above input) */}
+                {selectedMaterials.length > 0 && (
+                  <div className="flex flex-wrap gap-2 p-3 pb-0">
+                    {selectedMaterials.map((material) => (
+                      <Badge
+                        key={material._id}
+                        variant="secondary"
+                        className="pl-2 pr-1 py-1 flex items-center gap-1 bg-primary/10 text-primary border-primary/20"
                       >
-                        {type.label}
-                      </Button>
+                        {getMaterialIcon(material.material_type)}
+                        <span className="max-w-[120px] truncate text-xs">{material.title}</span>
+                        <button
+                          type="button"
+                          className="ml-1 p-0.5 rounded hover:bg-destructive/20 transition-colors"
+                          onClick={() => removeMaterial(material._id)}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
                     ))}
                   </div>
-                </div>
+                )}
 
-                {/* AI Provider */}
-                <div className="space-y-2">
-                  <Label>AI Provider</Label>
-                  <Select value={aiProvider} onValueChange={setAiProvider}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select AI provider" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="openai">OpenAI (GPT-4)</SelectItem>
-                      <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
-                      <SelectItem value="google">Google (Gemini)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Custom Prompt */}
-                <div className="space-y-2">
-                  <Label htmlFor="prompt">Custom Prompt (Optional)</Label>
+                {/* Auto-resizing Textarea */}
+                <div className="overflow-y-auto">
                   <Textarea
-                    id="prompt"
-                    placeholder="Add specific instructions for question generation..."
+                    ref={textareaRef}
                     value={customPrompt}
-                    onChange={(e) => setCustomPrompt(e.target.value)}
-                    className="min-h-[80px]"
+                    onChange={(e) => {
+                      setCustomPrompt(e.target.value)
+                      adjustHeight()
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey && selectedMaterials.length > 0) {
+                        e.preventDefault()
+                        handleGenerate()
+                      }
+                    }}
+                    placeholder="Describe what kind of questions you want to generate..."
+                    className={cn(
+                      "w-full px-4 py-3",
+                      "resize-none",
+                      "bg-transparent",
+                      "border-none",
+                      "text-foreground text-sm",
+                      "focus:outline-none",
+                      "focus-visible:ring-0 focus-visible:ring-offset-0",
+                      "placeholder:text-muted-foreground placeholder:text-sm",
+                      "min-h-[60px]"
+                    )}
+                    style={{ overflow: "hidden" }}
                   />
                 </div>
 
-                {/* Generate Button */}
-                <Button
-                  onClick={handleGenerate}
-                  disabled={isGenerating || !textContent || !subject || !topic}
-                  className="w-full"
-                >
-                  {isGenerating ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      Generating Questions...
-                    </>
-                  ) : (
-                    <>
-                      <Brain className="w-4 h-4 mr-2" />
-                      Generate Questions
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
+                {/* Bottom Toolbar */}
+                <div className="flex items-center justify-between p-3 border-t border-border/50">
+                  {/* Left side - Tools Menu (ChatGPT-style) */}
+                  <div className="flex items-center gap-2">
+                    {/* Plus Button with Popover Menu */}
+                    <Popover open={isToolsOpen} onOpenChange={setIsToolsOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-56 p-2"
+                        align="start"
+                        side="top"
+                        sideOffset={8}
+                      >
+                        <div className="space-y-1">
+                          {/* Select Materials */}
+                          <button
+                            type="button"
+                            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted transition-colors text-left"
+                            onClick={() => {
+                              setIsMaterialModalOpen(true)
+                              setIsToolsOpen(false)
+                            }}
+                          >
+                            <Paperclip className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-sm">Attach materials</span>
+                          </button>
 
-            {/* Preview/Tips */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Settings className="w-5 h-5 mr-2 text-primary" />
-                  Generation Tips
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-success mt-0.5" />
-                    <div>
-                      <p className="font-medium text-foreground">Quality Content</p>
-                      <p className="text-sm text-muted-foreground">Provide clear, well-structured educational content for better question generation.</p>
-                    </div>
+                          {/* Search the Web */}
+                          <button
+                            type="button"
+                            className={cn(
+                              "w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted transition-colors text-left",
+                              webSearchEnabled && "bg-primary/10"
+                            )}
+                            onClick={() => {
+                              setWebSearchEnabled(!webSearchEnabled)
+                              setIsToolsOpen(false)
+                            }}
+                          >
+                            <Globe className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-sm">Search the web</span>
+                            {webSearchEnabled && (
+                              <CheckCircle className="w-3.5 h-3.5 ml-auto text-primary" />
+                            )}
+                          </button>
+
+                          {/* AI Model Selection */}
+                          <div className="px-3 py-2">
+                            <div className="flex items-center gap-3 mb-2">
+                              <Sparkles className="w-4 h-4 text-muted-foreground" />
+                              <span className="text-sm text-muted-foreground">AI Model</span>
+                            </div>
+                            <div className="flex gap-1 ml-7">
+                              {[
+                                { id: 'openai', label: 'GPT-4' },
+                                { id: 'anthropic', label: 'Claude' },
+                                { id: 'google', label: 'Gemini' }
+                              ].map((model) => (
+                                <button
+                                  key={model.id}
+                                  type="button"
+                                  className={cn(
+                                    "px-2 py-1 text-xs rounded transition-colors",
+                                    aiProvider === model.id
+                                      ? "bg-primary text-primary-foreground"
+                                      : "bg-muted text-muted-foreground hover:text-foreground"
+                                  )}
+                                  onClick={() => setAiProvider(model.id)}
+                                >
+                                  {model.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+
+                    {/* Tools Summary Button */}
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      onClick={() => setIsToolsOpen(true)}
+                    >
+                      <Sliders className="w-3.5 h-3.5" />
+                      <span className="text-xs">Tools</span>
+                    </button>
                   </div>
-                  <div className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-success mt-0.5" />
-                    <div>
-                      <p className="font-medium text-foreground">Specific Topics</p>
-                      <p className="text-sm text-muted-foreground">Be specific about the topic to generate more focused and relevant questions.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-success mt-0.5" />
-                    <div>
-                      <p className="font-medium text-foreground">Mixed Types</p>
-                      <p className="text-sm text-muted-foreground">Select multiple question types for a comprehensive assessment.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-success mt-0.5" />
-                    <div>
-                      <p className="font-medium text-foreground">Custom Prompts</p>
-                      <p className="text-sm text-muted-foreground">Use custom prompts to guide the AI towards specific learning objectives.</p>
-                    </div>
+
+                  {/* Right side - Send Button */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={isGenerating || selectedMaterials.length === 0}
+                      onClick={handleGenerate}
+                      className={cn(
+                        "p-2 rounded-full transition-all flex items-center justify-center",
+                        selectedMaterials.length > 0 && !isGenerating
+                          ? "bg-foreground text-background hover:bg-foreground/90"
+                          : "bg-muted text-muted-foreground cursor-not-allowed"
+                      )}
+                    >
+                      {isGenerating ? (
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <ArrowUp className="w-4 h-4" />
+                      )}
+                      <span className="sr-only">Generate</span>
+                    </button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+
+              {/* Configuration Section - Collapsible */}
+              <div className="space-y-4">
+                <Button
+                  variant="outline"
+                  className="w-full justify-between"
+                  onClick={() => setIsConfigExpanded(!isConfigExpanded)}
+                >
+                  <div className="flex items-center gap-2">
+                    <SlidersHorizontal className="w-4 h-4" />
+                    <span>Configure Generation</span>
+                    <span className="text-xs text-muted-foreground">(Advanced)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{getConfigSummary()}</span>
+                    <ChevronDown className={cn(
+                      "w-4 h-4 transition-transform duration-200",
+                      isConfigExpanded && "rotate-180"
+                    )} />
+                  </div>
+                </Button>
+
+                {/* Expanded Configuration Options */}
+                {isConfigExpanded && (
+                  <div className="space-y-6 p-4 border border-border rounded-lg bg-muted/30 animate-in slide-in-from-top-2 duration-200">
+                    {/* Question Type - Single Select */}
+                    <div className="space-y-3">
+                      <Label>Question Type</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { id: "multiple-choice", label: "Multiple Choice" },
+                          { id: "true-false", label: "True/False" },
+                          { id: "short-answer", label: "Short Answer" },
+                          { id: "essay", label: "Essay" }
+                        ].map((type) => (
+                          <button
+                            key={type.id}
+                            type="button"
+                            className={cn(
+                              "px-3 py-2 rounded-lg text-sm transition-colors border",
+                              questionType === type.id
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-card text-muted-foreground hover:text-foreground hover:bg-muted border-border"
+                            )}
+                            onClick={() => setQuestionType(type.id)}
+                          >
+                            {type.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Number of Questions - Max 10 */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label>Number of Questions</Label>
+                        <span className="text-sm font-medium bg-muted px-2 py-1 rounded">{questionCount[0]}</span>
+                      </div>
+                      <Slider
+                        value={questionCount}
+                        onValueChange={setQuestionCount}
+                        max={10}
+                        min={1}
+                        step={1}
+                        className="w-full"
+                      />
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>1</span>
+                        <span>10</span>
+                      </div>
+                    </div>
+
+                    {/* Two Column Layout for Selects */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Difficulty Level */}
+                      <div className="space-y-2">
+                        <Label>Difficulty Level</Label>
+                        <Select value={difficulty} onValueChange={setDifficulty}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select difficulty" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="beginner">Beginner</SelectItem>
+                            <SelectItem value="intermediate">Intermediate</SelectItem>
+                            <SelectItem value="advanced">Advanced</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Subject - Auto-populated from materials */}
+                      <div className="space-y-2">
+                        <Label>
+                          Subject
+                          {selectedMaterials.length > 0 && selectedMaterials[0].subject && (
+                            <span className="text-xs text-muted-foreground ml-2">(from material)</span>
+                          )}
+                        </Label>
+                        <Select value={subject} onValueChange={setSubject}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select subject" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="mathematics">Mathematics</SelectItem>
+                            <SelectItem value="physics">Physics</SelectItem>
+                            <SelectItem value="chemistry">Chemistry</SelectItem>
+                            <SelectItem value="english">English</SelectItem>
+                            <SelectItem value="history">History</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Topic - Auto-populated from materials */}
+                    <div className="space-y-2">
+                      <Label>
+                        Topic
+                        {selectedMaterials.length > 0 && selectedMaterials[0].topic && (
+                          <span className="text-xs text-muted-foreground ml-2">(from material)</span>
+                        )}
+                      </Label>
+                      <Input
+                        placeholder="e.g., Algebra, Mechanics"
+                        value={topic}
+                        onChange={(e) => setTopic(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
+
+        {/* Material Selection Modal */}
+        <Dialog open={isMaterialModalOpen} onOpenChange={setIsMaterialModalOpen}>
+          <DialogContent className="max-w-2xl max-h-[80vh]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FolderOpen className="w-5 h-5 text-primary" />
+                Select Materials
+              </DialogTitle>
+              <DialogDescription>
+                Choose materials from your library to generate questions from
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search materials..."
+                value={materialSearchQuery}
+                onChange={(e) => setMaterialSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {/* Materials List */}
+            <ScrollArea className="h-[400px] pr-4">
+              {materialsLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                      <Skeleton className="w-10 h-10 rounded" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-3 w-1/2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : filteredMaterials.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <FileText className="w-12 h-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground mb-2">
+                    {materialSearchQuery ? "No materials match your search" : "No materials found"}
+                  </p>
+                  <Button variant="outline" size="sm">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload New Material
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredMaterials.map((material) => {
+                    const isSelected = selectedMaterials.some(m => m._id === material._id)
+                    return (
+                      <div
+                        key={material._id}
+                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+                          isSelected
+                            ? 'bg-primary/10 border border-primary/30'
+                            : 'bg-muted/30 hover:bg-muted/50 border border-transparent'
+                        }`}
+                        onClick={() => toggleMaterialSelection(material)}
+                      >
+                        <Checkbox checked={isSelected} />
+                        <div className={`p-2 rounded ${isSelected ? 'bg-primary/20' : 'bg-muted'}`}>
+                          {getMaterialIcon(material.material_type)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{material.title}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="uppercase">{material.material_type}</span>
+                            {material.topic && (
+                              <>
+                                <span>•</span>
+                                <span>{material.topic}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </ScrollArea>
+
+            <DialogFooter className="flex items-center justify-between sm:justify-between">
+              <Button variant="outline" onClick={() => setIsMaterialModalOpen(false)}>
+                <Upload className="w-4 h-4 mr-2" />
+                Upload New
+              </Button>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {selectedMaterials.length} selected
+                </span>
+                <Button onClick={() => setIsMaterialModalOpen(false)}>
+                  Done
+                </Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Generation History Tab */}
         <TabsContent value="history" className="space-y-6">

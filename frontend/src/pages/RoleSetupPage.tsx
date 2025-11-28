@@ -2,7 +2,7 @@ import { useUser } from '@clerk/clerk-react'
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { GraduationCap, BookOpen, Users } from "lucide-react"
-import { toast } from 'sonner'
+import { toast } from '@/contexts/ToastContext'
 
 export default function RoleSetupPage() {
   const { user } = useUser()

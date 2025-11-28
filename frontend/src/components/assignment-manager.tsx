@@ -21,7 +21,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useApiClient } from "@/lib/api-client"
-import { toast } from "sonner"
+import { toast } from "@/contexts/ToastContext"
 
 interface Assignment {
   id: string

@@ -13,7 +13,7 @@ import {
 import { Plus, RefreshCw, Search } from 'lucide-react'
 import InviteUserModal from '@/components/InviteUserModal'
 import { useAuth } from '@clerk/clerk-react'
-import { toast } from 'sonner'
+import { toast } from '@/contexts/ToastContext'
 import { formatDistanceToNow } from 'date-fns'
 
 interface Invitation {

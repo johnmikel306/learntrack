@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft, BookOpen, Clock, CheckCircle, Star, Calendar, Trophy, Target, Flame } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/contexts/ToastContext"
 
 import Announcements from "@/components/Announcements"
 import EventCalendar from "@/components/EventCalendar"

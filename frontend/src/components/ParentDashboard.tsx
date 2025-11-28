@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { TrendingUp, Clock, CheckCircle, AlertCircle, Calendar, Mail, ArrowLeft, Users, Target } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/contexts/ToastContext"
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart"

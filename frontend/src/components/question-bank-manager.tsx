@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useApiClient } from "@/lib/api-client"
-import { toast } from "sonner"
+import { toast } from "@/contexts/ToastContext"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"

@@ -4,7 +4,7 @@ import { useAuth, useUser, SignIn } from '@clerk/clerk-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { toast } from 'sonner'
+import { toast } from '@/contexts/ToastContext'
 import { 
   CheckCircle, 
   XCircle, 

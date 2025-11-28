@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { UserPlus } from 'lucide-react'
-import { toast } from 'sonner'
+import { toast } from '@/contexts/ToastContext'
 
 interface Student {
   _id: string

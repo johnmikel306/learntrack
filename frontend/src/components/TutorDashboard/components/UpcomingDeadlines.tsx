@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Clock, Calendar } from "lucide-react"
 import { useApiClient } from "@/lib/api-client"
-import { toast } from "sonner"
+import { toast } from "@/contexts/ToastContext"
 
 interface Deadline {
   id: string

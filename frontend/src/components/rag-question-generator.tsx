@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { useApiClient } from "@/lib/api-client"
-import { toast } from "sonner"
+import { toast } from "@/contexts/ToastContext"
 
 interface DocumentLibraryItem {
   id: string; filename: string; file_type: string; file_size: number

@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useApiClient } from '@/lib/api-client'
-import { toast } from 'sonner'
+import { toast } from '@/contexts/ToastContext'
 
 interface UseDataFetchOptions<T> {
   endpoint: string

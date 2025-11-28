@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Plus, Search, MoreVertical, Edit, Trash2, Eye, Copy, FileText } from 'lucide-react'
 import { useAuth } from '@clerk/clerk-react'
-import { toast } from 'sonner'
+import { toast } from '@/contexts/ToastContext'
 import { ConfirmDeleteModal } from '@/components/modals/ConfirmDeleteModal'
 
 interface AssignmentTemplate {

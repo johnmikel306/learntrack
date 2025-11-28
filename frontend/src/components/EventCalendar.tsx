@@ -1,7 +1,7 @@
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useApiClient } from "@/lib/api-client"
-import { toast } from "sonner"
+import { toast } from "@/contexts/ToastContext"
 
 interface Event {
   id: string

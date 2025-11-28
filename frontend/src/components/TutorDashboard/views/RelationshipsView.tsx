@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { toast } from 'sonner'
+import { toast } from '@/contexts/ToastContext'
 import {
   Search,
   Loader2,

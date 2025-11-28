@@ -2,7 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { SignedIn } from '@clerk/clerk-react'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { UserProvider } from './contexts/UserContext'
-import { Toaster } from '@/components/ui/sonner'
+import { ToastProvider } from './contexts/ToastContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import HomePage from './pages/HomePage'
 import GetStartedPage from './pages/GetStartedPage'
@@ -20,10 +20,10 @@ function App() {
   return (
     <ThemeProvider>
       <UserProvider>
-        <ErrorBoundary>
-          <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
-            <Toaster />
-            <Routes>
+        <ToastProvider>
+          <ErrorBoundary>
+            <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
+              <Routes>
               {/* Public routes */}
               <Route path="/" element={<HomePage />} />
               <Route path="/get-started" element={<GetStartedPage />} />
@@ -89,9 +89,10 @@ function App() {
                   </SignedIn>
                 }
               />
-            </Routes>
-          </div>
-        </ErrorBoundary>
+              </Routes>
+            </div>
+          </ErrorBoundary>
+        </ToastProvider>
       </UserProvider>
     </ThemeProvider>
   )

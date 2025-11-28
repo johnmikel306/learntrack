@@ -29,7 +29,7 @@ import {
   Search
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { toast } from "sonner"
+import { toast } from "@/contexts/ToastContext"
 import { SendMessageModal } from "@/components/modals/SendMessageModal"
 import InviteUserModal from "@/components/InviteUserModal"
 import { ConfirmDeleteModal } from "@/components/modals/ConfirmDeleteModal"

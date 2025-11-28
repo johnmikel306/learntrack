@@ -15,7 +15,7 @@ import {
   ArrowLeft
 } from "lucide-react"
 import { useApiClient } from "@/lib/api-client"
-import { toast } from "sonner"
+import { toast } from "@/contexts/ToastContext"
 import GroupSelector from '@/components/GroupSelector'
 import SubjectFilter from '@/components/SubjectFilter'
 

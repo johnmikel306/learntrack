@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useApiClient } from '@/lib/api-client'
-import { toast } from 'sonner'
+import { toast } from '@/contexts/ToastContext'
 import { format } from 'date-fns'
 
 interface StudentDetailsModalProps {

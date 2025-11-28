@@ -34,7 +34,7 @@ import {
   ArrowDown
 } from "lucide-react"
 import { useApiClient } from "@/lib/api-client"
-import { toast } from "sonner"
+import { toast } from "@/contexts/ToastContext"
 import { ServerError } from '@/components/ErrorScreen'
 import { UpcomingDeadlines } from '../components/UpcomingDeadlines'
 import { MessageInbox } from '@/components/messaging/MessageInbox'

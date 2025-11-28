@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { toast } from 'sonner'
+import { toast } from '@/contexts/ToastContext'
 import { UserPlus, Mail, MessageSquare, Loader2, Users } from 'lucide-react'
 import { useAuth } from '@clerk/clerk-react'
 
