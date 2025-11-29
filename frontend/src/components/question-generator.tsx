@@ -42,7 +42,7 @@ import {
   SlidersHorizontal,
   Paperclip,
   ArrowUp,
-  Sliders
+  Wrench
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -508,19 +508,6 @@ export default function QuestionGenerator() {
                         sideOffset={8}
                       >
                         <div className="space-y-1">
-                          {/* Select Materials */}
-                          <button
-                            type="button"
-                            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted transition-colors text-left"
-                            onClick={() => {
-                              setIsMaterialModalOpen(true)
-                              setIsToolsOpen(false)
-                            }}
-                          >
-                            <Paperclip className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-sm">Attach materials</span>
-                          </button>
-
                           {/* Search the Web */}
                           <button
                             type="button"
@@ -540,32 +527,23 @@ export default function QuestionGenerator() {
                             )}
                           </button>
 
-                          {/* AI Model Selection */}
+                          {/* AI Model Selection - Dropdown */}
                           <div className="px-3 py-2">
                             <div className="flex items-center gap-3 mb-2">
                               <Sparkles className="w-4 h-4 text-muted-foreground" />
                               <span className="text-sm text-muted-foreground">AI Model</span>
                             </div>
-                            <div className="flex gap-1 ml-7">
-                              {[
-                                { id: 'openai', label: 'GPT-4' },
-                                { id: 'anthropic', label: 'Claude' },
-                                { id: 'google', label: 'Gemini' }
-                              ].map((model) => (
-                                <button
-                                  key={model.id}
-                                  type="button"
-                                  className={cn(
-                                    "px-2 py-1 text-xs rounded transition-colors",
-                                    aiProvider === model.id
-                                      ? "bg-primary text-primary-foreground"
-                                      : "bg-muted text-muted-foreground hover:text-foreground"
-                                  )}
-                                  onClick={() => setAiProvider(model.id)}
-                                >
-                                  {model.label}
-                                </button>
-                              ))}
+                            <div className="ml-7">
+                              <Select value={aiProvider} onValueChange={setAiProvider}>
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue placeholder="Select model" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="anthropic">Claude 4.5</SelectItem>
+                                  <SelectItem value="google">Gemini 3</SelectItem>
+                                  <SelectItem value="openai">GPT-OSS</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
                           </div>
                         </div>
@@ -578,7 +556,7 @@ export default function QuestionGenerator() {
                       className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                       onClick={() => setIsToolsOpen(true)}
                     >
-                      <Sliders className="w-3.5 h-3.5" />
+                      <Wrench className="w-3.5 h-3.5" />
                       <span className="text-xs">Tools</span>
                     </button>
                   </div>

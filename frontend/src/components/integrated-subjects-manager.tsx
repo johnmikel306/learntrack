@@ -175,10 +175,10 @@ export default function IntegratedSubjectsManager() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Subjects Manager</h1>
-          <p className="text-gray-600 dark:text-slate-400 mt-1">Organize subjects, topics, and educational content</p>
+          <h1 className="text-3xl font-bold text-foreground">Subjects Manager</h1>
+          <p className="text-muted-foreground mt-1">Organize subjects, topics, and educational content</p>
         </div>
-        <Button className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0 shadow-lg">
+        <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
           <Plus className="w-4 h-4 mr-2" />
           Add Subject
         </Button>
@@ -186,50 +186,58 @@ export default function IntegratedSubjectsManager() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+        <Card className="bg-card border border-border shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-sm font-medium">Total Subjects</p>
-                <p className="text-3xl font-bold">{subjects.length}</p>
+                <p className="text-muted-foreground text-sm font-medium">Total Subjects</p>
+                <p className="text-3xl font-bold text-foreground">{subjects.length}</p>
               </div>
-              <BookOpen className="w-8 h-8 text-blue-200" />
+              <div className="p-3 bg-primary/10 rounded-lg">
+                <BookOpen className="w-6 h-6 text-primary" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg">
+        <Card className="bg-card border border-border shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-100 text-sm font-medium">Active Subjects</p>
-                <p className="text-3xl font-bold">{subjects.filter(s => s.isActive).length}</p>
+                <p className="text-muted-foreground text-sm font-medium">Active Subjects</p>
+                <p className="text-3xl font-bold text-foreground">{subjects.filter(s => s.isActive).length}</p>
               </div>
-              <Target className="w-8 h-8 text-green-200" />
+              <div className="p-3 bg-green-500/10 rounded-lg">
+                <Target className="w-6 h-6 text-green-600 dark:text-green-400" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
+        <Card className="bg-card border border-border shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100 text-sm font-medium">Total Topics</p>
-                <p className="text-3xl font-bold">{topics.length}</p>
+                <p className="text-muted-foreground text-sm font-medium">Total Topics</p>
+                <p className="text-3xl font-bold text-foreground">{topics.length}</p>
               </div>
-              <Tag className="w-8 h-8 text-purple-200" />
+              <div className="p-3 bg-accent/30 rounded-lg">
+                <Tag className="w-6 h-6 text-accent-foreground" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-lg">
+        <Card className="bg-card border border-border shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-orange-100 text-sm font-medium">Total Questions</p>
-                <p className="text-3xl font-bold">{subjects.reduce((acc, s) => acc + s.questionCount, 0)}</p>
+                <p className="text-muted-foreground text-sm font-medium">Total Questions</p>
+                <p className="text-3xl font-bold text-foreground">{subjects.reduce((acc, s) => acc + s.questionCount, 0)}</p>
               </div>
-              <FileText className="w-8 h-8 text-orange-200" />
+              <div className="p-3 bg-primary/10 rounded-lg">
+                <FileText className="w-6 h-6 text-primary" />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -245,12 +253,12 @@ export default function IntegratedSubjectsManager() {
         {/* Subjects Tab */}
         <TabsContent value="subjects" className="space-y-6">
           {/* Filters and Search */}
-          <Card className="shadow-lg border-0 bg-white dark:bg-slate-900">
+          <Card className="shadow-sm border border-border bg-card">
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                     <Input
                       placeholder="Search subjects..."
                       value={searchTerm}
@@ -274,58 +282,58 @@ export default function IntegratedSubjectsManager() {
           </Card>
 
           {/* Subjects List */}
-          <Card className="shadow-lg border-0 bg-white dark:bg-slate-900">
+          <Card className="shadow-sm border border-border bg-card">
             <CardHeader>
               <CardTitle className="flex items-center">
-                <BookOpen className="w-5 h-5 mr-2 text-green-600" />
+                <BookOpen className="w-5 h-5 mr-2 text-primary" />
                 Subjects ({filteredSubjects.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredSubjects.map((subject) => (
-                  <Card key={subject.id} className="hover:shadow-lg transition-all duration-200 border-0 bg-gray-50 dark:bg-slate-800">
+                  <Card key={subject.id} className="hover:shadow-lg transition-all duration-200 border border-border bg-muted/30">
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-3">
                           <div className={`w-4 h-4 rounded-full ${subject.color}`}></div>
-                          <h3 className="font-semibold text-gray-900 dark:text-white">{subject.name}</h3>
+                          <h3 className="font-semibold text-foreground">{subject.name}</h3>
                         </div>
-                        <Badge className={subject.isActive ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'}>
+                        <Badge className={subject.isActive ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-0' : 'bg-red-500/10 text-red-600 dark:text-red-400 border-0'}>
                           {subject.isActive ? 'Active' : 'Inactive'}
                         </Badge>
                       </div>
 
-                      <p className="text-sm text-gray-600 dark:text-slate-400 mb-4 line-clamp-2">
+                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
                         {subject.description}
                       </p>
 
                       <div className="space-y-3 mb-4">
                         <div className="flex items-center justify-between text-sm">
-                          <span className="flex items-center gap-2 text-gray-600 dark:text-slate-400">
+                          <span className="flex items-center gap-2 text-muted-foreground">
                             <Users className="w-4 h-4" />
                             Students
                           </span>
-                          <span className="font-semibold text-gray-900 dark:text-white">{subject.studentCount}</span>
+                          <span className="font-semibold text-foreground">{subject.studentCount}</span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
-                          <span className="flex items-center gap-2 text-gray-600 dark:text-slate-400">
+                          <span className="flex items-center gap-2 text-muted-foreground">
                             <FileText className="w-4 h-4" />
                             Questions
                           </span>
-                          <span className="font-semibold text-gray-900 dark:text-white">{subject.questionCount}</span>
+                          <span className="font-semibold text-foreground">{subject.questionCount}</span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
-                          <span className="flex items-center gap-2 text-gray-600 dark:text-slate-400">
+                          <span className="flex items-center gap-2 text-muted-foreground">
                             <Target className="w-4 h-4" />
                             Avg. Score
                           </span>
-                          <span className="font-semibold text-green-600">{subject.averageScore}%</span>
+                          <span className="font-semibold text-green-600 dark:text-green-400">{subject.averageScore}%</span>
                         </div>
                       </div>
 
                       <div className="mb-4">
-                        <p className="text-xs text-gray-500 dark:text-slate-500 mb-2">Topics ({subject.topics.length})</p>
+                        <p className="text-xs text-muted-foreground mb-2">Topics ({subject.topics.length})</p>
                         <div className="flex flex-wrap gap-1">
                           {subject.topics.slice(0, 3).map((topic, index) => (
                             <Badge key={index} variant="outline" className="text-xs">
@@ -341,14 +349,14 @@ export default function IntegratedSubjectsManager() {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" className="flex-1 hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                        <Button variant="outline" size="sm" className="flex-1 hover:bg-accent/50">
                           <Eye className="w-4 h-4 mr-1" />
                           View
                         </Button>
-                        <Button variant="outline" size="sm" className="hover:bg-green-50 dark:hover:bg-green-900/20">
+                        <Button variant="outline" size="sm" className="hover:bg-accent/50">
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button variant="outline" size="sm" className="hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600">
+                        <Button variant="outline" size="sm" className="hover:bg-destructive/10 text-destructive">
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -359,8 +367,8 @@ export default function IntegratedSubjectsManager() {
 
               {filteredSubjects.length === 0 && (
                 <div className="text-center py-8">
-                  <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500 dark:text-slate-400">No subjects found matching your criteria.</p>
+                  <BookOpen className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+                  <p className="text-muted-foreground">No subjects found matching your criteria.</p>
                 </div>
               )}
             </CardContent>
@@ -370,12 +378,12 @@ export default function IntegratedSubjectsManager() {
         {/* Topics Tab */}
         <TabsContent value="topics" className="space-y-6">
           {/* Topics Search */}
-          <Card className="shadow-lg border-0 bg-white dark:bg-slate-900">
+          <Card className="shadow-sm border border-border bg-card">
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                     <Input
                       placeholder="Search topics..."
                       value={searchTerm}
@@ -384,7 +392,7 @@ export default function IntegratedSubjectsManager() {
                     />
                   </div>
                 </div>
-                <Button className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0">
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Topic
                 </Button>
@@ -393,10 +401,10 @@ export default function IntegratedSubjectsManager() {
           </Card>
 
           {/* Topics List */}
-          <Card className="shadow-lg border-0 bg-white dark:bg-slate-900">
+          <Card className="shadow-sm border border-border bg-card">
             <CardHeader>
               <CardTitle className="flex items-center">
-                <Tag className="w-5 h-5 mr-2 text-purple-600" />
+                <Tag className="w-5 h-5 mr-2 text-primary" />
                 Topics ({filteredTopics.length})
               </CardTitle>
             </CardHeader>
@@ -405,11 +413,11 @@ export default function IntegratedSubjectsManager() {
                 {filteredTopics.map((topic) => {
                   const subject = subjects.find(s => s.id === topic.subjectId)
                   return (
-                    <div key={topic.id} className="p-4 bg-gray-50 dark:bg-slate-800 rounded-lg hover:shadow-md transition-all duration-200">
+                    <div key={topic.id} className="p-4 bg-muted/30 rounded-lg border border-border hover:shadow-md transition-all duration-200">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
-                            <h3 className="font-semibold text-gray-900 dark:text-white">{topic.name}</h3>
+                            <h3 className="font-semibold text-foreground">{topic.name}</h3>
                             <Badge className={getDifficultyColor(topic.difficulty)}>
                               {topic.difficulty}
                             </Badge>
@@ -420,7 +428,7 @@ export default function IntegratedSubjectsManager() {
                             )}
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600 dark:text-slate-400 mb-3">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground mb-3">
                             <div className="flex items-center gap-2">
                               <FileText className="w-4 h-4" />
                               {topic.questionCount} questions
@@ -437,21 +445,21 @@ export default function IntegratedSubjectsManager() {
 
                           <div className="mb-3">
                             <div className="flex items-center justify-between text-sm mb-1">
-                              <span className="text-gray-600 dark:text-slate-400">Completion Progress</span>
-                              <span className="text-gray-600 dark:text-slate-400">{topic.completionRate}%</span>
+                              <span className="text-muted-foreground">Completion Progress</span>
+                              <span className="text-muted-foreground">{topic.completionRate}%</span>
                             </div>
                             <Progress value={topic.completionRate} className="h-2" />
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2 ml-4">
-                          <Button variant="outline" size="sm" className="hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                          <Button variant="outline" size="sm" className="hover:bg-accent/50">
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <Button variant="outline" size="sm" className="hover:bg-green-50 dark:hover:bg-green-900/20">
+                          <Button variant="outline" size="sm" className="hover:bg-accent/50">
                             <Edit className="w-4 h-4" />
                           </Button>
-                          <Button variant="outline" size="sm" className="hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600">
+                          <Button variant="outline" size="sm" className="hover:bg-destructive/10 text-destructive">
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
@@ -462,8 +470,8 @@ export default function IntegratedSubjectsManager() {
 
                 {filteredTopics.length === 0 && (
                   <div className="text-center py-8">
-                    <Tag className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500 dark:text-slate-400">No topics found matching your criteria.</p>
+                    <Tag className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+                    <p className="text-muted-foreground">No topics found matching your criteria.</p>
                   </div>
                 )}
               </div>

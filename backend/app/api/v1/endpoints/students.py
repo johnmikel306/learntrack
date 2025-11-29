@@ -16,7 +16,7 @@ from app.utils.pagination import PaginationParams, PaginatedResponse, paginate
 logger = structlog.get_logger()
 router = APIRouter()
 
-@router.get("/", response_model=PaginatedResponse[User])
+@router.get("/")
 async def list_students_for_tutor(
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(10, ge=1, le=100, description="Items per page"),
@@ -25,6 +25,7 @@ async def list_students_for_tutor(
 ):
     """
     Get paginated students assigned to the currently authenticated tutor.
+    Includes linked parent information for each student.
     """
     try:
         user_service = UserService(db)
@@ -42,9 +43,33 @@ async def list_students_for_tutor(
             limit=pagination.limit
         )
 
+        # Enrich students with parent information
+        enriched_students = []
+        for student in students:
+            student_dict = student.model_dump()
+
+            # Find parents linked to this student
+            parent_cursor = db.parents.find({
+                "student_ids": student.clerk_id,
+                "tutor_id": current_user.clerk_id,
+                "is_active": True
+            })
+            parents = await parent_cursor.to_list(length=10)
+
+            # Add parent names to student data
+            if parents:
+                parent_names = [p.get("name", "Unknown") for p in parents]
+                student_dict["parent_name"] = ", ".join(parent_names)
+                student_dict["parent_ids"] = [p.get("clerk_id") for p in parents]
+            else:
+                student_dict["parent_name"] = None
+                student_dict["parent_ids"] = []
+
+            enriched_students.append(student_dict)
+
         # Return paginated response
         return paginate(
-            items=students,
+            items=enriched_students,
             page=page,
             per_page=per_page,
             total=total
@@ -190,4 +215,162 @@ async def delete_student(
     except Exception as e:
         logger.error("Failed to delete student", student_clerk_id=student_clerk_id, error=str(e))
         raise HTTPException(status_code=500, detail="Failed to delete student")
+
+
+# ============ Parent-Student Relationship Management ============
+
+@router.get("/{student_clerk_id}/parents")
+async def get_student_parents(
+    student_clerk_id: str,
+    current_user: ClerkUserContext = Depends(require_tutor),
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Get all parents linked to a specific student.
+    """
+    try:
+        user_service = UserService(db)
+
+        # Verify the student exists and belongs to the tutor
+        student = await user_service.get_user_by_clerk_id(student_clerk_id)
+        if not student or student.role != UserRole.STUDENT:
+            raise HTTPException(status_code=404, detail="Student not found")
+
+        if student.tutor_id != current_user.clerk_id:
+            raise HTTPException(status_code=403, detail="Access forbidden: Student does not belong to this tutor.")
+
+        # Find parents linked to this student
+        parent_cursor = db.parents.find({
+            "student_ids": student_clerk_id,
+            "tutor_id": current_user.clerk_id,
+            "is_active": True
+        })
+        parents = await parent_cursor.to_list(length=50)
+
+        return parents
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to get student parents", student_clerk_id=student_clerk_id, error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to retrieve parents")
+
+
+from pydantic import BaseModel, EmailStr
+
+class LinkParentRequest(BaseModel):
+    parent_email: EmailStr
+    parent_name: str
+
+
+@router.post("/{student_clerk_id}/parents", status_code=status.HTTP_201_CREATED)
+async def link_parent_to_student(
+    student_clerk_id: str,
+    payload: LinkParentRequest,
+    current_user: ClerkUserContext = Depends(require_tutor),
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Link a parent to a student. Creates the parent if they don't exist.
+    """
+    try:
+        user_service = UserService(db)
+
+        # Verify the student exists and belongs to the tutor
+        student = await user_service.get_user_by_clerk_id(student_clerk_id)
+        if not student or student.role != UserRole.STUDENT:
+            raise HTTPException(status_code=404, detail="Student not found")
+
+        if student.tutor_id != current_user.clerk_id:
+            raise HTTPException(status_code=403, detail="Access forbidden: Student does not belong to this tutor.")
+
+        # Check if parent already exists by email
+        existing_parent = await db.parents.find_one({
+            "email": payload.parent_email,
+            "tutor_id": current_user.clerk_id
+        })
+
+        if existing_parent:
+            # Check if already linked
+            if student_clerk_id in existing_parent.get("student_ids", []):
+                raise HTTPException(status_code=400, detail="Parent is already linked to this student")
+
+            # Add student to existing parent's student_ids
+            await db.parents.update_one(
+                {"_id": existing_parent["_id"]},
+                {"$addToSet": {"student_ids": student_clerk_id}}
+            )
+
+            return {"message": "Parent linked successfully", "parent_id": str(existing_parent["_id"])}
+        else:
+            # Create new parent record
+            from datetime import datetime, timezone
+            import uuid
+
+            new_parent = {
+                "clerk_id": f"parent_{uuid.uuid4().hex[:12]}",  # Temporary ID until they sign up
+                "name": payload.parent_name,
+                "email": payload.parent_email,
+                "role": "parent",
+                "tutor_id": current_user.clerk_id,
+                "student_ids": [student_clerk_id],
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc)
+            }
+
+            result = await db.parents.insert_one(new_parent)
+
+            return {"message": "Parent created and linked successfully", "parent_id": str(result.inserted_id)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to link parent to student", student_clerk_id=student_clerk_id, error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to link parent")
+
+
+@router.delete("/{student_clerk_id}/parents/{parent_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def unlink_parent_from_student(
+    student_clerk_id: str,
+    parent_id: str,
+    current_user: ClerkUserContext = Depends(require_tutor),
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Unlink a parent from a student.
+    """
+    try:
+        user_service = UserService(db)
+
+        # Verify the student exists and belongs to the tutor
+        student = await user_service.get_user_by_clerk_id(student_clerk_id)
+        if not student or student.role != UserRole.STUDENT:
+            raise HTTPException(status_code=404, detail="Student not found")
+
+        if student.tutor_id != current_user.clerk_id:
+            raise HTTPException(status_code=403, detail="Access forbidden: Student does not belong to this tutor.")
+
+        # Find the parent by clerk_id or _id
+        parent = await db.parents.find_one({
+            "$or": [
+                {"clerk_id": parent_id},
+                {"_id": parent_id}
+            ],
+            "tutor_id": current_user.clerk_id
+        })
+
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent not found")
+
+        # Remove student from parent's student_ids
+        await db.parents.update_one(
+            {"_id": parent["_id"]},
+            {"$pull": {"student_ids": student_clerk_id}}
+        )
+
+        return None
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to unlink parent from student", student_clerk_id=student_clerk_id, parent_id=parent_id, error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to unlink parent")
 

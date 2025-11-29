@@ -46,7 +46,6 @@ export function DashboardSidebar({ activeView, onViewChange }: DashboardSidebarP
       items: [
         { title: "All Students", icon: ChevronRight },
         { title: "Invitations", icon: ChevronRight },
-        { title: "Relationships", icon: ChevronRight },
         { title: "Performance", icon: ChevronRight },
         { title: "Attendance", icon: ChevronRight },
         { title: "Groups", icon: ChevronRight }

@@ -80,10 +80,6 @@ export default function GradingView() {
       // For now, using mock data
       const mockSubmissions: Submission[] = []
       setSubmissions(mockSubmissions)
-      
-      toast.info('Grading center is in development', {
-        description: 'Submission grading functionality will be available soon'
-      })
     } catch (error) {
       console.error('Failed to load submissions:', error)
       toast.error('Failed to load submissions')
@@ -94,6 +90,11 @@ export default function GradingView() {
 
   useEffect(() => {
     loadSubmissions()
+    // Show info toast once on mount
+    toast.info('Grading center is in development', {
+      description: 'Submission grading functionality will be available soon'
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleGrade = async () => {

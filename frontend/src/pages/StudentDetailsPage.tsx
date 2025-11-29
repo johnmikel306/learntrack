@@ -4,6 +4,15 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import {
   MessageCircle,
   Edit,
@@ -11,7 +20,12 @@ import {
   Clock,
   Users,
   FileText,
-  Calendar
+  Calendar,
+  Link as LinkIcon,
+  X,
+  UserPlus,
+  Mail,
+  Loader2
 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useApiClient } from '@/lib/api-client'
@@ -62,6 +76,12 @@ interface ProgressData {
   score: number
 }
 
+interface LinkedParent {
+  id: string
+  name: string
+  email: string
+}
+
 export default function StudentDetailsPage() {
   const { studentSlug } = useParams<{ studentSlug: string }>()
   const navigate = useNavigate()
@@ -72,6 +92,14 @@ export default function StudentDetailsPage() {
   const [activities, setActivities] = useState<Activity[]>([])
   const [progressData, setProgressData] = useState<ProgressData[]>([])
   const [sendMessageModalOpen, setSendMessageModalOpen] = useState(false)
+
+  // Parent management state
+  const [linkedParents, setLinkedParents] = useState<LinkedParent[]>([])
+  const [linkParentModalOpen, setLinkParentModalOpen] = useState(false)
+  const [parentEmail, setParentEmail] = useState('')
+  const [parentName, setParentName] = useState('')
+  const [linkingParent, setLinkingParent] = useState(false)
+  const [unlinkingParentId, setUnlinkingParentId] = useState<string | null>(null)
 
   const client = useApiClient()
 
@@ -167,11 +195,89 @@ export default function StudentDetailsPage() {
         console.error('Failed to fetch activity:', err)
         setActivities([])
       }
+      // Fetch linked parents for this student
+      try {
+        const parentsRes = await client.get(`/students/${studentClerkId}/parents`)
+        if (parentsRes.data) {
+          const mappedParents = parentsRes.data.map((p: any) => ({
+            id: p.clerk_id || p._id,
+            name: p.name,
+            email: p.email
+          }))
+          setLinkedParents(mappedParents)
+        }
+      } catch (err) {
+        console.error('Failed to fetch linked parents:', err)
+        setLinkedParents([])
+      }
     } catch (err: any) {
       console.error('Failed to fetch student details:', err)
       toast.error('Failed to load student details')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleLinkParent = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!parentEmail.trim() || !parentName.trim() || !student) return
+
+    try {
+      setLinkingParent(true)
+      const res = await client.post(`/students/${student.id}/parents`, {
+        parent_email: parentEmail.trim(),
+        parent_name: parentName.trim()
+      })
+
+      if (res.error) throw new Error(res.error)
+
+      toast.success('Parent linked successfully!', {
+        description: `${parentName} has been linked to ${student.name}.`
+      })
+
+      // Refresh parents list
+      const parentsRes = await client.get(`/students/${student.id}/parents`)
+      if (parentsRes.data) {
+        const mappedParents = parentsRes.data.map((p: any) => ({
+          id: p.clerk_id || p._id,
+          name: p.name,
+          email: p.email
+        }))
+        setLinkedParents(mappedParents)
+      }
+
+      // Reset form and close modal
+      setParentEmail('')
+      setParentName('')
+      setLinkParentModalOpen(false)
+    } catch (error: any) {
+      console.error('Failed to link parent:', error)
+      toast.error('Failed to link parent', {
+        description: error.message || 'Please try again or contact support.'
+      })
+    } finally {
+      setLinkingParent(false)
+    }
+  }
+
+  const handleUnlinkParent = async (parentId: string) => {
+    if (!student) return
+
+    try {
+      setUnlinkingParentId(parentId)
+      const res = await client.delete(`/students/${student.id}/parents/${parentId}`)
+
+      if (res.error) throw new Error(res.error)
+
+      toast.success('Parent unlinked successfully')
+      setLinkedParents(prev => prev.filter(p => p.id !== parentId))
+    } catch (error: any) {
+      console.error('Failed to unlink parent:', error)
+      toast.error('Failed to unlink parent', {
+        description: error.message || 'Please try again.'
+      })
+    } finally {
+      setUnlinkingParentId(null)
     }
   }
 
@@ -396,13 +502,62 @@ export default function StudentDetailsPage() {
                     <p className="text-foreground font-medium break-all">{student.email}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-sm">Parent/Guardian:</p>
-                    <p className="text-[#C8A882] font-medium">{student.parentName}</p>
-                  </div>
-                  <div>
                     <p className="text-muted-foreground text-sm">Grade Level:</p>
                     <p className="text-foreground font-medium">{student.grade}</p>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Parent Management */}
+              <Card className="border-border bg-card">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-foreground flex items-center gap-2">
+                    <LinkIcon className="h-5 w-5" />
+                    Linked Parents
+                  </CardTitle>
+                  <Button
+                    size="sm"
+                    onClick={() => setLinkParentModalOpen(true)}
+                    className="bg-[#C8A882] text-white hover:bg-[#B89872]"
+                  >
+                    <UserPlus className="h-4 w-4 mr-1" />
+                    Link Parent
+                  </Button>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {linkedParents.length > 0 ? (
+                    linkedParents.map((parent) => (
+                      <div
+                        key={parent.id}
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-foreground font-medium text-sm">{parent.name}</p>
+                          <p className="text-muted-foreground text-xs flex items-center gap-1">
+                            <Mail className="h-3 w-3" />
+                            {parent.email}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleUnlinkParent(parent.id)}
+                          disabled={unlinkingParentId === parent.id}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10 ml-2"
+                        >
+                          {unlinkingParentId === parent.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <X className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground text-sm text-center py-4">
+                      No parents linked to this student
+                    </p>
+                  )}
                 </CardContent>
               </Card>
 
@@ -503,6 +658,74 @@ export default function StudentDetailsPage() {
           }}
         />
       )}
+
+      {/* Link Parent Modal */}
+      <Dialog open={linkParentModalOpen} onOpenChange={setLinkParentModalOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-primary" />
+              Link Parent to {student?.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleLinkParent} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="parent-name">Parent Name *</Label>
+              <Input
+                id="parent-name"
+                placeholder="Enter parent's full name"
+                value={parentName}
+                onChange={(e) => setParentName(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="parent-email">Parent Email *</Label>
+              <Input
+                id="parent-email"
+                type="email"
+                placeholder="parent@example.com"
+                value={parentEmail}
+                onChange={(e) => setParentEmail(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="bg-muted/50 p-3 rounded-lg">
+              <p className="text-sm text-muted-foreground">
+                The parent will be linked to this student and can view their progress.
+              </p>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setLinkParentModalOpen(false)}
+                disabled={linkingParent}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={linkingParent || !parentEmail.trim() || !parentName.trim()}
+                className="bg-[#C8A882] text-white hover:bg-[#B89872]"
+              >
+                {linkingParent ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Linking...
+                  </>
+                ) : (
+                  'Link Parent'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

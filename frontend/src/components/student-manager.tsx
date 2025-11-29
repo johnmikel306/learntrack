@@ -45,6 +45,7 @@ interface Student {
   avatar?: string
   lastActive: string
   progress: number
+  parentName?: string | null
 }
 
 export default function StudentManager() {
@@ -87,7 +88,8 @@ export default function StudentManager() {
     email: student.email,
     avatar: student.avatar_url || undefined,
     lastActive: formatLastActive(student.updated_at),
-    progress: student.student_profile?.averageScore || Math.floor(Math.random() * 100)
+    progress: student.student_profile?.averageScore || Math.floor(Math.random() * 100),
+    parentName: student.parent_name || null
   })) || []
 
   // Show error toast
@@ -179,6 +181,7 @@ export default function StudentManager() {
                     <TableRow className="bg-muted/50 hover:bg-muted/50">
                       <TableHead>Student Name</TableHead>
                       <TableHead>Email</TableHead>
+                      <TableHead>Parent</TableHead>
                       <TableHead>
                         <button
                           onClick={() => handleSort('lastActive')}
@@ -203,7 +206,7 @@ export default function StudentManager() {
                   <TableBody>
                     {isError ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-12">
+                        <TableCell colSpan={6} className="text-center py-12">
                           <div className="text-destructive">
                             <p className="font-semibold mb-2">Failed to load students</p>
                             <p className="text-sm text-muted-foreground">{error?.message || 'Unknown error'}</p>
@@ -220,7 +223,7 @@ export default function StudentManager() {
                       </TableRow>
                     ) : filteredStudents.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                        <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                           {searchTerm ? 'No students found matching your search' : 'No students found'}
                         </TableCell>
                       </TableRow>
@@ -244,6 +247,11 @@ export default function StudentManager() {
                           </TableCell>
                           <TableCell className="text-muted-foreground">
                             {student.email}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {student.parentName || (
+                              <span className="italic text-muted-foreground/60">No parent linked</span>
+                            )}
                           </TableCell>
                           <TableCell className="text-muted-foreground">
                             {student.lastActive}

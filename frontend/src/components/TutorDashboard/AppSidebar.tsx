@@ -14,7 +14,6 @@ import {
   FolderOpen,
   Calendar,
   ClipboardList,
-  FileStack,
   GraduationCap,
   Bell,
   User,
@@ -90,11 +89,6 @@ const menuItems = [
         icon: Users,
         view: "groups",
       },
-      {
-        title: "Relationships",
-        icon: MessageSquare,
-        view: "relationships",
-      },
     ],
   },
   {
@@ -141,11 +135,6 @@ const menuItems = [
         title: "Create New",
         icon: ClipboardList,
         view: "create-new",
-      },
-      {
-        title: "Templates",
-        icon: FileStack,
-        view: "templates",
       },
       {
         title: "Grading",
@@ -219,7 +208,6 @@ export function AppSidebar({ activeView, onViewChange }: AppSidebarProps) {
       'all-students': '/dashboard/students',
       'invitations': '/dashboard/invitations',
       'groups': '/dashboard/groups',
-      'relationships': '/dashboard/relationships',
       'ai-generator': '/dashboard/content/generator',
       'review-questions': '/dashboard/content/review',
       'question-bank': '/dashboard/content/bank',

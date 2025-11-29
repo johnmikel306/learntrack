@@ -7,7 +7,6 @@ import { AppSidebar } from "./AppSidebar"
 import { OverviewView } from "./views/OverviewView"
 import { PlaceholderView } from "./views/PlaceholderView"
 import InvitationsView from "./views/InvitationsView"
-import RelationshipsView from "./views/RelationshipsView"
 import GroupsManagementView from "./views/GroupsManagementView"
 import StudentManager from "@/components/student-manager"
 import IntegratedSubjectsManager from "@/components/integrated-subjects-manager"
@@ -17,7 +16,6 @@ import MaterialManager from "@/components/MaterialManager"
 import QuestionGenerator from "@/components/question-generator"
 import ActiveAssignmentsView from "./views/ActiveAssignmentsView"
 import CreateAssignmentView from "./views/CreateAssignmentView"
-import AssignmentTemplatesView from "./views/AssignmentTemplatesView"
 import GradingView from "./views/GradingView"
 import MessagingView from "./views/MessagingView"
 import ConversationsView from "./views/ConversationsView"
@@ -49,7 +47,6 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
       'students': 'all-students',
       'invitations': 'invitations',
       'groups': 'groups',
-      'relationships': 'relationships',
       'content/generator': 'ai-generator',
       'content/review': 'review-questions',
       'content/bank': 'question-bank',
@@ -183,7 +180,6 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
             <Route path="students/:studentSlug" element={<StudentDetailsPage />} />
             <Route path="invitations" element={<InvitationsView />} />
             <Route path="groups" element={<GroupsManagementView />} />
-            <Route path="relationships" element={<RelationshipsView />} />
 
             {/* Content routes */}
             <Route path="content/generator" element={<QuestionGenerator />} />
@@ -195,7 +191,6 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
             {/* Assignments routes */}
             <Route path="assignments" element={<ActiveAssignmentsView />} />
             <Route path="assignments/create" element={<CreateAssignmentView />} />
-            <Route path="assignments/templates" element={<AssignmentTemplatesView />} />
             <Route path="assignments/grading" element={<GradingView />} />
 
             {/* Messages routes */}
