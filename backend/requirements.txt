@@ -24,16 +24,17 @@ anthropic
 google-generativeai
 
 # LangChain for RAG (pinned compatible versions)
-langchain==0.2.16
-langchain-core==0.2.40
-langchain-community==0.2.16
-langchain-groq==0.1.9
-langchain-google-genai==1.0.10
-langchain-openai==0.1.25
-langchain-text-splitters==0.2.4
+langchain==0.3.7
+langchain-core==0.3.17
+langchain-community==0.3.7
+langchain-groq==0.2.1
+langchain-google-genai==2.0.4
+langchain-openai==0.2.8
+langchain-text-splitters==0.3.2
+langgraph==0.2.34
 
-# Vector Database
-qdrant-client>=1.13.0
+# Vector Database - compatible with numpy 2.x
+qdrant-client==1.12.1
 
 # Web Search
 tavily-python>=0.3.0
@@ -69,6 +70,10 @@ svix==1.22.0
 # WebSocket for real-time chat
 python-socketio
 python-engineio
+
+
+
+
 
 
 
