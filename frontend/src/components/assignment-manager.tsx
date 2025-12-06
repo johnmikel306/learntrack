@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useApiClient } from "@/lib/api-client"
 import { toast } from "@/contexts/ToastContext"
+import { useSubjects } from "@/hooks/useQueries"
 
 interface Assignment {
   id: string
@@ -45,6 +46,13 @@ export default function AssignmentManager() {
   const [error, setError] = useState<string | null>(null)
 
   const client = useApiClient()
+  const { data: subjectsData } = useSubjects()
+
+  // Get unique subjects from API data
+  const subjectOptions = useMemo(() => {
+    if (!subjectsData || !Array.isArray(subjectsData)) return []
+    return subjectsData.map((s: any) => s.name)
+  }, [subjectsData])
 
   // Fetch assignments from API
   useEffect(() => {
@@ -218,10 +226,9 @@ export default function AssignmentManager() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Subjects</SelectItem>
-                <SelectItem value="Mathematics">Mathematics</SelectItem>
-                <SelectItem value="Physics">Physics</SelectItem>
-                <SelectItem value="Chemistry">Chemistry</SelectItem>
-                <SelectItem value="English">English</SelectItem>
+                {subjectOptions.map((subject: string) => (
+                  <SelectItem key={subject} value={subject}>{subject}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

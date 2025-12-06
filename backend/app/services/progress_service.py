@@ -4,6 +4,7 @@ Progress tracking service for database operations
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from bson import ObjectId
 import structlog
 
 from app.models.progress import (
@@ -154,40 +155,102 @@ class ProgressService:
             progress_records = []
             async for progress in cursor:
                 progress_records.append(progress)
-            
+
             # Calculate analytics
             total_assignments = len(progress_records)
-            completed_assignments = len([p for p in progress_records if p["status"] == SubmissionStatus.SUBMITTED])
+            completed_assignments = len([p for p in progress_records if p.get("status") == SubmissionStatus.SUBMITTED.value])
             pending_assignments = total_assignments - completed_assignments
-            
+
             # Calculate average score
             scores = [p.get("score", 0) for p in progress_records if p.get("score") is not None]
-            average_score = sum(scores) / len(scores) if scores else None
-            
-            # Mock data for other fields (would be calculated from real data)
+            average_score = round(sum(scores) / len(scores), 1) if scores else None
+
+            # Calculate total time spent
+            total_time = sum(p.get("time_spent", 0) or 0 for p in progress_records)
+
+            # Calculate subject performance from real data
+            subject_performance = []
+            subject_data: dict = {}
+
+            for progress in progress_records:
+                assignment_id = progress.get("assignment_id")
+                if assignment_id:
+                    # Get assignment to find subject
+                    assignment = await self.db.assignments.find_one({"_id": ObjectId(assignment_id)})
+                    if assignment:
+                        subject_id = assignment.get("subject_id")
+                        if subject_id:
+                            subject = await self.db.subjects.find_one({"_id": ObjectId(subject_id)})
+                            subject_name = subject.get("name", "Unknown") if subject else "Unknown"
+
+                            if subject_name not in subject_data:
+                                subject_data[subject_name] = {"scores": [], "count": 0}
+
+                            if progress.get("score") is not None:
+                                subject_data[subject_name]["scores"].append(progress["score"])
+                            subject_data[subject_name]["count"] += 1
+
+            for subject_name, data in subject_data.items():
+                avg_score = round(sum(data["scores"]) / len(data["scores"]), 1) if data["scores"] else 0
+                subject_performance.append({
+                    "subject": subject_name,
+                    "score": avg_score,
+                    "assignments": data["count"]
+                })
+
+            # Get recent submissions (last 5 completed)
+            recent_submissions = []
+            completed_records = [p for p in progress_records if p.get("status") == SubmissionStatus.SUBMITTED.value]
+            completed_records.sort(key=lambda x: x.get("submitted_at") or x.get("updated_at") or datetime.min, reverse=True)
+
+            for progress in completed_records[:5]:
+                assignment_id = progress.get("assignment_id")
+                assignment = await self.db.assignments.find_one({"_id": ObjectId(assignment_id)}) if assignment_id else None
+                subject_name = "Unknown"
+                if assignment and assignment.get("subject_id"):
+                    subject = await self.db.subjects.find_one({"_id": ObjectId(assignment["subject_id"])})
+                    subject_name = subject.get("name", "Unknown") if subject else "Unknown"
+
+                recent_submissions.append({
+                    "assignment_title": assignment.get("title", "Assignment") if assignment else "Assignment",
+                    "subject": subject_name,
+                    "score": progress.get("score", 0),
+                    "submitted_at": progress.get("submitted_at")
+                })
+
+            # Calculate weekly progress (last 4 weeks)
+            weekly_progress = []
+            now = datetime.now(timezone.utc)
+            for week_num in range(4, 0, -1):
+                week_start = now - timedelta(weeks=week_num)
+                week_end = now - timedelta(weeks=week_num - 1)
+
+                week_records = [
+                    p for p in progress_records
+                    if p.get("created_at") and week_start <= p["created_at"] < week_end
+                ]
+                completed_in_week = len([p for p in week_records if p.get("status") == SubmissionStatus.SUBMITTED.value])
+
+                weekly_progress.append({
+                    "week": f"Week {5 - week_num}",
+                    "completed": completed_in_week,
+                    "assigned": len(week_records)
+                })
+
             analytics = ProgressAnalytics(
                 total_assignments=total_assignments,
                 completed_assignments=completed_assignments,
                 pending_assignments=pending_assignments,
                 overdue_assignments=0,
                 average_score=average_score,
-                total_time_spent=0,
-                subject_performance=[
-                    {"subject": "Mathematics", "score": 85, "assignments": 5},
-                    {"subject": "Physics", "score": 78, "assignments": 3},
-                    {"subject": "Chemistry", "score": 92, "assignments": 4}
-                ],
-                recent_submissions=[],
-                weekly_progress=[
-                    {"week": "Week 1", "completed": 3, "assigned": 4},
-                    {"week": "Week 2", "completed": 5, "assigned": 5},
-                    {"week": "Week 3", "completed": 2, "assigned": 3},
-                    {"week": "Week 4", "completed": 4, "assigned": 5}
-                ]
+                total_time_spent=total_time // 60,  # Convert to minutes
+                subject_performance=subject_performance,
+                recent_submissions=recent_submissions,
+                weekly_progress=weekly_progress
             )
-            
+
             return analytics
-            
+
         except Exception as e:
             logger.error("Failed to get student analytics", student_id=student_id, error=str(e))
             raise DatabaseException(f"Failed to get student analytics: {str(e)}")

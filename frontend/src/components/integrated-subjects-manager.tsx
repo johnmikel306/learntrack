@@ -1,9 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Plus,
   BookOpen,
@@ -23,6 +24,7 @@ import {
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useSubjects, useTopics } from "@/hooks/useQueries"
 
 interface Subject {
   id: string
@@ -49,95 +51,61 @@ interface Topic {
   completionRate: number
 }
 
+// Color palette for subjects
+const subjectColors = [
+  'bg-blue-500',
+  'bg-green-500',
+  'bg-purple-500',
+  'bg-orange-500',
+  'bg-red-500',
+  'bg-pink-500',
+  'bg-indigo-500',
+  'bg-teal-500',
+]
+
 export default function IntegratedSubjectsManager() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [activeTab, setActiveTab] = useState("subjects")
 
-  // Sample subjects data
-  const subjects: Subject[] = [
-    {
-      id: "1",
-      name: "Mathematics",
-      description: "Comprehensive mathematics curriculum covering algebra, geometry, and calculus",
-      color: "bg-blue-500",
-      topics: ["Algebra", "Geometry", "Calculus", "Statistics"],
-      studentCount: 45,
-      questionCount: 120,
-      assignmentCount: 15,
-      averageScore: 87,
-      isActive: true,
-      createdDate: "2023-09-01",
-      lastUpdated: "2024-01-10"
-    },
-    {
-      id: "2",
-      name: "Physics",
-      description: "Physics fundamentals including mechanics, thermodynamics, and electromagnetism",
-      color: "bg-green-500",
-      topics: ["Mechanics", "Thermodynamics", "Electromagnetism", "Optics"],
-      studentCount: 38,
-      questionCount: 95,
-      assignmentCount: 12,
-      averageScore: 82,
-      isActive: true,
-      createdDate: "2023-09-01",
-      lastUpdated: "2024-01-08"
-    },
-    {
-      id: "3",
-      name: "Chemistry",
-      description: "General chemistry covering atomic structure, bonding, and reactions",
-      color: "bg-purple-500",
-      topics: ["Atomic Structure", "Chemical Bonding", "Reactions", "Organic Chemistry"],
-      studentCount: 42,
-      questionCount: 88,
-      assignmentCount: 10,
-      averageScore: 85,
-      isActive: true,
-      createdDate: "2023-09-01",
-      lastUpdated: "2024-01-05"
-    },
-    {
-      id: "4",
-      name: "English Literature",
-      description: "Study of classic and contemporary literature with focus on analysis and writing",
-      color: "bg-orange-500",
-      topics: ["Shakespeare", "Modern Literature", "Poetry", "Essay Writing"],
-      studentCount: 35,
-      questionCount: 65,
-      assignmentCount: 8,
-      averageScore: 89,
-      isActive: true,
-      createdDate: "2023-09-01",
-      lastUpdated: "2024-01-12"
-    },
-    {
-      id: "5",
-      name: "History",
-      description: "World history from ancient civilizations to modern times",
-      color: "bg-red-500",
-      topics: ["Ancient History", "Medieval Period", "Modern History", "World Wars"],
-      studentCount: 28,
-      questionCount: 45,
-      assignmentCount: 6,
-      averageScore: 84,
-      isActive: false,
-      createdDate: "2023-09-01",
-      lastUpdated: "2023-12-15"
-    }
-  ]
+  // Fetch subjects from API
+  const { data: subjectsData, isLoading: subjectsLoading } = useSubjects()
+  const { data: topicsData, isLoading: topicsLoading } = useTopics()
 
-  // Sample topics data
-  const topics: Topic[] = [
-    { id: "1", name: "Algebra", subjectId: "1", questionCount: 35, assignmentCount: 5, difficulty: "intermediate", completionRate: 92 },
-    { id: "2", name: "Geometry", subjectId: "1", questionCount: 28, assignmentCount: 4, difficulty: "beginner", completionRate: 88 },
-    { id: "3", name: "Calculus", subjectId: "1", questionCount: 42, assignmentCount: 4, difficulty: "advanced", completionRate: 75 },
-    { id: "4", name: "Mechanics", subjectId: "2", questionCount: 25, assignmentCount: 3, difficulty: "intermediate", completionRate: 85 },
-    { id: "5", name: "Thermodynamics", subjectId: "2", questionCount: 22, assignmentCount: 3, difficulty: "advanced", completionRate: 78 },
-    { id: "6", name: "Atomic Structure", subjectId: "3", questionCount: 20, assignmentCount: 2, difficulty: "beginner", completionRate: 94 },
-    { id: "7", name: "Chemical Bonding", subjectId: "3", questionCount: 24, assignmentCount: 3, difficulty: "intermediate", completionRate: 82 }
-  ]
+  // Transform API data to component format
+  const subjects: Subject[] = useMemo(() => {
+    if (!subjectsData || !Array.isArray(subjectsData)) return []
+
+    return subjectsData.map((subject: any, index: number) => ({
+      id: subject.id || subject._id,
+      name: subject.name || 'Unnamed Subject',
+      description: subject.description || '',
+      color: subjectColors[index % subjectColors.length],
+      topics: subject.topics || [],
+      studentCount: subject.student_count || 0,
+      questionCount: subject.question_count || 0,
+      assignmentCount: subject.assignment_count || 0,
+      averageScore: subject.average_score || 0,
+      isActive: subject.is_active !== false,
+      createdDate: subject.created_at ? new Date(subject.created_at).toISOString().split('T')[0] : '',
+      lastUpdated: subject.updated_at ? new Date(subject.updated_at).toISOString().split('T')[0] : ''
+    }))
+  }, [subjectsData])
+
+  // Transform topics data
+  const topics: Topic[] = useMemo(() => {
+    if (!topicsData || !Array.isArray(topicsData)) return []
+
+    return topicsData.map((topic: any) => ({
+      id: topic.id || topic._id,
+      name: topic.name || 'Unnamed Topic',
+      subjectId: topic.subject_id || '',
+      questionCount: topic.question_count || 0,
+      assignmentCount: topic.assignment_count || 0,
+      difficulty: topic.difficulty || 'intermediate',
+      completionRate: topic.completion_rate || 0
+    }))
+  }, [topicsData])
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -286,10 +254,40 @@ export default function IntegratedSubjectsManager() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <BookOpen className="w-5 h-5 mr-2 text-primary" />
-                Subjects ({filteredSubjects.length})
+                Subjects ({subjectsLoading ? '...' : filteredSubjects.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
+              {subjectsLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <Card key={index} className="border border-border bg-muted/30">
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <Skeleton className="w-4 h-4 rounded-full" />
+                            <Skeleton className="h-5 w-24" />
+                          </div>
+                          <Skeleton className="h-5 w-16" />
+                        </div>
+                        <Skeleton className="h-4 w-full mb-2" />
+                        <Skeleton className="h-4 w-3/4 mb-4" />
+                        <div className="space-y-3">
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-4 w-full" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : filteredSubjects.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg font-medium">No subjects found</p>
+                  <p className="text-sm mt-1">Create your first subject to get started</p>
+                </div>
+              ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredSubjects.map((subject) => (
                   <Card key={subject.id} className="hover:shadow-lg transition-all duration-200 border border-border bg-muted/30">
@@ -364,12 +362,6 @@ export default function IntegratedSubjectsManager() {
                   </Card>
                 ))}
               </div>
-
-              {filteredSubjects.length === 0 && (
-                <div className="text-center py-8">
-                  <BookOpen className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
-                  <p className="text-muted-foreground">No subjects found matching your criteria.</p>
-                </div>
               )}
             </CardContent>
           </Card>
@@ -405,10 +397,38 @@ export default function IntegratedSubjectsManager() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Tag className="w-5 h-5 mr-2 text-primary" />
-                Topics ({filteredTopics.length})
+                Topics ({topicsLoading ? '...' : filteredTopics.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
+              {topicsLoading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <div key={index} className="p-4 bg-muted/30 rounded-lg border border-border">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <Skeleton className="h-5 w-32" />
+                            <Skeleton className="h-5 w-20" />
+                          </div>
+                          <div className="grid grid-cols-3 gap-4 mb-3">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-4 w-24" />
+                          </div>
+                          <Skeleton className="h-2 w-full" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : filteredTopics.length === 0 ? (
+                <div className="text-center py-8">
+                  <Tag className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+                  <p className="text-muted-foreground">No topics found</p>
+                  <p className="text-sm text-muted-foreground mt-1">Create topics within your subjects</p>
+                </div>
+              ) : (
               <div className="space-y-4">
                 {filteredTopics.map((topic) => {
                   const subject = subjects.find(s => s.id === topic.subjectId)
@@ -467,14 +487,8 @@ export default function IntegratedSubjectsManager() {
                     </div>
                   )
                 })}
-
-                {filteredTopics.length === 0 && (
-                  <div className="text-center py-8">
-                    <Tag className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
-                    <p className="text-muted-foreground">No topics found matching your criteria.</p>
-                  </div>
-                )}
               </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

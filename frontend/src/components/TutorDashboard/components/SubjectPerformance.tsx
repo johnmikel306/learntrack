@@ -128,14 +128,27 @@ export function SubjectPerformance() {
             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted" disabled>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <p className="text-sm font-medium text-foreground">Loading...</p>
+            <div className="h-5 w-32 bg-muted rounded animate-pulse"></div>
             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted" disabled>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="pb-6 flex-1 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <CardContent className="pb-6 flex-1">
+          <div className="space-y-4 animate-pulse">
+            {/* Days of week header skeleton */}
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} className="h-4 bg-muted rounded mx-auto w-6"></div>
+              ))}
+            </div>
+            {/* Calendar grid skeleton */}
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: 35 }).map((_, i) => (
+                <div key={i} className="aspect-square bg-muted rounded-full mx-auto w-8"></div>
+              ))}
+            </div>
+          </div>
         </CardContent>
       </Card>
     )

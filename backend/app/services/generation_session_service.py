@@ -164,6 +164,77 @@ class GenerationSessionService:
                 created_at=doc["created_at"],
                 updated_at=doc["updated_at"]
             ))
-        
+
         return sessions, total
 
+    async def get_stats(
+        self,
+        user_id: str,
+        tenant_id: str
+    ) -> dict:
+        """Get generation statistics for a user"""
+        from datetime import timedelta
+
+        # Get current month start
+        now = datetime.now(timezone.utc)
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        query = {"user_id": user_id, "tenant_id": tenant_id}
+
+        # Total sessions
+        total_sessions = await self.collection.count_documents(query)
+
+        # This month's sessions
+        month_query = {**query, "created_at": {"$gte": month_start}}
+        month_sessions = await self.collection.count_documents(month_query)
+
+        # Aggregate questions data
+        pipeline = [
+            {"$match": query},
+            {"$unwind": {"path": "$questions", "preserveNullAndEmptyArrays": False}},
+            {"$group": {
+                "_id": None,
+                "total_questions": {"$sum": 1},
+                "approved": {"$sum": {"$cond": [{"$eq": ["$questions.status", "approved"]}, 1, 0]}},
+                "rejected": {"$sum": {"$cond": [{"$eq": ["$questions.status", "rejected"]}, 1, 0]}},
+            }}
+        ]
+
+        result = await self.collection.aggregate(pipeline).to_list(1)
+
+        if result:
+            total_questions = result[0].get("total_questions", 0)
+            approved = result[0].get("approved", 0)
+            rejected = result[0].get("rejected", 0)
+        else:
+            total_questions = 0
+            approved = 0
+            rejected = 0
+
+        # This month's questions
+        month_pipeline = [
+            {"$match": month_query},
+            {"$unwind": {"path": "$questions", "preserveNullAndEmptyArrays": False}},
+            {"$count": "count"}
+        ]
+        month_result = await self.collection.aggregate(month_pipeline).to_list(1)
+        month_questions = month_result[0]["count"] if month_result else 0
+
+        # Success rate (completed sessions / total sessions)
+        completed = await self.collection.count_documents({**query, "status": SessionStatus.COMPLETED.value})
+        success_rate = round((completed / total_sessions * 100), 1) if total_sessions > 0 else 0
+
+        # Average quality (approved / (approved + rejected))
+        reviewed = approved + rejected
+        avg_quality = round((approved / reviewed * 5), 1) if reviewed > 0 else 0  # Scale to 5
+
+        return {
+            "total_generated": total_questions,
+            "this_month": month_questions,
+            "success_rate": success_rate,
+            "avg_quality": avg_quality,
+            "total_sessions": total_sessions,
+            "month_sessions": month_sessions,
+            "approved_questions": approved,
+            "rejected_questions": rejected
+        }

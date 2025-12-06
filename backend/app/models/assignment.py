@@ -42,7 +42,7 @@ class AssignmentBase(BaseModel):
     subject_id: str
     topic: Optional[str] = None  # Made optional for backward compatibility
     assignment_type: AssignmentType = AssignmentType.PRACTICE
-    due_date: datetime
+    due_date: Optional[datetime] = None
     time_limit: Optional[int] = None  # in minutes
     max_attempts: int = 1
     shuffle_questions: bool = False
@@ -148,12 +148,12 @@ class AssignmentForStudent(BaseModel):
     subject_name: str
     topic: str
     assignment_type: AssignmentType
-    due_date: datetime
-    time_limit: Optional[int]
-    max_attempts: int
-    total_points: int
-    question_count: int
-    status: str  # student-specific status
+    due_date: Optional[datetime] = None
+    time_limit: Optional[int] = None
+    max_attempts: int = 1
+    total_points: int = 0
+    question_count: int = 0
+    status: str = "draft"  # student-specific status
     attempts_used: int = 0
     best_score: Optional[float] = None
     last_attempt: Optional[datetime] = None

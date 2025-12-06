@@ -83,7 +83,7 @@ export default function InviteUserModal({ open, onOpenChange, onSuccess, editMod
       const token = await getToken()
       const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
-      const response = await fetch(`${API_BASE}/students`, {
+      const response = await fetch(`${API_BASE}/students/`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -130,7 +130,7 @@ export default function InviteUserModal({ open, onOpenChange, onSuccess, editMod
         })
       } else {
         // Create new invitation
-        const response = await fetch(`${API_BASE}/invitations`, {
+        const response = await fetch(`${API_BASE}/invitations/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

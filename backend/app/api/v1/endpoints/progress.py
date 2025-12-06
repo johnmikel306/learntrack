@@ -2,6 +2,7 @@
 Progress tracking endpoints
 """
 from typing import List, Dict, Any
+from datetime import timedelta
 from fastapi import APIRouter, Depends, Path, Query, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
@@ -42,19 +43,40 @@ async def get_student_analytics_by_id(
 ):
     """Get progress analytics for a specific student (tutor only)"""
     try:
+        from datetime import datetime, timezone
+        from calendar import month_abbr
+
         progress_service = ProgressService(database)
         analytics = await progress_service.get_student_analytics(student_id)
 
-        # Add monthly scores for the chart
-        # This is a simplified version - you can enhance this based on actual data
-        monthly_scores = [
-            {"month": "Jan", "score": 75},
-            {"month": "Feb", "score": 78},
-            {"month": "Mar", "score": 82},
-            {"month": "Apr", "score": 85},
-            {"month": "May", "score": 88},
-            {"month": "Jun", "score": 90}
-        ]
+        # Calculate monthly scores from real progress data
+        monthly_scores = []
+        now = datetime.now(timezone.utc)
+
+        # Get progress records for the last 6 months
+        for i in range(5, -1, -1):
+            month_date = now.replace(day=1) - timedelta(days=i * 30)
+            month_name = month_abbr[month_date.month]
+
+            # Get progress records for this month
+            month_start = month_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            if month_date.month == 12:
+                month_end = month_start.replace(year=month_start.year + 1, month=1)
+            else:
+                month_end = month_start.replace(month=month_start.month + 1)
+
+            progress_records = await database.progress.find({
+                "student_id": student_id,
+                "submitted_at": {"$gte": month_start, "$lt": month_end}
+            }).to_list(length=100)
+
+            if progress_records:
+                scores = [p.get("score", 0) for p in progress_records if p.get("score") is not None]
+                avg_score = round(sum(scores) / len(scores)) if scores else 0
+            else:
+                avg_score = 0
+
+            monthly_scores.append({"month": month_name, "score": avg_score})
 
         return {
             **analytics.model_dump(),

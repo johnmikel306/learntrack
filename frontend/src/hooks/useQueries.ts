@@ -253,6 +253,74 @@ export function useDashboardStats() {
   })
 }
 
+/**
+ * Hook to fetch top performers
+ */
+export function useTopPerformers() {
+  const client = useApiClient()
+
+  return useQuery({
+    queryKey: ['dashboard', 'top-performers'],
+    queryFn: async () => {
+      const response = await client.get('/dashboard/top-performers')
+      if (response.error) throw new Error(response.error)
+      return response.data as Array<{
+        name: string
+        subject: string
+        score: number
+        trend: string
+        avatar: string
+      }>
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  })
+}
+
+/**
+ * Hook to fetch recent activity
+ */
+export function useRecentActivity(limit: number = 10) {
+  const client = useApiClient()
+
+  return useQuery({
+    queryKey: ['dashboard', 'recent-activity', limit],
+    queryFn: async () => {
+      const response = await client.get(`/dashboard/recent-activity?limit=${limit}`)
+      if (response.error) throw new Error(response.error)
+      return response.data as Array<{
+        student: string
+        action: string
+        assignment: string
+        time: string
+        type: string
+        created_at: string
+      }>
+    },
+    staleTime: 1 * 60 * 1000, // 1 minute - activity updates more frequently
+  })
+}
+
+/**
+ * Hook to fetch performance chart data
+ */
+export function usePerformanceChart(days: number = 30) {
+  const client = useApiClient()
+
+  return useQuery({
+    queryKey: ['dashboard', 'performance-chart', days],
+    queryFn: async () => {
+      const response = await client.get(`/dashboard/performance-chart?days=${days}`)
+      if (response.error) throw new Error(response.error)
+      return response.data as Array<{
+        period: string
+        performance: number
+        [key: string]: string | number // For subject-specific data
+      }>
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+}
+
 // ============================================
 // Assignment Queries
 // ============================================
@@ -318,6 +386,24 @@ export function useSubjects() {
       return response.data
     },
     staleTime: 5 * 60 * 1000, // 5 minutes - subjects don't change often
+  })
+}
+
+/**
+ * Hook to fetch all topics
+ */
+export function useTopics(subjectId?: string) {
+  const client = useApiClient()
+
+  return useQuery({
+    queryKey: ['topics', subjectId],
+    queryFn: async () => {
+      const url = subjectId ? `/topics?subject_id=${subjectId}` : '/topics'
+      const response = await client.get(url)
+      if (response.error) throw new Error(response.error)
+      return response.data
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes - topics don't change often
   })
 }
 
@@ -419,7 +505,7 @@ export function useGroups(limit: number = 200) {
   return useQuery({
     queryKey: ['groups', limit],
     queryFn: async () => {
-      const response = await client.get(`/groups?limit=${limit}`)
+      const response = await client.get(`/groups/?limit=${limit}`)
       if (response.error) throw new Error(response.error)
       return response.data
     },
@@ -506,6 +592,60 @@ export function useAnnouncements() {
 }
 
 // ============================================
+// Student Dashboard Queries
+// ============================================
+
+/**
+ * Hook to fetch student dashboard stats
+ */
+export function useStudentDashboardStats() {
+  const client = useApiClient()
+
+  return useQuery({
+    queryKey: ['student-dashboard-stats'],
+    queryFn: async () => {
+      const response = await client.get('/dashboard/student-stats')
+      if (response.error) throw new Error(response.error)
+      return response.data as {
+        total_assignments: number
+        completed: number
+        pending: number
+        overall_average: number
+        current_grade: string
+      }
+    },
+    staleTime: 60 * 1000, // 1 minute
+  })
+}
+
+/**
+ * Hook to fetch student progress analytics
+ */
+export function useStudentProgressAnalytics() {
+  const client = useApiClient()
+
+  return useQuery({
+    queryKey: ['student-progress-analytics'],
+    queryFn: async () => {
+      const response = await client.get('/progress/student')
+      if (response.error) throw new Error(response.error)
+      return response.data as {
+        total_assignments: number
+        completed_assignments: number
+        pending_assignments: number
+        overdue_assignments: number
+        average_score: number | null
+        total_time_spent: number
+        subject_performance: Array<{ subject: string; score: number; assignments: number }>
+        recent_submissions: Array<any>
+        weekly_progress: Array<{ week: string; completed: number; assigned: number }>
+      }
+    },
+    staleTime: 60 * 1000, // 1 minute
+  })
+}
+
+// ============================================
 // Generation History Queries
 // ============================================
 
@@ -522,6 +662,32 @@ export function useGenerationHistory() {
       if (response.error) throw new Error(response.error)
       return response.data?.items || response.data || []
     },
+  })
+}
+
+/**
+ * Hook to fetch question generation statistics
+ */
+export function useGenerationStats() {
+  const client = useApiClient()
+
+  return useQuery({
+    queryKey: ['generation-stats'],
+    queryFn: async () => {
+      const response = await client.get('/question-generator/stats')
+      if (response.error) throw new Error(response.error)
+      return response.data as {
+        total_generated: number
+        this_month: number
+        success_rate: number
+        avg_quality: number
+        total_sessions: number
+        month_sessions: number
+        approved_questions: number
+        rejected_questions: number
+      }
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes
   })
 }
 

@@ -15,7 +15,9 @@ import Announcements from "@/components/Announcements"
 import EventCalendar from "@/components/EventCalendar"
 
 import { ThemeToggle } from '@/components/ui/theme-toggle'
-import { useMyAssignments } from '@/hooks/useQueries'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useMyAssignments, useStudentDashboardStats, useStudentProgressAnalytics } from '@/hooks/useQueries'
+import { useUser } from '@clerk/clerk-react'
 
 interface StudentDashboardProps {
   onBack?: () => void
@@ -43,8 +45,18 @@ interface Question {
 }
 
 export default function StudentDashboard({ onBack }: StudentDashboardProps) {
+  // Get user info from Clerk
+  const { user } = useUser()
+  const studentName = user?.fullName || user?.firstName || "Student"
+
   // Use React Query for assignments
   const { data: assignments = [], isLoading: loading, error } = useMyAssignments()
+
+  // Fetch dashboard stats
+  const { data: dashboardStats, isLoading: statsLoading } = useStudentDashboardStats()
+
+  // Fetch progress analytics
+  const { data: progressAnalytics, isLoading: analyticsLoading } = useStudentProgressAnalytics()
 
   // All assignments now come from API
   const displayAssignments = assignments as Assignment[]
@@ -53,9 +65,6 @@ export default function StudentDashboard({ onBack }: StudentDashboardProps) {
   const [selectedAnswer, setSelectedAnswer] = useState("")
   const [showingQuestion, setShowingQuestion] = useState(false)
   const [isReviewing, setIsReviewing] = useState(false)
-
-  // Placeholder data for student name
-  const studentName = "Jane Doe";
 
   // Placeholder function for submitting an answer
   const submitAnswer = () => {
@@ -224,8 +233,16 @@ export default function StudentDashboard({ onBack }: StudentDashboardProps) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-purple-100 text-sm font-medium">Overall Average</p>
-                  <p className="text-3xl font-bold">87%</p>
-                  <p className="text-purple-100 text-xs mt-1">+3% this week</p>
+                  <p className="text-3xl font-bold">
+                    {statsLoading ? (
+                      <Skeleton className="h-9 w-16 bg-purple-400/30" />
+                    ) : (
+                      `${dashboardStats?.overall_average || 0}%`
+                    )}
+                  </p>
+                  <p className="text-purple-100 text-xs mt-1">
+                    Grade: {dashboardStats?.current_grade || '--'}
+                  </p>
                 </div>
                 <Target className="w-8 h-8 text-purple-200" />
               </div>
@@ -238,7 +255,13 @@ export default function StudentDashboard({ onBack }: StudentDashboardProps) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-green-100 text-sm font-medium">Completed</p>
-                  <p className="text-3xl font-bold">24</p>
+                  <p className="text-3xl font-bold">
+                    {statsLoading ? (
+                      <Skeleton className="h-9 w-12 bg-green-400/30" />
+                    ) : (
+                      dashboardStats?.completed || 0
+                    )}
+                  </p>
                   <p className="text-green-100 text-xs mt-1">assignments</p>
                 </div>
                 <CheckCircle className="w-8 h-8 text-green-200" />
@@ -252,7 +275,13 @@ export default function StudentDashboard({ onBack }: StudentDashboardProps) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-orange-100 text-sm font-medium">Pending</p>
-                  <p className="text-3xl font-bold">5</p>
+                  <p className="text-3xl font-bold">
+                    {statsLoading ? (
+                      <Skeleton className="h-9 w-10 bg-orange-400/30" />
+                    ) : (
+                      dashboardStats?.pending || 0
+                    )}
+                  </p>
                   <p className="text-orange-100 text-xs mt-1">tasks due</p>
                 </div>
                 <Clock className="w-8 h-8 text-orange-200" />
@@ -260,16 +289,22 @@ export default function StudentDashboard({ onBack }: StudentDashboardProps) {
             </CardContent>
           </Card>
 
-          {/* Study Streak Card */}
+          {/* Total Assignments Card */}
           <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-blue-100 text-sm font-medium">Study Streak</p>
-                  <p className="text-3xl font-bold">12</p>
-                  <p className="text-blue-100 text-xs mt-1">days in a row</p>
+                  <p className="text-blue-100 text-sm font-medium">Total Assignments</p>
+                  <p className="text-3xl font-bold">
+                    {statsLoading ? (
+                      <Skeleton className="h-9 w-12 bg-blue-400/30" />
+                    ) : (
+                      dashboardStats?.total_assignments || 0
+                    )}
+                  </p>
+                  <p className="text-blue-100 text-xs mt-1">all time</p>
                 </div>
-                <Flame className="w-8 h-8 text-blue-200" />
+                <BookOpen className="w-8 h-8 text-blue-200" />
               </div>
             </CardContent>
           </Card>
@@ -288,72 +323,80 @@ export default function StudentDashboard({ onBack }: StudentDashboardProps) {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {[
-                    {
-                      title: "Algebra Quiz",
-                      subject: "Mathematics",
-                      dueDate: "Today",
-                      difficulty: "Medium",
-                      status: "pending",
-                      progress: 0
-                    },
-                    {
-                      title: "Physics Lab Report",
-                      subject: "Physics",
-                      dueDate: "Tomorrow",
-                      difficulty: "Hard",
-                      status: "in-progress",
-                      progress: 60
-                    },
-                    {
-                      title: "History Essay",
-                      subject: "History",
-                      dueDate: "Dec 28",
-                      difficulty: "Easy",
-                      status: "pending",
-                      progress: 0
-                    }
-                  ].map((assignment, index) => (
-                    <div key={index} className="p-4 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <h3 className="font-semibold text-gray-900 dark:text-white">{assignment.title}</h3>
-                          <p className="text-sm text-gray-600 dark:text-slate-400">{assignment.subject}</p>
-                        </div>
-                        <div className="text-right">
-                          <Badge
-                            variant={assignment.dueDate === 'Today' ? 'destructive' : assignment.dueDate === 'Tomorrow' ? 'default' : 'secondary'}
-                            className="mb-1"
-                          >
-                            {assignment.dueDate}
-                          </Badge>
-                          <p className="text-xs text-gray-500 dark:text-slate-500">
-                            {assignment.difficulty} difficulty
-                          </p>
-                        </div>
-                      </div>
-                      {assignment.progress > 0 && (
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600 dark:text-slate-400">Progress</span>
-                            <span className="text-gray-900 dark:text-white">{assignment.progress}%</span>
+                  {loading ? (
+                    // Loading skeleton
+                    Array.from({ length: 3 }).map((_, index) => (
+                      <div key={index} className="p-4 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="space-y-2">
+                            <Skeleton className="h-5 w-32" />
+                            <Skeleton className="h-4 w-24" />
                           </div>
-                          <Progress value={assignment.progress} className="h-2" />
+                          <Skeleton className="h-6 w-16" />
                         </div>
-                      )}
-                      <div className="flex justify-between items-center mt-3">
-                        <Badge
-                          variant={assignment.status === 'pending' ? 'outline' : 'default'}
-                          className="text-xs"
-                        >
-                          {assignment.status === 'pending' ? 'Not Started' : 'In Progress'}
-                        </Badge>
-                        <Button size="sm" variant="outline">
-                          {assignment.status === 'pending' ? 'Start' : 'Continue'}
-                        </Button>
+                        <Skeleton className="h-8 w-full mt-3" />
                       </div>
+                    ))
+                  ) : displayAssignments.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500 dark:text-slate-400">
+                      <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p>No assignments yet</p>
+                      <p className="text-sm">Your assignments will appear here</p>
                     </div>
-                  ))}
+                  ) : (
+                    displayAssignments.slice(0, 5).map((assignment) => {
+                      const dueDate = new Date(assignment.dueDate)
+                      const now = new Date()
+                      const isToday = dueDate.toDateString() === now.toDateString()
+                      const isTomorrow = dueDate.toDateString() === new Date(now.getTime() + 86400000).toDateString()
+                      const dueDateLabel = isToday ? 'Today' : isTomorrow ? 'Tomorrow' : dueDate.toLocaleDateString()
+                      const progress = assignment.questionCount > 0
+                        ? Math.round((assignment.completedQuestions / assignment.questionCount) * 100)
+                        : 0
+
+                      return (
+                        <div key={assignment.id} className="p-4 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <h3 className="font-semibold text-gray-900 dark:text-white">{assignment.title}</h3>
+                              <p className="text-sm text-gray-600 dark:text-slate-400">{assignment.subject}</p>
+                            </div>
+                            <div className="text-right">
+                              <Badge
+                                variant={isToday ? 'destructive' : isTomorrow ? 'default' : 'secondary'}
+                                className="mb-1"
+                              >
+                                {dueDateLabel}
+                              </Badge>
+                              <p className="text-xs text-gray-500 dark:text-slate-500">
+                                {assignment.questionCount} questions
+                              </p>
+                            </div>
+                          </div>
+                          {progress > 0 && (
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600 dark:text-slate-400">Progress</span>
+                                <span className="text-gray-900 dark:text-white">{progress}%</span>
+                              </div>
+                              <Progress value={progress} className="h-2" />
+                            </div>
+                          )}
+                          <div className="flex justify-between items-center mt-3">
+                            <Badge
+                              variant={assignment.status === 'pending' ? 'outline' : assignment.status === 'completed' ? 'default' : 'secondary'}
+                              className="text-xs"
+                            >
+                              {assignment.status === 'pending' ? 'Not Started' : assignment.status === 'completed' ? 'Completed' : 'In Progress'}
+                            </Badge>
+                            <Button size="sm" variant="outline" onClick={() => startAssignment(assignment.id)}>
+                              {assignment.status === 'pending' ? 'Start' : assignment.status === 'completed' ? 'Review' : 'Continue'}
+                            </Button>
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -365,26 +408,45 @@ export default function StudentDashboard({ onBack }: StudentDashboardProps) {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {[
-                    { subject: "Mathematics", progress: 85, grade: "A-", color: "bg-blue-500" },
-                    { subject: "Physics", progress: 78, grade: "B+", color: "bg-green-500" },
-                    { subject: "Chemistry", progress: 92, grade: "A", color: "bg-purple-500" },
-                    { subject: "History", progress: 73, grade: "B", color: "bg-orange-500" }
-                  ].map((subject, index) => (
-                    <div key={index} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-3 h-3 rounded-full ${subject.color}`}></div>
-                          <span className="font-medium text-gray-900 dark:text-white">{subject.subject}</span>
+                  {analyticsLoading ? (
+                    // Loading skeleton
+                    Array.from({ length: 3 }).map((_, index) => (
+                      <div key={index} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Skeleton className="h-5 w-24" />
+                          <Skeleton className="h-5 w-16" />
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Badge variant="outline" className="text-xs">{subject.grade}</Badge>
-                          <span className="text-sm text-gray-600 dark:text-slate-400">{subject.progress}%</span>
-                        </div>
+                        <Skeleton className="h-2 w-full" />
                       </div>
-                      <Progress value={subject.progress} className="h-2" />
+                    ))
+                  ) : !progressAnalytics?.subject_performance?.length ? (
+                    <div className="text-center py-6 text-gray-500 dark:text-slate-400">
+                      <Target className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No subject data yet</p>
                     </div>
-                  ))}
+                  ) : (
+                    progressAnalytics.subject_performance.map((subject, index) => {
+                      const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-pink-500']
+                      const color = colors[index % colors.length]
+                      const grade = subject.score >= 90 ? 'A' : subject.score >= 85 ? 'A-' : subject.score >= 80 ? 'B+' : subject.score >= 75 ? 'B' : 'C'
+
+                      return (
+                        <div key={index} className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className={`w-3 h-3 rounded-full ${color}`}></div>
+                              <span className="font-medium text-gray-900 dark:text-white">{subject.subject}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Badge variant="outline" className="text-xs">{grade}</Badge>
+                              <span className="text-sm text-gray-600 dark:text-slate-400">{subject.score}%</span>
+                            </div>
+                          </div>
+                          <Progress value={subject.score} className="h-2" />
+                        </div>
+                      )
+                    })
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -401,47 +463,10 @@ export default function StudentDashboard({ onBack }: StudentDashboardProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {[
-                    {
-                      title: "Perfect Score",
-                      description: "Scored 100% in Math Quiz",
-                      icon: Trophy,
-                      color: "text-yellow-500",
-                      bgColor: "bg-yellow-100 dark:bg-yellow-900/20",
-                      time: "2 days ago"
-                    },
-                    {
-                      title: "Study Streak",
-                      description: "10 days in a row",
-                      icon: Flame,
-                      color: "text-orange-500",
-                      bgColor: "bg-orange-100 dark:bg-orange-900/20",
-                      time: "Today"
-                    },
-                    {
-                      title: "Quick Learner",
-                      description: "Completed 5 assignments",
-                      icon: Star,
-                      color: "text-purple-500",
-                      bgColor: "bg-purple-100 dark:bg-purple-900/20",
-                      time: "1 week ago"
-                    }
-                  ].map((achievement, index) => {
-                    const Icon = achievement.icon
-                    return (
-                      <div key={index} className={`flex items-center space-x-3 p-3 ${achievement.bgColor} rounded-lg hover:shadow-md transition-all duration-200`}>
-                        <div className={`p-2 rounded-full bg-white dark:bg-slate-700 ${achievement.color} shadow-sm`}>
-                          <Icon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 dark:text-white text-sm">{achievement.title}</p>
-                          <p className="text-xs text-gray-600 dark:text-slate-400 truncate">{achievement.description}</p>
-                          <p className="text-xs text-gray-500 dark:text-slate-500 mt-1">{achievement.time}</p>
-                        </div>
-                      </div>
-                    )
-                  })}
+                <div className="text-center py-6 text-gray-500 dark:text-slate-400">
+                  <Trophy className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No achievements yet</p>
+                  <p className="text-xs mt-1">Complete assignments to earn achievements!</p>
                 </div>
               </CardContent>
             </Card>
@@ -455,27 +480,52 @@ export default function StudentDashboard({ onBack }: StudentDashboardProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {[
-                    { assignment: "Algebra Test", grade: "A", score: 95, subject: "Math", color: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400" },
-                    { assignment: "Lab Report", grade: "B+", score: 87, subject: "Physics", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400" },
-                    { assignment: "Essay", grade: "A-", score: 91, subject: "English", color: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400" },
-                    { assignment: "Quiz", grade: "B", score: 83, subject: "History", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400" }
-                  ].map((grade, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-lg hover:shadow-md transition-all duration-200">
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900 dark:text-white text-sm">{grade.assignment}</p>
-                        <p className="text-xs text-gray-600 dark:text-slate-400">{grade.subject}</p>
+                {analyticsLoading ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-lg">
+                        <div className="space-y-1">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-3 w-16" />
+                        </div>
+                        <Skeleton className="h-6 w-10" />
                       </div>
-                      <div className="text-right">
-                        <Badge className={`mb-1 border-0 ${grade.color}`}>
-                          {grade.grade}
-                        </Badge>
-                        <p className="text-xs text-gray-500 dark:text-slate-500 font-medium">{grade.score}%</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : !progressAnalytics?.recent_submissions?.length ? (
+                  <div className="text-center py-6 text-gray-500 dark:text-slate-400">
+                    <Target className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No grades yet</p>
+                    <p className="text-xs mt-1">Complete assignments to see your grades</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {progressAnalytics.recent_submissions.slice(0, 4).map((submission: any, index: number) => {
+                      const score = submission.score || 0
+                      const grade = score >= 90 ? 'A' : score >= 85 ? 'A-' : score >= 80 ? 'B+' : score >= 75 ? 'B' : score >= 70 ? 'B-' : 'C'
+                      const colorClass = score >= 85
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                        : score >= 75
+                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+
+                      return (
+                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-lg hover:shadow-md transition-all duration-200">
+                          <div className="flex-1">
+                            <p className="font-semibold text-gray-900 dark:text-white text-sm">{submission.assignment_title || 'Assignment'}</p>
+                            <p className="text-xs text-gray-600 dark:text-slate-400">{submission.subject || 'Subject'}</p>
+                          </div>
+                          <div className="text-right">
+                            <Badge className={`mb-1 border-0 ${colorClass}`}>
+                              {grade}
+                            </Badge>
+                            <p className="text-xs text-gray-500 dark:text-slate-500 font-medium">{score}%</p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
 

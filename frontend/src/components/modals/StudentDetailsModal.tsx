@@ -154,7 +154,7 @@ export function StudentDetailsModal({
 
       // Fetch groups from API
       try {
-        const groupsRes = await client.get(`/groups?member_id=${studentId}`)
+        const groupsRes = await client.get(`/groups/?member_id=${studentId}`)
         if (!groupsRes.error && groupsRes.data) {
           const groupItems = groupsRes.data?.items || groupsRes.data || []
           setGroups(groupItems.map((item: any) => ({

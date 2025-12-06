@@ -89,7 +89,7 @@ async def generate_questions_stream(
         # Create session for persistence
         session = await session_service.create_session(
             user_id=current_user.clerk_id,
-            tenant_id=current_user.tenant_id,
+            tenant_id=current_user.tutor_id,  # tutor_id is used for tenant isolation
             prompt=request.prompt,
             config=config.model_dump() if hasattr(config, 'model_dump') else dict(config),
             material_ids=request.material_ids
@@ -120,7 +120,7 @@ async def generate_questions_stream(
                     prompt=request.prompt,
                     config=config,
                     user_id=current_user.clerk_id,
-                    tenant_id=current_user.tenant_id,
+                    tenant_id=current_user.tutor_id,  # tutor_id is used for tenant isolation
                     material_ids=request.material_ids,
                     sse_handler=sse_handler
                 )
@@ -212,7 +212,7 @@ async def generate_questions(
             prompt=request.prompt,
             config=config,
             user_id=current_user.clerk_id,
-            tenant_id=current_user.tenant_id,
+            tenant_id=current_user.tutor_id,  # tutor_id is used for tenant isolation
             material_ids=request.material_ids,
         )
         
@@ -306,7 +306,7 @@ async def list_sessions(
 
     sessions, total = await session_service.list_sessions(
         user_id=current_user.clerk_id,
-        tenant_id=current_user.tenant_id,
+        tenant_id=current_user.tutor_id,  # tutor_id is used for tenant isolation
         status=status_enum,
         page=page,
         per_page=per_page
@@ -361,3 +361,23 @@ async def reject_question(
 
     return {"message": "Question rejected", "question_id": question_id}
 
+
+@router.get("/stats")
+async def get_generation_stats(
+    current_user: ClerkUserContext = Depends(require_tutor),
+    session_service: GenerationSessionService = Depends(get_session_service)
+):
+    """
+    Get generation statistics for the current user.
+
+    Returns:
+    - total_generated: Total questions generated all time
+    - this_month: Questions generated this month
+    - success_rate: Percentage of successful generations
+    - avg_quality: Average quality score (based on approval rate)
+    """
+    stats = await session_service.get_stats(
+        user_id=current_user.clerk_id,
+        tenant_id=current_user.tutor_id  # tutor_id is used for tenant isolation
+    )
+    return stats

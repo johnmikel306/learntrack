@@ -24,6 +24,7 @@ logger = structlog.get_logger()
 app = FastAPI(
     title="LearnTrack API",
     version="1.0.0",
+    redirect_slashes=False,  # Disable automatic redirects to avoid auth issues with CORS
     description="""
     ## LearnTrack - Smart Assignment & Progress Monitoring API
 

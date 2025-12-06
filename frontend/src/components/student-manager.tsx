@@ -88,7 +88,7 @@ export default function StudentManager() {
     email: student.email,
     avatar: student.avatar_url || undefined,
     lastActive: formatLastActive(student.updated_at),
-    progress: student.student_profile?.averageScore || Math.floor(Math.random() * 100),
+    progress: student.student_profile?.averageScore ?? 0,
     parentName: student.parent_name || null
   })) || []
 

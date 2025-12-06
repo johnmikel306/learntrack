@@ -61,8 +61,36 @@ export function DeadlineCalendar() {
       </CardHeader>
       <CardContent className="space-y-4">
         {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="space-y-4">
+            {/* Calendar skeleton */}
+            <div className="rounded-md border border-border p-4 animate-pulse">
+              {/* Month/Year header skeleton */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-5 w-5 bg-muted rounded"></div>
+                <div className="h-5 w-32 bg-muted rounded"></div>
+                <div className="h-5 w-5 bg-muted rounded"></div>
+              </div>
+              {/* Days of week header skeleton */}
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {Array.from({ length: 7 }).map((_, i) => (
+                  <div key={i} className="h-4 bg-muted rounded mx-auto w-6"></div>
+                ))}
+              </div>
+              {/* Calendar grid skeleton */}
+              <div className="grid grid-cols-7 gap-1">
+                {Array.from({ length: 35 }).map((_, i) => (
+                  <div key={i} className="aspect-square bg-muted rounded-full mx-auto w-8"></div>
+                ))}
+              </div>
+            </div>
+            {/* Date details skeleton */}
+            <div className="space-y-2">
+              <div className="h-4 w-48 bg-muted rounded animate-pulse"></div>
+              <div className="p-3 bg-muted/50 rounded-md border border-border animate-pulse">
+                <div className="h-4 w-3/4 bg-muted rounded mb-2"></div>
+                <div className="h-3 w-1/2 bg-muted rounded"></div>
+              </div>
+            </div>
           </div>
         ) : (
           <>

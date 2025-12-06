@@ -12,6 +12,7 @@ import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { useApiClient } from "@/lib/api-client"
 import { toast } from "@/contexts/ToastContext"
+import { useSubjects } from "@/hooks/useQueries"
 
 interface DocumentLibraryItem {
   id: string; filename: string; file_type: string; file_size: number
@@ -52,6 +53,9 @@ export default function RAGQuestionGenerator() {
   const [availableProviders, setAvailableProviders] = useState<string[]>([])
   const [availableModels, setAvailableModels] = useState<Record<string, string>>({})
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(false)
+
+  // Fetch subjects from API
+  const { data: subjectsData } = useSubjects()
 
   useEffect(() => { loadInitialData() }, [])
   useEffect(() => { if (aiProvider) loadModels(aiProvider) }, [aiProvider])
@@ -175,8 +179,15 @@ export default function RAGQuestionGenerator() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2"><Label>Subject</Label>
                     <Select value={subject} onValueChange={setSubject}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                      <SelectContent><SelectItem value="mathematics">Mathematics</SelectItem><SelectItem value="physics">Physics</SelectItem>
-                        <SelectItem value="chemistry">Chemistry</SelectItem><SelectItem value="english">English</SelectItem></SelectContent></Select></div>
+                      <SelectContent>
+                        {subjectsData && Array.isArray(subjectsData) && subjectsData.length > 0 ? (
+                          subjectsData.map((s: any) => (
+                            <SelectItem key={s.id || s._id} value={s.name.toLowerCase()}>{s.name}</SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="" disabled>No subjects available</SelectItem>
+                        )}
+                      </SelectContent></Select></div>
                   <div className="space-y-2"><Label>Topic</Label><Input placeholder="e.g., Algebra" value={topic} onChange={(e) => setTopic(e.target.value)} /></div>
                 </div>
                 <div className="space-y-2"><Label>Questions: {questionCount[0]}</Label><Slider value={questionCount} onValueChange={setQuestionCount} max={50} min={1} step={1} /></div>

@@ -552,11 +552,7 @@ export default function ActiveAssignmentsView() {
         open={editModalOpen}
         onOpenChange={setEditModalOpen}
         assignment={selectedAssignment}
-        onAssignmentUpdated={() => {
-          toast.success('Assignment updated successfully')
-          // Refresh assignments list
-          setAssignments([])
-        }}
+        onAssignmentUpdated={fetchAssignments}
       />
     </div>
   )

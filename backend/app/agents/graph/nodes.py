@@ -192,12 +192,24 @@ class QuestionGeneratorNode(BaseNode):
 ## Generation Request
 {request}
 
-Generate {total} questions now. Output each question as a JSON object.
+Generate exactly {total} questions now. Output ALL {total} questions as a JSON array.
+IMPORTANT: Your response must contain exactly {total} question objects in a single JSON array.
+
+Example format:
+```json
+[
+  {{"question_id": "q1", "type": "MCQ", ...}},
+  {{"question_id": "q2", "type": "MCQ", ...}},
+  {{"question_id": "q3", "type": "MCQ", ...}}
+]
+```
 """)
             ]
 
             response = await self.llm.ainvoke(messages)
+            logger.debug("LLM response for question generation", response_length=len(response.content))
             questions = self._parse_questions(response.content, state)
+            logger.info("Parsed questions", count=len(questions), expected=total)
 
             state["questions"] = questions
             state["current_question_index"] = len(questions)

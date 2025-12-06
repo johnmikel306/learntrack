@@ -49,7 +49,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
-import { useGenerationHistory, useMaterials } from "@/hooks/useQueries"
+import { useGenerationHistory, useMaterials, useGenerationStats } from "@/hooks/useQueries"
 import { useAuth } from '@clerk/clerk-react'
 import { toast } from '@/contexts/ToastContext'
 import { cn } from "@/lib/utils"
@@ -137,6 +137,8 @@ interface Material {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
+import { useSubjects } from "@/hooks/useQueries"
+
 export default function QuestionGenerator() {
   const { getToken } = useAuth()
   const [activeTab, setActiveTab] = useState("generate")
@@ -161,6 +163,9 @@ export default function QuestionGenerator() {
   // Tools popover state
   const [isToolsOpen, setIsToolsOpen] = useState(false)
 
+  // Fetch subjects from API
+  const { data: subjectsData } = useSubjects()
+
   // Auto-resize textarea hook (V0-style)
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 60,
@@ -169,6 +174,9 @@ export default function QuestionGenerator() {
 
   // Fetch materials
   const { data: materialsData, isLoading: materialsLoading } = useMaterials()
+
+  // Fetch generation stats from API
+  const { data: generationStats, isLoading: statsLoading } = useGenerationStats()
 
   // Fetch generation history from API
   const { data: historyData, isLoading: historyLoading, isError: historyError } = useGenerationHistory()
@@ -358,7 +366,13 @@ export default function QuestionGenerator() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-muted-foreground text-sm font-medium">Total Generated</p>
-                <p className="text-2xl font-bold text-foreground">1,247</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {statsLoading ? (
+                    <Skeleton className="h-8 w-16" />
+                  ) : (
+                    generationStats?.total_generated?.toLocaleString() || '0'
+                  )}
+                </p>
               </div>
               <div className="p-2 bg-primary/10 rounded-lg">
                 <Brain className="w-5 h-5 text-primary" />
@@ -372,7 +386,13 @@ export default function QuestionGenerator() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-muted-foreground text-sm font-medium">This Month</p>
-                <p className="text-2xl font-bold text-foreground">156</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {statsLoading ? (
+                    <Skeleton className="h-8 w-12" />
+                  ) : (
+                    generationStats?.this_month?.toLocaleString() || '0'
+                  )}
+                </p>
               </div>
               <div className="p-2 bg-info/10 rounded-lg">
                 <Zap className="w-5 h-5 text-info" />
@@ -386,7 +406,13 @@ export default function QuestionGenerator() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-muted-foreground text-sm font-medium">Success Rate</p>
-                <p className="text-2xl font-bold text-foreground">94%</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {statsLoading ? (
+                    <Skeleton className="h-8 w-12" />
+                  ) : (
+                    `${generationStats?.success_rate || 0}%`
+                  )}
+                </p>
               </div>
               <div className="p-2 bg-success/10 rounded-lg">
                 <Target className="w-5 h-5 text-success" />
@@ -400,7 +426,13 @@ export default function QuestionGenerator() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-muted-foreground text-sm font-medium">Avg. Quality</p>
-                <p className="text-2xl font-bold text-foreground">4.8/5</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {statsLoading ? (
+                    <Skeleton className="h-8 w-14" />
+                  ) : (
+                    `${generationStats?.avg_quality || 0}/5`
+                  )}
+                </p>
               </div>
               <div className="p-2 bg-warning/10 rounded-lg">
                 <CheckCircle className="w-5 h-5 text-warning" />
@@ -686,11 +718,15 @@ export default function QuestionGenerator() {
                             <SelectValue placeholder="Select subject" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="mathematics">Mathematics</SelectItem>
-                            <SelectItem value="physics">Physics</SelectItem>
-                            <SelectItem value="chemistry">Chemistry</SelectItem>
-                            <SelectItem value="english">English</SelectItem>
-                            <SelectItem value="history">History</SelectItem>
+                            {subjectsData && Array.isArray(subjectsData) && subjectsData.length > 0 ? (
+                              subjectsData.map((s: any) => (
+                                <SelectItem key={s.id || s._id} value={s.name.toLowerCase()}>
+                                  {s.name}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="" disabled>No subjects available</SelectItem>
+                            )}
                           </SelectContent>
                         </Select>
                       </div>

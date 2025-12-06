@@ -48,7 +48,21 @@ export class ApiClient {
 
       // Avoid accidental double prefixing if callers pass '/api/v1/...'
       const sanitized = endpoint.replace(/^\/api\/v\d+/, '')
-      const path = sanitized.startsWith('/') ? sanitized : `/${sanitized}`
+      let path = sanitized.startsWith('/') ? sanitized : `/${sanitized}`
+
+      // Ensure trailing slash for root collection endpoints (FastAPI routes with redirect_slashes=False)
+      // Only add trailing slash for top-level collection endpoints like /students, /groups, /invitations
+      // Do NOT add trailing slash for nested paths like /dashboard/stats, /students/123, etc.
+      const pathWithoutQuery = path.split('?')[0]
+      const queryPart = path.includes('?') ? path.slice(path.indexOf('?')) : ''
+
+      // Root collection patterns that need trailing slashes (single segment after /api/v1/)
+      // These are paths like /students, /groups, /invitations, /assignments, /subjects, etc.
+      const rootCollectionPattern = /^\/[a-z-]+$/
+      if (!pathWithoutQuery.endsWith('/') && rootCollectionPattern.test(pathWithoutQuery)) {
+        path = pathWithoutQuery + '/' + queryPart
+      }
+
       const response = await fetch(`${API_ROOT}${path}`, {
         ...options,
         headers,
@@ -126,26 +140,33 @@ export function useApiClient() {
 // Utility functions for common API operations
 export const apiUtils = {
   // Students
-  getStudents: (client: ApiClient) => client.get('/students'),
+  getStudents: (client: ApiClient) => client.get('/students/'),
   getStudent: (client: ApiClient, id: string) => client.get(`/students/${id}`),
-  createStudent: (client: ApiClient, data: any) => client.post('/students', data),
+  createStudent: (client: ApiClient, data: any) => client.post('/students/', data),
   updateStudent: (client: ApiClient, id: string, data: any) => client.put(`/students/${id}`, data),
   deleteStudent: (client: ApiClient, id: string) => client.delete(`/students/${id}`),
 
+  // Groups
+  getGroups: (client: ApiClient) => client.get('/groups/'),
+  getGroup: (client: ApiClient, id: string) => client.get(`/groups/${id}`),
+  createGroup: (client: ApiClient, data: any) => client.post('/groups/', data),
+  updateGroup: (client: ApiClient, id: string, data: any) => client.put(`/groups/${id}`, data),
+  deleteGroup: (client: ApiClient, id: string) => client.delete(`/groups/${id}`),
+
   // Assignments
-  getAssignments: (client: ApiClient) => client.get('/assignments'),
+  getAssignments: (client: ApiClient) => client.get('/assignments/'),
   getAssignment: (client: ApiClient, id: string) => client.get(`/assignments/${id}`),
-  createAssignment: (client: ApiClient, data: any) => client.post('/assignments', data),
+  createAssignment: (client: ApiClient, data: any) => client.post('/assignments/', data),
   updateAssignment: (client: ApiClient, id: string, data: any) => client.put(`/assignments/${id}`, data),
   deleteAssignment: (client: ApiClient, id: string) => client.delete(`/assignments/${id}`),
 
   // Questions
-  getQuestions: (client: ApiClient) => client.get('/questions'),
+  getQuestions: (client: ApiClient) => client.get('/questions/'),
   generateQuestions: (client: ApiClient, data: any) => client.post('/questions/generate', data),
   reviewQuestions: (client: ApiClient, data: any) => client.post('/questions/review', data),
 
   // Progress
-  getProgress: (client: ApiClient) => client.get('/progress'),
+  getProgress: (client: ApiClient) => client.get('/progress/'),
   getStudentProgress: (client: ApiClient, studentId: string) => client.get(`/progress/student/${studentId}`),
 
   // User Profile

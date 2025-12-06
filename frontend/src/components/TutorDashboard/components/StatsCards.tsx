@@ -3,7 +3,12 @@ import { Users, FileText, BarChart3, TrendingUp } from "lucide-react"
 import { LucideIcon } from "lucide-react"
 
 interface StatsCardsProps {
-  dashboardStats: any
+  dashboardStats: {
+    total_students?: number
+    active_assignments?: number
+    avg_performance?: number
+    engagement_rate?: number
+  } | null | undefined
   loading: boolean
 }
 
@@ -13,37 +18,53 @@ interface StatCard {
   subtitle: string
   subtitleColor: string
   icon: LucideIcon
+  hasData: boolean
 }
 
 export function StatsCards({ dashboardStats, loading }: StatsCardsProps) {
+  // Check if we have actual data (not just default/empty values)
+  const hasData = dashboardStats !== null && dashboardStats !== undefined
+
   const stats: StatCard[] = [
     {
       title: "Total Students",
-      value: dashboardStats?.total_students?.toString() || "48",
-      subtitle: "+2% this month",
-      subtitleColor: "text-green-600",
-      icon: Users
+      value: hasData && dashboardStats.total_students !== undefined
+        ? dashboardStats.total_students.toString()
+        : "--",
+      subtitle: hasData ? "Active students" : "No data",
+      subtitleColor: hasData ? "text-muted-foreground" : "text-muted-foreground/50",
+      icon: Users,
+      hasData: hasData && dashboardStats.total_students !== undefined
     },
     {
       title: "Active Assignments",
-      value: dashboardStats?.active_assignments?.toString() || "12",
-      subtitle: "-5% this month",
-      subtitleColor: "text-red-600",
-      icon: FileText
+      value: hasData && dashboardStats.active_assignments !== undefined
+        ? dashboardStats.active_assignments.toString()
+        : "--",
+      subtitle: hasData ? "Currently active" : "No data",
+      subtitleColor: hasData ? "text-muted-foreground" : "text-muted-foreground/50",
+      icon: FileText,
+      hasData: hasData && dashboardStats.active_assignments !== undefined
     },
     {
       title: "Average Performance",
-      value: `${dashboardStats?.avg_performance || 85}%`,
-      subtitle: "+1.5% this month",
-      subtitleColor: "text-green-600",
-      icon: BarChart3
+      value: hasData && dashboardStats.avg_performance !== undefined
+        ? `${dashboardStats.avg_performance}%`
+        : "--%",
+      subtitle: hasData ? "Class average" : "No data",
+      subtitleColor: hasData ? "text-muted-foreground" : "text-muted-foreground/50",
+      icon: BarChart3,
+      hasData: hasData && dashboardStats.avg_performance !== undefined
     },
     {
       title: "Engagement Rate",
-      value: `${dashboardStats?.engagement_rate || 92}%`,
-      subtitle: "+3% this month",
-      subtitleColor: "text-green-600",
-      icon: TrendingUp
+      value: hasData && dashboardStats.engagement_rate !== undefined
+        ? `${dashboardStats.engagement_rate}%`
+        : "--%",
+      subtitle: hasData ? "Last 7 days" : "No data",
+      subtitleColor: hasData ? "text-muted-foreground" : "text-muted-foreground/50",
+      icon: TrendingUp,
+      hasData: hasData && dashboardStats.engagement_rate !== undefined
     }
   ]
 

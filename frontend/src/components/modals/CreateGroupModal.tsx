@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Users } from 'lucide-react'
 import { toast } from '@/contexts/ToastContext'
+import { useApiClient } from '@/lib/api-client'
 
 interface CreateGroupModalProps {
   open: boolean
@@ -27,16 +28,21 @@ export function CreateGroupModal({
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [loading, setLoading] = useState(false)
+  const client = useApiClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!name.trim()) return
 
     try {
       setLoading(true)
-      // TODO: Implement API call to create group
-      console.log('Creating group:', { name, description })
+
+      const response = await client.post('/groups/', { name, description })
+
+      if (response.error) {
+        throw new Error(response.error)
+      }
 
       toast.success('Group created successfully!', {
         description: `${name} has been added to your groups.`
@@ -47,10 +53,10 @@ export function CreateGroupModal({
       setDescription('')
       onOpenChange(false)
       onGroupCreated?.()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create group:', error)
       toast.error('Failed to create group', {
-        description: 'Please try again or contact support if the issue persists.'
+        description: error.message || 'Please try again or contact support if the issue persists.'
       })
     } finally {
       setLoading(false)

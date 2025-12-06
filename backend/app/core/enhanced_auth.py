@@ -117,7 +117,8 @@ class EnhancedClerkJWTBearer:
                             key,
                             algorithms=["RS256"],
                             issuer=self.issuer,
-                            options={"verify_exp": True, "verify_aud": False}
+                            options={"verify_exp": True, "verify_aud": False},
+                            leeway=60  # Allow 60 seconds clock skew tolerance
                         )
                         return await self._extract_user_context(payload)
                     else:

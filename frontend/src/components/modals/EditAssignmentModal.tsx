@@ -12,12 +12,14 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Edit } from 'lucide-react'
+import { toast } from '@/contexts/ToastContext'
+import { useApiClient } from '@/lib/api-client'
 
 interface Assignment {
   _id: string
   title: string
   description?: string
-  due_date: string
+  due_date?: string
   duration_minutes?: number
   passing_score: number
   settings: {
@@ -48,42 +50,58 @@ export function EditAssignmentModal({
   const [allowRetakes, setAllowRetakes] = useState(false)
   const [shuffleQuestions, setShuffleQuestions] = useState(false)
   const [loading, setLoading] = useState(false)
+  const client = useApiClient()
 
   useEffect(() => {
     if (assignment) {
       setTitle(assignment.title)
       setDescription(assignment.description || '')
-      setDueDate(assignment.due_date.split('T')[0]) // Format for date input
+      setDueDate(assignment.due_date?.split('T')[0] || '') // Format for date input
       setDuration(assignment.duration_minutes?.toString() || '')
       setPassingScore(assignment.passing_score.toString())
-      setAllowRetakes(assignment.settings.allow_retakes)
-      setShuffleQuestions(assignment.settings.shuffle_questions)
+      setAllowRetakes(assignment.settings?.allow_retakes || false)
+      setShuffleQuestions(assignment.settings?.shuffle_questions || false)
     }
   }, [assignment])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!title.trim() || !assignment) return
 
     try {
       setLoading(true)
-      // TODO: Implement API call to update assignment
-      console.log('Updating assignment:', {
-        id: assignment._id,
+
+      const updateData = {
         title,
-        description,
-        dueDate,
-        duration,
-        passingScore,
-        allowRetakes,
-        shuffleQuestions
+        description: description || undefined,
+        due_date: dueDate ? new Date(dueDate).toISOString() : undefined,
+        duration_minutes: duration ? parseInt(duration) : undefined,
+        passing_score: parseInt(passingScore) || 70,
+        settings: {
+          allow_retakes: allowRetakes,
+          shuffle_questions: shuffleQuestions,
+          show_correct_answers: assignment.settings?.show_correct_answers ?? true
+        }
+      }
+
+      const response = await client.put(`/assignments/${assignment._id}`, updateData)
+
+      if (response.error) {
+        throw new Error(response.error)
+      }
+
+      toast.success('Assignment updated successfully!', {
+        description: `Changes to "${title}" have been saved.`
       })
-      
+
       onOpenChange(false)
       onAssignmentUpdated?.()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update assignment:', error)
+      toast.error('Failed to update assignment', {
+        description: error.message || 'Please try again.'
+      })
     } finally {
       setLoading(false)
     }

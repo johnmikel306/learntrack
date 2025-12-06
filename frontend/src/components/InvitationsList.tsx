@@ -64,9 +64,9 @@ export default function InvitationsList({ refreshTrigger, onInviteClick }: Invit
       const token = await getToken()
       const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
-      const url = filter === 'all' 
-        ? `${API_BASE}/invitations`
-        : `${API_BASE}/invitations?status_filter=${filter}`
+      const url = filter === 'all'
+        ? `${API_BASE}/invitations/`
+        : `${API_BASE}/invitations/?status_filter=${filter}`
 
       const response = await fetch(url, {
         headers: {

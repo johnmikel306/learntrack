@@ -42,7 +42,7 @@ export default function GroupsManagementView() {
       const token = await getToken()
       const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
-      const response = await fetch(`${API_BASE}/groups`, {
+      const response = await fetch(`${API_BASE}/groups/`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -227,26 +227,21 @@ export default function GroupsManagementView() {
       <CreateGroupModal
         open={showCreateModal}
         onOpenChange={setShowCreateModal}
-        onGroupCreated={() => {
-          toast.success('Group created successfully')
-          loadGroups()
-        }}
+        onGroupCreated={loadGroups}
       />
 
       <EditGroupModal
         open={showEditModal}
         onOpenChange={setShowEditModal}
         group={selectedGroup}
-        onGroupUpdated={() => {
-          toast.success('Group updated successfully')
-          loadGroups()
-        }}
+        onGroupUpdated={loadGroups}
       />
 
       <ViewGroupDetailsModal
         open={showViewModal}
         onOpenChange={setShowViewModal}
         group={selectedGroup}
+        onGroupUpdated={loadGroups}
       />
 
       <ConfirmDeleteModal
