@@ -13,7 +13,7 @@ import structlog
 
 from app.core.dependencies import get_rag_service, get_database
 from app.core.enhanced_auth import require_tutor, ClerkUserContext
-from app.agents.graph.state import GenerationConfig, QuestionType, Difficulty, GenerationSession
+from app.agents.graph.state import GenerationConfig, QuestionType, Difficulty, BloomsLevel, GenerationSession
 from app.agents.graph.question_generator_graph import QuestionGeneratorAgent
 from app.agents.streaming.sse_handler import SSEHandler
 from app.services.ai.ai_manager import AIManager
@@ -41,6 +41,7 @@ class GenerateRequest(BaseModel):
     topic: Optional[str] = Field(default=None, description="Specific topic")
     ai_provider: Optional[str] = Field(default=None, description="AI provider to use")
     model_name: Optional[str] = Field(default=None, description="Specific model to use")
+    blooms_levels: Optional[List[str]] = Field(default=None, description="Bloom's taxonomy levels to target (REMEMBER, UNDERSTAND, APPLY, ANALYZE, EVALUATE, CREATE)")
 
 
 class EditQuestionRequest(BaseModel):
@@ -78,11 +79,16 @@ async def generate_questions(
     - done - Stream complete with final session data
     """
     try:
-        # Build config
+        # Build config with blooms_levels
+        blooms = "AUTO"
+        if request.blooms_levels and len(request.blooms_levels) > 0:
+            blooms = [BloomsLevel(level) for level in request.blooms_levels]
+
         config = GenerationConfig(
             question_count=request.question_count,
             question_types=[QuestionType(t) for t in request.question_types],
             difficulty=Difficulty(request.difficulty),
+            blooms_levels=blooms,
             subject=request.subject,
             topic=request.topic,
             grade_level=request.grade_level,
@@ -114,11 +120,68 @@ async def generate_questions(
         # Create agent
         agent = QuestionGeneratorAgent(llm=llm, rag_service=rag_service)
 
-        # Create SSE handler with session ID
-        sse_handler = SSEHandler(session.session_id)
+        # Track saved questions count
+        saved_questions_count = 0
+
+        # Helper to extract enum value if needed
+        def get_enum_value(val, default: str) -> str:
+            """Extract string value from enum or return as-is"""
+            if val is None:
+                return default
+            if hasattr(val, 'value'):
+                return val.value
+            return str(val)
+
+        # Callback to save questions as they're generated
+        async def save_question_callback(question_data: dict) -> bool:
+            """Save a question to the database when it's generated"""
+            nonlocal saved_questions_count
+            try:
+                # Handle both enum objects and string values
+                q_type = get_enum_value(question_data.get("type"), "MCQ")
+                q_difficulty = get_enum_value(question_data.get("difficulty"), "MEDIUM")
+                q_blooms = get_enum_value(question_data.get("blooms_level"), "UNDERSTAND")
+
+                stored_q = StoredQuestion(
+                    question_id=question_data.get("question_id", f"q{saved_questions_count + 1}"),
+                    type=q_type,
+                    difficulty=q_difficulty,
+                    blooms_level=q_blooms,
+                    question_text=question_data.get("question_text", ""),
+                    options=question_data.get("options"),
+                    correct_answer=question_data.get("correct_answer", ""),
+                    explanation=question_data.get("explanation", ""),
+                    source_citations=question_data.get("source_citations", []),
+                    tags=question_data.get("tags", []),
+                    quality_score=question_data.get("quality_score", 0.85)
+                )
+                result = await session_service.add_question(
+                    session.session_id,
+                    current_user.clerk_id,
+                    stored_q
+                )
+                if result:
+                    saved_questions_count += 1
+                    logger.info(
+                        "Question saved to database",
+                        session_id=session.session_id,
+                        question_id=stored_q.question_id,
+                        total_saved=saved_questions_count
+                    )
+                return result
+            except Exception as e:
+                logger.error("Failed to save question", error=str(e), question_data=question_data)
+                return False
+
+        # Create SSE handler with session ID and save callback
+        sse_handler = SSEHandler(
+            session_id=session.session_id,
+            on_question_complete=save_question_callback
+        )
 
         async def run_generation():
             """Background task to run generation"""
+            nonlocal saved_questions_count
             try:
                 # Update session status
                 await session_service.update_session(
@@ -136,46 +199,18 @@ async def generate_questions(
                     sse_handler=sse_handler
                 )
 
-                # Save questions to session
-                questions_count = 0
-                if result and result.questions:
-                    for q in result.questions:
-                        stored_q = StoredQuestion(
-                            question_id=q.question_id,
-                            type=q.type.value,
-                            difficulty=q.difficulty.value,
-                            blooms_level=q.blooms_level.value,
-                            question_text=q.question_text,
-                            options=q.options,
-                            correct_answer=q.correct_answer,
-                            explanation=q.explanation,
-                            source_citations=[c.model_dump() for c in q.source_citations],
-                            tags=q.tags,
-                            quality_score=q.quality_score
-                        )
-                        await session_service.add_question(
-                            session.session_id,
-                            current_user.clerk_id,
-                            stored_q
-                        )
-                        questions_count += 1
-
-                    await session_service.update_session(
-                        session.session_id,
-                        current_user.clerk_id,
-                        status=SessionStatus.COMPLETED.value
-                    )
-                else:
-                    await session_service.update_session(
-                        session.session_id,
-                        current_user.clerk_id,
-                        status=SessionStatus.COMPLETED.value
-                    )
+                # Questions are now saved via callback as they're generated
+                # Just update the session status
+                await session_service.update_session(
+                    session.session_id,
+                    current_user.clerk_id,
+                    status=SessionStatus.COMPLETED.value
+                )
 
                 # Note: send_done is already called in agent.generate()
                 # But ensure it's called if agent didn't call it
                 if not sse_handler._is_closed:
-                    await sse_handler.send_done(questions_count)
+                    await sse_handler.send_done(saved_questions_count)
 
             except Exception as e:
                 logger.error("Generation error", error=str(e))
@@ -400,6 +435,88 @@ async def list_sessions(
     }
 
 
+@router.get("/pending-questions")
+async def get_pending_questions(
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(20, ge=1, le=100, description="Items per page"),
+    current_user: ClerkUserContext = Depends(require_tutor),
+    session_service: GenerationSessionService = Depends(get_session_service)
+):
+    """
+    Get all pending questions across all sessions for the current tutor.
+    Returns questions that haven't been approved or rejected yet.
+    """
+    questions, total = await session_service.get_pending_questions(
+        user_id=current_user.clerk_id,
+        tenant_id=current_user.tutor_id,
+        page=page,
+        per_page=per_page
+    )
+
+    return {
+        "items": questions,
+        "page": page,
+        "per_page": per_page,
+        "total": total
+    }
+
+
+@router.get("/all-questions")
+async def get_all_questions(
+    status: Optional[str] = Query(None, description="Filter by status: pending, approved, rejected, edited"),
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(20, ge=1, le=100, description="Items per page"),
+    current_user: ClerkUserContext = Depends(require_tutor),
+    session_service: GenerationSessionService = Depends(get_session_service)
+):
+    """
+    Get all questions across all sessions for the current tutor.
+    Optionally filter by question status.
+    """
+    status_enum = QuestionStatus(status) if status else None
+
+    questions, total = await session_service.get_all_questions(
+        user_id=current_user.clerk_id,
+        tenant_id=current_user.tutor_id,
+        status=status_enum,
+        page=page,
+        per_page=per_page
+    )
+
+    return {
+        "items": questions,
+        "page": page,
+        "per_page": per_page,
+        "total": total
+    }
+
+
+@router.get("/sessions-with-questions")
+async def get_sessions_with_questions(
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(10, ge=1, le=50, description="Items per page"),
+    current_user: ClerkUserContext = Depends(require_tutor),
+    session_service: GenerationSessionService = Depends(get_session_service)
+):
+    """
+    Get all generation sessions with their questions and status counts.
+    Used for the Review & Approve tab to show all previous generations.
+    """
+    sessions, total = await session_service.get_sessions_with_questions(
+        user_id=current_user.clerk_id,
+        tenant_id=current_user.tutor_id,
+        page=page,
+        per_page=per_page
+    )
+
+    return {
+        "items": sessions,
+        "page": page,
+        "per_page": per_page,
+        "total": total
+    }
+
+
 @router.post("/sessions/{session_id}/questions/{question_id}/approve")
 async def approve_question(
     session_id: str,
@@ -440,6 +557,68 @@ async def reject_question(
         raise HTTPException(status_code=404, detail="Question not found")
 
     return {"message": "Question rejected", "question_id": question_id}
+
+
+class UpdateQuestionRequest(BaseModel):
+    """Request body for updating a question"""
+    question_text: Optional[str] = None
+    options: Optional[List[str]] = None
+    correct_answer: Optional[str] = None
+    explanation: Optional[str] = None
+
+
+@router.put("/sessions/{session_id}/questions/{question_id}")
+async def update_question(
+    session_id: str,
+    question_id: str,
+    request: UpdateQuestionRequest,
+    current_user: ClerkUserContext = Depends(require_tutor),
+    session_service: GenerationSessionService = Depends(get_session_service)
+):
+    """Manually update a question's content"""
+    # Build update data from non-None fields
+    update_data = {}
+    if request.question_text is not None:
+        update_data["question_text"] = request.question_text
+    if request.options is not None:
+        update_data["options"] = request.options
+    if request.correct_answer is not None:
+        update_data["correct_answer"] = request.correct_answer
+    if request.explanation is not None:
+        update_data["explanation"] = request.explanation
+
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    success = await session_service.update_question_content(
+        session_id=session_id,
+        user_id=current_user.clerk_id,
+        question_id=question_id,
+        update_data=update_data
+    )
+
+    if not success:
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    return {"message": "Question updated", "question_id": question_id}
+
+
+@router.delete("/sessions/{session_id}")
+async def delete_session(
+    session_id: str,
+    current_user: ClerkUserContext = Depends(require_tutor),
+    session_service: GenerationSessionService = Depends(get_session_service)
+):
+    """Delete a generation session and all its questions"""
+    success = await session_service.delete_session(
+        session_id=session_id,
+        user_id=current_user.clerk_id
+    )
+
+    if not success:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    return {"message": "Session deleted", "session_id": session_id}
 
 
 @router.get("/stats")

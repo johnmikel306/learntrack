@@ -121,7 +121,7 @@ export function useQuestionGenerator(): UseQuestionGeneratorResult {
     try {
       const token = await getToken()
       
-      const response = await fetch(`${API_BASE}/question-generator/stream`, {
+      const response = await fetch(`${API_BASE}/question-generator/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

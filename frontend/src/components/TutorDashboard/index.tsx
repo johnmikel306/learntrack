@@ -13,7 +13,7 @@ import IntegratedSubjectsManager from "@/components/integrated-subjects-manager"
 import QuestionReviewer from "@/components/question-reviewer"
 import QuestionBankManager from "@/components/question-bank-manager"
 import MaterialManager from "@/components/MaterialManager"
-import QuestionGenerator from "@/components/question-generator"
+import { OpenCanvasGenerator } from "@/components/question-generator"
 import ActiveAssignmentsView from "./views/ActiveAssignmentsView"
 import CreateAssignmentView from "./views/CreateAssignmentView"
 import GradingView from "./views/GradingView"
@@ -182,7 +182,7 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
             <Route path="groups" element={<GroupsManagementView />} />
 
             {/* Content routes */}
-            <Route path="content/generator" element={<QuestionGenerator />} />
+            <Route path="content/generator" element={<OpenCanvasGenerator />} />
             <Route path="content/review" element={<QuestionReviewer />} />
             <Route path="content/bank" element={<QuestionBankManager />} />
             <Route path="content/materials" element={<MaterialManager />} />

@@ -5,7 +5,7 @@ Manages the Server-Sent Events stream for real-time updates
 during question generation.
 """
 
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator, Optional, Callable, Awaitable, Any
 import asyncio
 import structlog
 from datetime import datetime
@@ -14,20 +14,28 @@ from app.agents.streaming.event_types import StreamEvent, StreamEventData, Strea
 
 logger = structlog.get_logger()
 
+# Type alias for question save callback
+QuestionSaveCallback = Callable[[dict], Awaitable[bool]]
+
 
 class SSEHandler:
     """
     Handler for Server-Sent Events streaming.
-    
+
     Manages the event queue and provides methods for sending
     events to the client during question generation.
     """
-    
-    def __init__(self, session_id: str):
+
+    def __init__(
+        self,
+        session_id: str,
+        on_question_complete: Optional[QuestionSaveCallback] = None
+    ):
         self.session_id = session_id
         self._queue: asyncio.Queue[StreamEventData] = asyncio.Queue()
         self._is_closed = False
         self._event_count = 0
+        self._on_question_complete = on_question_complete
         
     async def send(self, event: StreamEventData) -> None:
         """Add an event to the stream queue"""
@@ -57,8 +65,26 @@ class SSEHandler:
         await self.send(StreamEvent.chunk(question_id, content, question_number))
     
     async def send_question_complete(self, question_id: str, question_data: dict, score: float) -> None:
-        """Signal question completion"""
+        """Signal question completion and save to database if callback is set"""
+        # Send SSE event to client
         await self.send(StreamEvent.question_complete(question_id, question_data, score))
+
+        # Save question to database via callback if provided
+        if self._on_question_complete:
+            try:
+                await self._on_question_complete(question_data)
+                logger.info(
+                    "Question saved via callback",
+                    session_id=self.session_id,
+                    question_id=question_id
+                )
+            except Exception as e:
+                logger.error(
+                    "Failed to save question via callback",
+                    session_id=self.session_id,
+                    question_id=question_id,
+                    error=str(e)
+                )
     
     async def send_source_found(self, source_id: str, title: str, excerpt: str) -> None:
         """Signal source discovery"""

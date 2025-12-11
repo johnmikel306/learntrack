@@ -37,19 +37,25 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 
 interface Question {
   id: string
+  question_id?: string  // From generation API
+  session_id?: string   // Session this question belongs to
   text: string
+  question_text?: string  // From generation API
   type: string
   difficulty: string
+  blooms_level?: string
   subject: string
   topic: string
   options?: string[]
   correctAnswer: string
+  correct_answer?: string  // From generation API
   explanation: string
   points: number
   tags: string[]
-  status: 'pending' | 'approved' | 'rejected' | 'needs-revision'
+  status: 'pending' | 'approved' | 'rejected' | 'needs-revision' | 'PENDING' | 'APPROVED' | 'REJECTED'
   createdBy: string
   createdAt: string
+  session_created_at?: string  // From generation API
   reviewedBy?: string
   reviewedAt?: string
   reviewComments?: string
@@ -88,7 +94,7 @@ export default function QuestionReviewer() {
     try {
       setLoading(true)
       const token = await getToken()
-      const response = await fetch(`${API_BASE_URL}/questions/pending`, {
+      const response = await fetch(`${API_BASE_URL}/question-generator/pending-questions`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -98,12 +104,39 @@ export default function QuestionReviewer() {
       if (response.ok) {
         const data = await response.json()
         // Handle paginated response: { items: [...], total, page, per_page }
-        setQuestions(data?.items || (Array.isArray(data) ? data : []))
+        const items = data?.items || (Array.isArray(data) ? data : [])
+        // Map the API response to our Question interface
+        const mappedQuestions = items.map((q: any) => ({
+          id: q.question_id || q.id,
+          question_id: q.question_id,
+          session_id: q.session_id,
+          text: q.question_text || q.text,
+          question_text: q.question_text,
+          type: q.type,
+          difficulty: q.difficulty,
+          blooms_level: q.blooms_level,
+          subject: q.subject || 'Generated',
+          topic: q.session_prompt || 'AI Generated',
+          options: q.options,
+          correctAnswer: q.correct_answer || q.correctAnswer,
+          correct_answer: q.correct_answer,
+          explanation: q.explanation || '',
+          points: 1,
+          tags: q.tags || [],
+          status: q.status?.toLowerCase() || 'pending',
+          createdBy: 'AI Generator',
+          createdAt: q.session_created_at || new Date().toISOString(),
+          usageCount: 0,
+          successRate: 0
+        }))
+        setQuestions(mappedQuestions)
       } else {
         console.error('Failed to fetch pending questions')
+        toast.error('Failed to load pending questions')
       }
     } catch (error) {
       console.error('Error fetching pending questions:', error)
+      toast.error('Error loading questions')
     } finally {
       setLoading(false)
     }
@@ -111,14 +144,26 @@ export default function QuestionReviewer() {
 
   const handleApprove = async (questionId: string) => {
     try {
+      // Find the question to get its session_id
+      const question = questions.find(q => q.id === questionId || q.question_id === questionId)
+      const sessionId = question?.session_id
+
+      if (!sessionId) {
+        toast.error('Session ID not found for this question')
+        return
+      }
+
       const token = await getToken()
-      const response = await fetch(`${API_BASE_URL}/questions/${questionId}/approve`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      const response = await fetch(
+        `${API_BASE_URL}/question-generator/sessions/${sessionId}/questions/${questionId}/approve`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         }
-      })
+      )
 
       if (response.ok) {
         toast.success('Question approved', {
@@ -139,18 +184,26 @@ export default function QuestionReviewer() {
 
   const handleReject = async (questionId: string, reason?: string) => {
     try {
-      const token = await getToken()
-      const url = reason
-        ? `${API_BASE_URL}/questions/${questionId}/reject?reason=${encodeURIComponent(reason)}`
-        : `${API_BASE_URL}/questions/${questionId}/reject`
+      // Find the question to get its session_id
+      const question = questions.find(q => q.id === questionId || q.question_id === questionId)
+      const sessionId = question?.session_id
 
-      const response = await fetch(url, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      if (!sessionId) {
+        toast.error('Session ID not found for this question')
+        return
+      }
+
+      const token = await getToken()
+      const response = await fetch(
+        `${API_BASE_URL}/question-generator/sessions/${sessionId}/questions/${questionId}/reject`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         }
-      })
+      )
 
       if (response.ok) {
         toast.success('Question rejected', {
@@ -197,29 +250,29 @@ export default function QuestionReviewer() {
 
   const handleBulkApprove = async () => {
     try {
-      const token = await getToken()
       const questionIds = Array.from(selectedQuestions)
+      let successCount = 0
 
-      const response = await fetch(`${API_BASE_URL}/questions/bulk-approve`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(questionIds)
-      })
+      // Approve each question individually using the session-based endpoint
+      for (const questionId of questionIds) {
+        const question = questions.find(q => q.id === questionId || q.question_id === questionId)
+        if (question?.session_id) {
+          try {
+            await handleApprove(questionId)
+            successCount++
+          } catch (e) {
+            console.error(`Failed to approve question ${questionId}`, e)
+          }
+        }
+      }
 
-      if (response.ok) {
-        const result = await response.json()
-        console.log(`Bulk approved ${result.approved_count} questions`)
-        // Remove approved questions from list
-        setQuestions(questions.filter(q => !selectedQuestions.has(q.id)))
+      if (successCount > 0) {
+        toast.success(`Approved ${successCount} questions`)
         setSelectedQuestions(new Set())
-      } else {
-        console.error('Failed to bulk approve questions')
       }
     } catch (error) {
       console.error('Error bulk approving questions:', error)
+      toast.error('Failed to bulk approve questions')
     }
   }
 

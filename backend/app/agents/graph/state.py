@@ -1,14 +1,15 @@
 """
 LangGraph State Schema for Question Generator Agent
 
-Defines the state that flows through the agent graph, including
-configuration, materials, questions, and thinking steps.
+Defines the state that flows through the agent graph using the
+Open Canvas architecture pattern with generatePath routing.
 """
 
-from typing import TypedDict, List, Optional, Dict, Any, Literal
+from typing import TypedDict, List, Optional, Dict, Any, Literal, Annotated
 from datetime import datetime
 from enum import Enum
 from pydantic import BaseModel, Field
+from langgraph.graph.message import add_messages
 
 
 class QuestionType(str, Enum):
@@ -32,6 +33,68 @@ class BloomsLevel(str, Enum):
     ANALYZE = "ANALYZE"
     EVALUATE = "EVALUATE"
     CREATE = "CREATE"
+
+
+# ============================================================================
+# Open Canvas Architecture - Action Types
+# ============================================================================
+
+class ActionType(str, Enum):
+    """
+    The action type determines which path the agent takes.
+    Based on Open Canvas generatePath routing.
+    """
+    # Generate new artifact (questions)
+    GENERATE_ARTIFACT = "generateArtifact"
+
+    # Update existing artifact (edit question)
+    UPDATE_ARTIFACT = "updateArtifact"
+
+    # Rewrite artifact completely (regenerate with same params)
+    REWRITE_ARTIFACT = "rewriteArtifact"
+
+    # Rewrite with different theme/style (change difficulty, type, etc.)
+    REWRITE_ARTIFACT_THEME = "rewriteArtifactTheme"
+
+    # Respond to user query about generated content
+    RESPOND_TO_QUERY = "respondToQuery"
+
+
+class ArtifactType(str, Enum):
+    """Type of artifact being generated/modified"""
+    QUESTION_SET = "question_set"
+    SINGLE_QUESTION = "single_question"
+
+
+class ArtifactContent(BaseModel):
+    """
+    The artifact content - in our case, generated questions.
+    Based on Open Canvas artifact pattern.
+    """
+    artifact_id: str
+    artifact_type: ArtifactType = ArtifactType.QUESTION_SET
+    title: str = "Generated Questions"
+    current_index: int = 0  # For versioning
+    contents: List[Dict[str, Any]] = []  # List of questions
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class FollowupSuggestion(BaseModel):
+    """A follow-up action suggestion after generation"""
+    suggestion_type: Literal["topic", "difficulty", "type", "regenerate", "expand"]
+    title: str
+    description: str
+    action_params: Dict[str, Any] = {}
+
+
+class ReflectionResult(BaseModel):
+    """Result of self-reflection on generated content"""
+    overall_quality: float  # 0-1 score
+    strengths: List[str] = []
+    improvements: List[str] = []
+    should_regenerate: bool = False
+    regenerate_indices: List[int] = []  # Which questions to regenerate
 
 
 class ThinkingStep(BaseModel):
@@ -123,36 +186,79 @@ class GenerationSession(BaseModel):
 class AgentState(TypedDict):
     """
     The state that flows through the LangGraph agent.
-    
+
+    Based on Open Canvas architecture with generatePath routing.
     This state is passed between nodes and accumulates information
     as the agent processes the generation request.
     """
+    # =========================================================================
     # Session info
+    # =========================================================================
     session_id: str
     user_id: str
     tenant_id: str
-    
+
+    # =========================================================================
+    # Open Canvas - Routing & Action
+    # =========================================================================
+    # The current action type (set by generatePath router)
+    next_action: Optional[ActionType]
+
+    # User's message/query (for respondToQuery)
+    user_query: Optional[str]
+
+    # Target question ID for update/rewrite operations
+    target_question_id: Optional[str]
+
+    # New theme/style parameters for rewriteArtifactTheme
+    new_theme: Optional[Dict[str, Any]]
+
+    # =========================================================================
+    # Open Canvas - Artifact (Generated Questions)
+    # =========================================================================
+    artifact: Optional[ArtifactContent]
+
+    # =========================================================================
     # Configuration
+    # =========================================================================
     config: GenerationConfig
-    
+
+    # =========================================================================
     # Prompt handling
+    # =========================================================================
     original_prompt: str
     enhanced_prompt: Optional[str]
     prompt_analysis: Optional[PromptAnalysis]
-    
-    # Materials
+
+    # =========================================================================
+    # Materials (RAG)
+    # =========================================================================
     selected_material_ids: List[str]
     retrieved_chunks: List[SourceChunk]
-    
-    # Generation state
+
+    # =========================================================================
+    # Generation state (legacy - kept for compatibility)
+    # =========================================================================
     questions: List[GeneratedQuestion]
     current_question_index: int
-    
-    # Transparency
+
+    # =========================================================================
+    # Open Canvas - Follow-up & Reflection
+    # =========================================================================
+    followup_suggestions: List[FollowupSuggestion]
+    reflection_result: Optional[ReflectionResult]
+    response_to_query: Optional[str]
+
+    # =========================================================================
+    # Transparency (Thinking Steps)
+    # =========================================================================
     thinking_steps: List[ThinkingStep]
-    
+
+    # =========================================================================
     # Control flow
+    # =========================================================================
     needs_clarification: bool
     is_complete: bool
+    should_reflect: bool  # Whether to run reflection node
     error: Optional[str]
 

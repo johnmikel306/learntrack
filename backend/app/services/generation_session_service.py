@@ -81,18 +81,29 @@ class GenerationSessionService:
     ) -> Optional[GenerationSessionModel]:
         """Update a session"""
         updates["updated_at"] = datetime.now(timezone.utc)
-        
+
         result = await self.collection.find_one_and_update(
             {"_id": session_id, "user_id": user_id},
             {"$set": updates},
             return_document=True
         )
-        
+
         if not result:
             return None
-        
+
         return GenerationSessionModel(**result)
-    
+
+    async def delete_session(
+        self,
+        session_id: str,
+        user_id: str
+    ) -> bool:
+        """Delete a session and all its questions"""
+        result = await self.collection.delete_one(
+            {"_id": session_id, "user_id": user_id}
+        )
+        return result.deleted_count > 0
+
     async def add_question(
         self,
         session_id: str,
@@ -132,7 +143,32 @@ class GenerationSessionService:
             }
         )
         return result.modified_count > 0
-    
+
+    async def update_question_content(
+        self,
+        session_id: str,
+        user_id: str,
+        question_id: str,
+        update_data: dict
+    ) -> bool:
+        """Update a question's content (text, options, answer, explanation)"""
+        # Build the update fields with the positional operator
+        set_fields = {"updated_at": datetime.now(timezone.utc)}
+        for key, value in update_data.items():
+            set_fields[f"questions.$.{key}"] = value
+        # Also mark as EDITED status
+        set_fields["questions.$.status"] = QuestionStatus.EDITED.value
+
+        result = await self.collection.update_one(
+            {
+                "_id": session_id,
+                "user_id": user_id,
+                "questions.question_id": question_id
+            },
+            {"$set": set_fields}
+        )
+        return result.modified_count > 0
+
     async def list_sessions(
         self,
         user_id: str,
@@ -166,6 +202,129 @@ class GenerationSessionService:
             ))
 
         return sessions, total
+
+    async def get_pending_questions(
+        self,
+        user_id: str,
+        tenant_id: str,
+        page: int = 1,
+        per_page: int = 20
+    ) -> tuple[List[dict], int]:
+        """Get all pending questions across all sessions for a user"""
+        return await self.get_all_questions(user_id, tenant_id, QuestionStatus.PENDING, page, per_page)
+
+    async def get_all_questions(
+        self,
+        user_id: str,
+        tenant_id: str,
+        status: Optional[QuestionStatus] = None,
+        page: int = 1,
+        per_page: int = 20
+    ) -> tuple[List[dict], int]:
+        """Get all questions across all sessions for a user, optionally filtered by status"""
+        # Build pipeline
+        pipeline = [
+            {"$match": {"user_id": user_id, "tenant_id": tenant_id}},
+            {"$unwind": "$questions"},
+        ]
+
+        # Add status filter if provided
+        if status:
+            pipeline.append({"$match": {"questions.status": status.value}})
+
+        pipeline.extend([
+            {"$sort": {"created_at": -1}},
+            {"$project": {
+                "_id": 0,
+                "session_id": 1,
+                "session_prompt": "$original_prompt",
+                "session_created_at": "$created_at",
+                "session_status": "$status",
+                "question_id": "$questions.question_id",
+                "type": "$questions.type",
+                "difficulty": "$questions.difficulty",
+                "blooms_level": "$questions.blooms_level",
+                "question_text": "$questions.question_text",
+                "options": "$questions.options",
+                "correct_answer": "$questions.correct_answer",
+                "explanation": "$questions.explanation",
+                "status": "$questions.status"
+            }}
+        ])
+
+        # Get total count first
+        count_pipeline = pipeline + [{"$count": "total"}]
+        count_result = await self.collection.aggregate(count_pipeline).to_list(1)
+        total = count_result[0]["total"] if count_result else 0
+
+        # Add pagination
+        pipeline.extend([
+            {"$skip": (page - 1) * per_page},
+            {"$limit": per_page}
+        ])
+
+        questions = await self.collection.aggregate(pipeline).to_list(per_page)
+        return questions, total
+
+    async def get_sessions_with_questions(
+        self,
+        user_id: str,
+        tenant_id: str,
+        page: int = 1,
+        per_page: int = 10
+    ) -> tuple[List[dict], int]:
+        """Get generation sessions with question counts and status summary"""
+        pipeline = [
+            {"$match": {"user_id": user_id, "tenant_id": tenant_id}},
+            {"$sort": {"created_at": -1}},
+            {"$project": {
+                "_id": 0,
+                "session_id": 1,
+                "original_prompt": 1,
+                "status": 1,
+                "created_at": 1,
+                "updated_at": 1,
+                "config": 1,
+                "questions": 1,
+                "total_questions": {"$size": {"$ifNull": ["$questions", []]}},
+                "pending_count": {
+                    "$size": {
+                        "$filter": {
+                            "input": {"$ifNull": ["$questions", []]},
+                            "cond": {"$eq": ["$$this.status", QuestionStatus.PENDING.value]}
+                        }
+                    }
+                },
+                "approved_count": {
+                    "$size": {
+                        "$filter": {
+                            "input": {"$ifNull": ["$questions", []]},
+                            "cond": {"$eq": ["$$this.status", QuestionStatus.APPROVED.value]}
+                        }
+                    }
+                },
+                "rejected_count": {
+                    "$size": {
+                        "$filter": {
+                            "input": {"$ifNull": ["$questions", []]},
+                            "cond": {"$eq": ["$$this.status", QuestionStatus.REJECTED.value]}
+                        }
+                    }
+                }
+            }}
+        ]
+
+        # Get total count
+        count_result = await self.collection.count_documents({"user_id": user_id, "tenant_id": tenant_id})
+
+        # Add pagination
+        pipeline.extend([
+            {"$skip": (page - 1) * per_page},
+            {"$limit": per_page}
+        ])
+
+        sessions = await self.collection.aggregate(pipeline).to_list(per_page)
+        return sessions, count_result
 
     async def get_stats(
         self,
