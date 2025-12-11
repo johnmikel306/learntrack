@@ -58,8 +58,8 @@ class SessionResponse(BaseModel):
     message: str
 
 
-@router.post("/stream", response_class=StreamingResponse)
-async def generate_questions_stream(
+@router.post("/generate", response_class=StreamingResponse)
+async def generate_questions(
     request: GenerateRequest,
     current_user: ClerkUserContext = Depends(require_tutor),
     rag_service = Depends(get_rag_service),
@@ -68,13 +68,14 @@ async def generate_questions_stream(
     """
     Generate questions with streaming SSE output.
 
-    Returns a Server-Sent Events stream with:
+    Returns a Server-Sent Events stream with real-time updates:
+    - session:created - Session ID for tracking
     - agent:thinking - Agent's reasoning steps
     - agent:action - Actions being taken
     - source:found - Source materials discovered
     - generation:chunk - Streamed question content
     - generation:question_complete - Individual question completion
-    - done - Stream complete
+    - done - Stream complete with final session data
     """
     try:
         # Build config
@@ -90,7 +91,7 @@ async def generate_questions_stream(
         # Create session for persistence
         session = await session_service.create_session(
             user_id=current_user.clerk_id,
-            tenant_id=current_user.tutor_id,  # tutor_id is used for tenant isolation
+            tenant_id=current_user.tutor_id,
             prompt=request.prompt,
             config=config.model_dump() if hasattr(config, 'model_dump') else dict(config),
             material_ids=request.material_ids
@@ -116,8 +117,8 @@ async def generate_questions_stream(
         # Create SSE handler with session ID
         sse_handler = SSEHandler(session.session_id)
 
-        async def generate_with_stream():
-            """Run generation and stream events"""
+        async def run_generation():
+            """Background task to run generation"""
             try:
                 # Update session status
                 await session_service.update_session(
@@ -130,12 +131,13 @@ async def generate_questions_stream(
                     prompt=request.prompt,
                     config=config,
                     user_id=current_user.clerk_id,
-                    tenant_id=current_user.tutor_id,  # tutor_id is used for tenant isolation
+                    tenant_id=current_user.tutor_id,
                     material_ids=request.material_ids,
                     sse_handler=sse_handler
                 )
 
                 # Save questions to session
+                questions_count = 0
                 if result and result.questions:
                     for q in result.questions:
                         stored_q = StoredQuestion(
@@ -156,12 +158,24 @@ async def generate_questions_stream(
                             current_user.clerk_id,
                             stored_q
                         )
+                        questions_count += 1
 
                     await session_service.update_session(
                         session.session_id,
                         current_user.clerk_id,
                         status=SessionStatus.COMPLETED.value
                     )
+                else:
+                    await session_service.update_session(
+                        session.session_id,
+                        current_user.clerk_id,
+                        status=SessionStatus.COMPLETED.value
+                    )
+
+                # Note: send_done is already called in agent.generate()
+                # But ensure it's called if agent didn't call it
+                if not sse_handler._is_closed:
+                    await sse_handler.send_done(questions_count)
 
             except Exception as e:
                 logger.error("Generation error", error=str(e))
@@ -172,144 +186,44 @@ async def generate_questions_stream(
                     error_message=str(e)
                 )
                 await sse_handler.send_error(str(e))
-            
-            async for event in sse_handler.event_generator():
-                yield event
-        
+
+        async def stream_events():
+            """Stream events while generation runs concurrently"""
+            import asyncio
+            import json
+
+            # Send session created event first
+            session_event = {
+                "event_type": "session:created",
+                "session_id": session.session_id,
+                "timestamp": session.created_at.isoformat() if hasattr(session, 'created_at') else None
+            }
+            yield f"event: session:created\ndata: {json.dumps(session_event)}\n\n"
+
+            # Start generation in background task
+            generation_task = asyncio.create_task(run_generation())
+
+            # Stream events as they arrive
+            try:
+                async for event in sse_handler.event_generator():
+                    yield event
+            finally:
+                # Ensure generation task completes
+                if not generation_task.done():
+                    await generation_task
+
         return StreamingResponse(
-            generate_with_stream(),
+            stream_events(),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",  # Disable nginx buffering
+                "X-Accel-Buffering": "no",
             }
         )
-        
+
     except Exception as e:
         logger.error("Failed to start generation", error=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/generate", response_model=SessionResponse)
-async def generate_questions(
-    request: GenerateRequest,
-    current_user: ClerkUserContext = Depends(require_tutor),
-    rag_service = Depends(get_rag_service),
-    session_service: GenerationSessionService = Depends(get_session_service)
-):
-    """
-    Generate questions (non-streaming).
-
-    Returns when generation is complete with session info.
-    """
-    try:
-        config = GenerationConfig(
-            question_count=request.question_count,
-            question_types=[QuestionType(t) for t in request.question_types],
-            difficulty=Difficulty(request.difficulty),
-            subject=request.subject,
-            topic=request.topic,
-            grade_level=request.grade_level,
-        )
-
-        # Create session for persistence BEFORE generation
-        db_session = await session_service.create_session(
-            user_id=current_user.clerk_id,
-            tenant_id=current_user.tutor_id,
-            prompt=request.prompt,
-            config=config.model_dump() if hasattr(config, 'model_dump') else dict(config),
-            material_ids=request.material_ids
-        )
-
-        ai_manager = AIManager()
-        provider = ai_manager.get_provider(request.ai_provider)
-
-        # Set specific model if provided
-        if request.model_name and hasattr(provider, 'set_model'):
-            try:
-                provider.set_model(request.model_name)
-                logger.info("Model set", model=request.model_name, provider=request.ai_provider)
-            except ValueError as e:
-                logger.warning("Failed to set model, using default", error=str(e))
-
-        llm = provider.llm
-
-        agent = QuestionGeneratorAgent(llm=llm, rag_service=rag_service)
-
-        # Update session status to in-progress
-        await session_service.update_session(
-            db_session.session_id,
-            current_user.clerk_id,
-            status=SessionStatus.IN_PROGRESS.value
-        )
-
-        result = await agent.generate(
-            prompt=request.prompt,
-            config=config,
-            user_id=current_user.clerk_id,
-            tenant_id=current_user.tutor_id,
-            material_ids=request.material_ids,
-        )
-
-        # Save generated questions to the database session
-        if result and result.questions:
-            for q in result.questions:
-                stored_q = StoredQuestion(
-                    question_id=q.question_id,
-                    type=q.type.value,
-                    difficulty=q.difficulty.value,
-                    blooms_level=q.blooms_level.value,
-                    question_text=q.question_text,
-                    options=q.options,
-                    correct_answer=q.correct_answer,
-                    explanation=q.explanation,
-                    source_citations=[c.model_dump() for c in q.source_citations],
-                    tags=q.tags,
-                    quality_score=q.quality_score
-                )
-                await session_service.add_question(
-                    db_session.session_id,
-                    current_user.clerk_id,
-                    stored_q
-                )
-
-            await session_service.update_session(
-                db_session.session_id,
-                current_user.clerk_id,
-                status=SessionStatus.COMPLETED.value
-            )
-        else:
-            await session_service.update_session(
-                db_session.session_id,
-                current_user.clerk_id,
-                status=SessionStatus.COMPLETED.value
-            )
-
-        # Fetch the updated session to return accurate count
-        updated_session = await session_service.get_session(db_session.session_id, current_user.clerk_id)
-        questions_count = len(updated_session.questions) if updated_session else 0
-
-        return SessionResponse(
-            session_id=db_session.session_id,
-            status=SessionStatus.COMPLETED.value,
-            questions_count=questions_count,
-            message=f"Generated {questions_count} questions"
-        )
-
-    except Exception as e:
-        logger.error("Generation failed", error=str(e))
-        # Try to update session status to failed if it was created
-        if 'db_session' in locals():
-            try:
-                await session_service.update_session(
-                    db_session.session_id,
-                    current_user.clerk_id,
-                    status=SessionStatus.FAILED.value,
-                    error_message=str(e)
-                )
-            except:
-                pass
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -191,6 +191,13 @@ export default function QuestionGenerator() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationError, setGenerationError] = useState<string | null>(null)
 
+  // Streaming state
+  const [streamingSessionId, setStreamingSessionId] = useState<string | null>(null)
+  const [thinkingSteps, setThinkingSteps] = useState<string[]>([])
+  const [currentAction, setCurrentAction] = useState<string | null>(null)
+  const [foundSources, setFoundSources] = useState<Array<{id: string, title: string, excerpt: string}>>([])
+  const [streamingQuestions, setStreamingQuestions] = useState<Map<string, { text: string, complete: boolean, data?: any }>>(new Map())
+
   // AI Provider and Model Configuration
   const aiProviderModels = {
     groq: {
@@ -373,8 +380,14 @@ export default function QuestionGenerator() {
       }
     }
 
+    // Reset streaming state
     setIsGenerating(true)
     setGenerationError(null)
+    setThinkingSteps([])
+    setCurrentAction(null)
+    setFoundSources([])
+    setStreamingQuestions(new Map())
+    setStreamingSessionId(null)
 
     try {
       // Build the generation request
@@ -390,45 +403,152 @@ export default function QuestionGenerator() {
         model_name: selectedModel
       }
 
-      // Call the generation endpoint
-      const response = await apiClient.post<{ session_id: string; status: string; questions_count: number; message: string }>(
-        '/question-generator/generate',
-        generateRequest
-      )
+      // Get auth token
+      const token = await getToken()
 
-      if (response.error) {
-        throw new Error(response.error)
+      // API base URL
+      const apiBaseUrl = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000'
+      const normalizedBase = apiBaseUrl.replace(/\/+$/, '')
+      const apiRoot = normalizedBase.match(/\/api\/v\d+$/) ? normalizedBase : `${normalizedBase}/api/v1`
+
+      // Use fetch with SSE streaming
+      const response = await fetch(`${apiRoot}/question-generator/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(generateRequest)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.detail || `HTTP ${response.status}`)
       }
 
-      if (response.data?.session_id) {
-        // Fetch the session to get the generated questions
-        const sessionResponse = await apiClient.get<any>(`/question-generator/sessions/${response.data.session_id}`)
+      if (!response.body) {
+        throw new Error('No response body for streaming')
+      }
 
-        if (sessionResponse.error) {
-          throw new Error(sessionResponse.error)
-        }
+      // Read SSE stream
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let sessionId: string | null = null
+      const questionsMap = new Map<string, { text: string, complete: boolean, data?: any }>()
 
-        if (sessionResponse.data?.questions) {
-          // Transform backend questions to frontend format
-          const transformedQuestions: GeneratedQuestion[] = sessionResponse.data.questions.map((q: any, index: number) => ({
-            id: q.question_id || `q-${index}`,
-            text: q.question_text || q.text,
-            type: q.type || questionType,
-            difficulty: q.difficulty?.toLowerCase() || difficulty,
-            options: q.options || [],
-            correctAnswer: q.correct_answer || '',
-            explanation: q.explanation || '',
-            points: q.points || 10,
-            tags: q.tags || []
-          }))
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
 
-          setSampleQuestions(transformedQuestions)
-          toast.success(`Generated ${transformedQuestions.length} questions successfully!`)
-          setActiveTab('preview') // Switch to preview tab
-        } else {
-          toast.success(response.data?.message || 'Questions generated!')
+        buffer += decoder.decode(value, { stream: true })
+
+        // Parse SSE events from buffer
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || '' // Keep incomplete line in buffer
+
+        let currentEventType = ''
+        let currentData = ''
+
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            currentEventType = line.slice(7).trim()
+          } else if (line.startsWith('data: ')) {
+            currentData = line.slice(6)
+
+            if (currentEventType && currentData) {
+              try {
+                const data = JSON.parse(currentData)
+
+                // Handle different event types
+                switch (currentEventType) {
+                  case 'session:created':
+                    sessionId = data.session_id
+                    setStreamingSessionId(data.session_id)
+                    break
+
+                  case 'agent:thinking':
+                    if (data.step) {
+                      setThinkingSteps(prev => [...prev.slice(-4), data.step]) // Keep last 5
+                    }
+                    break
+
+                  case 'agent:action':
+                    setCurrentAction(data.step || null)
+                    break
+
+                  case 'source:found':
+                    setFoundSources(prev => [...prev, {
+                      id: data.source_id || `src-${prev.length}`,
+                      title: data.source_title || 'Source',
+                      excerpt: data.source_excerpt || ''
+                    }])
+                    break
+
+                  case 'generation:chunk':
+                    if (data.question_id && data.content) {
+                      questionsMap.set(data.question_id, {
+                        text: (questionsMap.get(data.question_id)?.text || '') + data.content,
+                        complete: false
+                      })
+                      setStreamingQuestions(new Map(questionsMap))
+                    }
+                    break
+
+                  case 'generation:question_complete':
+                    if (data.question_id && data.question_data) {
+                      questionsMap.set(data.question_id, {
+                        text: data.question_data.question_text || '',
+                        complete: true,
+                        data: data.question_data
+                      })
+                      setStreamingQuestions(new Map(questionsMap))
+                    }
+                    break
+
+                  case 'error:message':
+                    throw new Error(data.error_message || 'Generation error')
+
+                  case 'done':
+                    // Generation complete - fetch final session data
+                    if (sessionId) {
+                      const sessionResponse = await apiClient.get<any>(`/question-generator/sessions/${sessionId}`)
+
+                      if (sessionResponse.data?.questions) {
+                        const transformedQuestions: GeneratedQuestion[] = sessionResponse.data.questions.map((q: any, index: number) => ({
+                          id: q.question_id || `q-${index}`,
+                          text: q.question_text || q.text,
+                          type: q.type || questionType,
+                          difficulty: q.difficulty?.toLowerCase() || difficulty,
+                          options: q.options || [],
+                          correctAnswer: q.correct_answer || '',
+                          explanation: q.explanation || '',
+                          points: q.points || 10,
+                          tags: q.tags || []
+                        }))
+
+                        setSampleQuestions(transformedQuestions)
+                        toast.success(`Generated ${transformedQuestions.length} questions successfully!`)
+                        setActiveTab('preview')
+                      }
+                    }
+                    break
+                }
+              } catch (parseError) {
+                console.warn('Failed to parse SSE data:', currentData)
+              }
+            }
+
+            currentEventType = ''
+            currentData = ''
+          } else if (line.trim() === '') {
+            // Event boundary
+            currentEventType = ''
+            currentData = ''
+          }
         }
       }
+
     } catch (error: any) {
       console.error('Generation failed:', error)
       const errorMessage = error.message || 'Failed to generate questions'
@@ -436,6 +556,7 @@ export default function QuestionGenerator() {
       toast.error(errorMessage)
     } finally {
       setIsGenerating(false)
+      setCurrentAction(null)
     }
   }
 
@@ -1018,16 +1139,109 @@ export default function QuestionGenerator() {
                 </div>
               )}
 
-              {/* Generation Progress (when generating) */}
+              {/* Generation Progress (when generating) - Streaming UI */}
               {isGenerating && (
-                <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                <div className="space-y-4 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                  {/* Header */}
                   <div className="flex items-center gap-3">
-                    <RefreshCw className="w-5 h-5 text-primary animate-spin" />
+                    <div className="relative">
+                      <Brain className="w-6 h-6 text-primary" />
+                      <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                    </div>
                     <div className="flex-1">
-                      <p className="font-medium text-foreground">Generating questions...</p>
-                      <p className="text-sm text-muted-foreground">This may take a few moments depending on the AI provider</p>
+                      <p className="font-medium text-foreground">AI is generating questions...</p>
+                      {streamingSessionId && (
+                        <p className="text-xs text-muted-foreground">Session: {streamingSessionId.slice(0, 8)}...</p>
+                      )}
                     </div>
                   </div>
+
+                  {/* Thinking Steps */}
+                  {thinkingSteps.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Thinking</p>
+                      <div className="space-y-1 max-h-24 overflow-y-auto">
+                        {thinkingSteps.map((step, idx) => (
+                          <div key={idx} className="flex items-start gap-2 text-sm text-muted-foreground animate-in fade-in slide-in-from-left-2">
+                            <Sparkles className="w-3 h-3 mt-1 text-purple-400 flex-shrink-0" />
+                            <span className="line-clamp-1">{step}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Current Action */}
+                  {currentAction && (
+                    <div className="flex items-center gap-2 text-sm text-primary animate-in fade-in">
+                      <RefreshCw className="w-3 h-3 animate-spin" />
+                      <span>{currentAction}</span>
+                    </div>
+                  )}
+
+                  {/* Found Sources */}
+                  {foundSources.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Sources Found ({foundSources.length})
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {foundSources.slice(0, 5).map((source) => (
+                          <Badge key={source.id} variant="secondary" className="text-xs animate-in fade-in zoom-in">
+                            <FileText className="w-3 h-3 mr-1" />
+                            {source.title.slice(0, 25)}{source.title.length > 25 ? '...' : ''}
+                          </Badge>
+                        ))}
+                        {foundSources.length > 5 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{foundSources.length - 5} more
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Streaming Questions Preview */}
+                  {streamingQuestions.size > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Questions ({[...streamingQuestions.values()].filter(q => q.complete).length}/{streamingQuestions.size})
+                      </p>
+                      <div className="space-y-2 max-h-40 overflow-y-auto">
+                        {[...streamingQuestions.entries()].map(([id, q]) => (
+                          <div
+                            key={id}
+                            className={cn(
+                              "p-2 rounded border text-sm animate-in fade-in slide-in-from-bottom-1",
+                              q.complete
+                                ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
+                                : "bg-background border-muted"
+                            )}
+                          >
+                            <div className="flex items-start gap-2">
+                              {q.complete ? (
+                                <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                              ) : (
+                                <RefreshCw className="w-4 h-4 text-primary animate-spin mt-0.5 flex-shrink-0" />
+                              )}
+                              <span className="line-clamp-2">
+                                {q.text || 'Generating...'}
+                                {!q.complete && <span className="inline-block w-1 h-4 ml-0.5 bg-primary animate-pulse" />}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Fallback if no streaming data yet */}
+                  {thinkingSteps.length === 0 && foundSources.length === 0 && streamingQuestions.size === 0 && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Connecting to AI...</span>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
