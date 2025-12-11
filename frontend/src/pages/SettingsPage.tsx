@@ -1,15 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/clerk-react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  User, 
-  Bell, 
-  Lock, 
-  Palette, 
-  Globe, 
+import {
+  User,
+  Bell,
+  Lock,
+  Palette,
+  Globe,
   Mail,
   Save,
-  ArrowLeft
+  ArrowLeft,
+  Loader2
 } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -18,12 +19,16 @@ import { Switch } from '../components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { useTheme } from '../contexts/ThemeContext'
+import { useApiClient } from '../lib/api-client'
+import { toast } from '../contexts/ToastContext'
 
 export default function SettingsPage() {
   const { user } = useUser()
   const navigate = useNavigate()
   const { theme, toggleTheme } = useTheme()
+  const apiClient = useApiClient()
   const [isSaving, setIsSaving] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   // Settings state
   const [settings, setSettings] = useState({
@@ -31,24 +36,95 @@ export default function SettingsPage() {
     displayName: user?.fullName || '',
     email: user?.primaryEmailAddress?.emailAddress || '',
     timezone: 'America/New_York',
-    
+
     // Notifications
     emailNotifications: true,
     assignmentReminders: true,
     messageNotifications: true,
     weeklyDigest: false,
-    
+
     // Privacy
     profileVisibility: 'students',
     showEmail: false,
     showPhone: false,
   })
 
+  // Load settings from backend on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        setIsLoading(true)
+        const response = await apiClient.get('/settings/user')
+
+        if (response.data) {
+          const data = response.data
+          setSettings(prev => ({
+            ...prev,
+            // Profile
+            displayName: data.profile?.display_name || user?.fullName || '',
+            timezone: data.profile?.timezone || 'America/New_York',
+            // Notifications
+            emailNotifications: data.notifications?.email_notifications ?? true,
+            assignmentReminders: data.notifications?.assignment_reminders ?? true,
+            messageNotifications: data.notifications?.message_notifications ?? true,
+            weeklyDigest: data.notifications?.weekly_digest ?? false,
+            // Privacy
+            profileVisibility: data.privacy?.profile_visibility || 'students',
+            showEmail: data.privacy?.show_email ?? false,
+            showPhone: data.privacy?.show_phone ?? false,
+          }))
+        }
+      } catch (error) {
+        console.error('Failed to load settings:', error)
+        // Use defaults on error - don't show error toast since defaults are fine
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadSettings()
+  }, [user])
+
   const handleSave = async () => {
     setIsSaving(true)
-    // TODO: Save settings to backend
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setIsSaving(false)
+    try {
+      const response = await apiClient.put('/settings/user', {
+        profile: {
+          display_name: settings.displayName || null,
+          timezone: settings.timezone,
+        },
+        notifications: {
+          email_notifications: settings.emailNotifications,
+          assignment_reminders: settings.assignmentReminders,
+          message_notifications: settings.messageNotifications,
+          weekly_digest: settings.weeklyDigest,
+        },
+        privacy: {
+          profile_visibility: settings.profileVisibility,
+          show_email: settings.showEmail,
+          show_phone: settings.showPhone,
+        },
+      })
+
+      if (response.error) {
+        throw new Error(response.error)
+      }
+
+      toast.success('Settings saved successfully!')
+    } catch (error: any) {
+      console.error('Failed to save settings:', error)
+      toast.error(error.message || 'Failed to save settings')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   return (

@@ -3,19 +3,17 @@ API v1 router
 """
 from fastapi import APIRouter
 
-# Import working endpoints (remove seeders import)
-from app.api.v1.endpoints import questions, assignments, subjects, students, progress, webhooks, users, dashboard, topics, invitations, parents, conversations, messages, visibility, materials, notifications, activities, groups, websocket, assignment_templates, rag, question_generator
-# Still disabled due to formatting issues: settings, files, communications
+# Import working endpoints
+from app.api.v1.endpoints import questions, assignments, subjects, students, progress, webhooks, users, dashboard, topics, invitations, parents, conversations, messages, visibility, materials, notifications, activities, groups, websocket, assignment_templates, rag, question_generator, settings
 
 api_router = APIRouter()
 
-# Include all endpoint routers (remove seeders line)
+# Include all endpoint routers
 api_router.include_router(questions.router, prefix="/questions", tags=["questions"])
 api_router.include_router(assignments.router, prefix="/assignments", tags=["assignments"])
 api_router.include_router(subjects.router, prefix="/subjects", tags=["subjects"])
 api_router.include_router(students.router, prefix="/students", tags=["students"])
 api_router.include_router(parents.router, prefix="/parents", tags=["parents"])
-# api_router.include_router(seeders.router, prefix="/seeders", tags=["seeders"])  # Remove this line
 api_router.include_router(progress.router, prefix="/progress", tags=["progress"])
 api_router.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
@@ -33,9 +31,9 @@ api_router.include_router(assignment_templates.router, prefix="/assignment-templ
 api_router.include_router(websocket.router, tags=["websocket"])
 api_router.include_router(rag.router, prefix="/rag", tags=["rag"])
 api_router.include_router(question_generator.router, prefix="/question-generator", tags=["question-generator"])
+api_router.include_router(settings.router, prefix="/settings", tags=["settings"])
 
-# Still disabled due to formatting issues:
-# api_router.include_router(settings.router, prefix="/settings", tags=["settings"])
+# Still disabled:
 # api_router.include_router(files.router, prefix="/files", tags=["files"])
 # api_router.include_router(communications.router, prefix="/communications", tags=["communications"])
 

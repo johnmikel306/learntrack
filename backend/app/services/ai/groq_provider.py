@@ -13,9 +13,10 @@ logger = structlog.get_logger()
 
 # Available Groq models
 GROQ_MODELS = {
-    "llama-3.3-70b-versatile": {"context_window": 128000, "description": "Llama 3.3 70B - Best for complex tasks"},
-    "llama-3.1-8b-instant": {"context_window": 128000, "description": "Llama 3.1 8B - Fast and efficient"},
-    "llama-3.2-90b-vision-preview": {"context_window": 128000, "description": "Llama 3.2 90B Vision - Multimodal"},
+    "openai/gpt-oss-120b": {"context_window": 128000, "description": "GPT-OSS 120B - Most capable open model"},
+    "openai/gpt-oss-20b": {"context_window": 128000, "description": "GPT-OSS 20B - Fast and efficient"},
+    "llama-3.3-70b-versatile": {"context_window": 128000, "description": "Llama 3.3 70B - Versatile tasks"},
+    "llama-3.1-8b-instant": {"context_window": 128000, "description": "Llama 3.1 8B - Instant responses"},
     "mixtral-8x7b-32768": {"context_window": 32768, "description": "Mixtral 8x7B - Balanced performance"},
     "gemma2-9b-it": {"context_window": 8192, "description": "Gemma 2 9B - Instruction tuned"},
 }
@@ -24,7 +25,7 @@ GROQ_MODELS = {
 class GroqProvider(BaseAIProvider):
     """Groq AI provider using LangChain"""
 
-    def __init__(self, api_key: str, model: str = "llama-3.3-70b-versatile"):
+    def __init__(self, api_key: str, model: str = "openai/gpt-oss-120b"):
         super().__init__(api_key)
         self.model = model
         self.llm = ChatGroq(api_key=api_key, model_name=model, temperature=0.7)

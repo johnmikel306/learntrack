@@ -31,6 +31,7 @@ import {
   Edit,
   Globe,
   ChevronDown,
+  ChevronRight,
   Sparkles,
   FolderOpen,
   File,
@@ -42,7 +43,8 @@ import {
   SlidersHorizontal,
   Paperclip,
   ArrowUp,
-  Wrench
+  Wrench,
+  Check
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -53,6 +55,38 @@ import { useGenerationHistory, useMaterials, useGenerationStats } from "@/hooks/
 import { useAuth } from '@clerk/clerk-react'
 import { toast } from '@/contexts/ToastContext'
 import { cn } from "@/lib/utils"
+import { useApiClient } from "@/lib/api-client"
+
+// Mapping functions for frontend to backend values
+const mapQuestionType = (frontendType: string): string => {
+  const typeMap: Record<string, string> = {
+    'multiple-choice': 'MCQ',
+    'true-false': 'TRUE_FALSE',
+    'short-answer': 'SHORT_ANSWER',
+    'essay': 'ESSAY'
+  }
+  return typeMap[frontendType] || 'MCQ'
+}
+
+const mapDifficulty = (frontendDifficulty: string): string => {
+  const difficultyMap: Record<string, string> = {
+    'beginner': 'EASY',
+    'intermediate': 'MEDIUM',
+    'advanced': 'HARD'
+  }
+  return difficultyMap[frontendDifficulty] || 'MEDIUM'
+}
+
+const mapAiProvider = (frontendProvider: string): string => {
+  // Backend uses lowercase provider names
+  const providerMap: Record<string, string> = {
+    'openai': 'openai',
+    'anthropic': 'anthropic',
+    'google': 'google',
+    'groq': 'groq'
+  }
+  return providerMap[frontendProvider] || 'groq'
+}
 
 // Auto-resize textarea hook (V0-style)
 function useAutoResizeTextarea({ minHeight, maxHeight }: { minHeight: number; maxHeight?: number }) {
@@ -141,6 +175,7 @@ import { useSubjects } from "@/hooks/useQueries"
 
 export default function QuestionGenerator() {
   const { getToken } = useAuth()
+  const apiClient = useApiClient()
   const [activeTab, setActiveTab] = useState("generate")
   const [customPrompt, setCustomPrompt] = useState("")
   const [subject, setSubject] = useState("")
@@ -148,9 +183,74 @@ export default function QuestionGenerator() {
   const [questionCount, setQuestionCount] = useState([10])
   const [difficulty, setDifficulty] = useState("intermediate")
   const [questionType, setQuestionType] = useState("multiple-choice") // Single select
-  const [aiProvider, setAiProvider] = useState("openai")
+  const [aiProvider, setAiProvider] = useState("groq") // Default to groq since it's configured
+  const [selectedModel, setSelectedModel] = useState("openai/gpt-oss-120b") // Default model
+  const [expandedProvider, setExpandedProvider] = useState<string | null>(null) // For submenu
+  const [isModelMenuOpen, setIsModelMenuOpen] = useState(false)
   const [webSearchEnabled, setWebSearchEnabled] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [generationError, setGenerationError] = useState<string | null>(null)
+
+  // AI Provider and Model Configuration
+  const aiProviderModels = {
+    groq: {
+      name: "Groq",
+      description: "Ultra-fast inference",
+      models: [
+        { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B", description: "Most capable open model" },
+        { id: "openai/gpt-oss-20b", name: "GPT-OSS 20B", description: "Fast and efficient" },
+        { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B", description: "Versatile tasks" },
+        { id: "llama-3.1-8b-instant", name: "Llama 3.1 8B", description: "Instant responses" },
+        { id: "mixtral-8x7b-32768", name: "Mixtral 8x7B", description: "Balanced performance" },
+      ]
+    },
+    openai: {
+      name: "OpenAI",
+      description: "GPT models",
+      models: [
+        { id: "gpt-4o", name: "GPT-4o", description: "Most capable" },
+        { id: "gpt-4o-mini", name: "GPT-4o Mini", description: "Fast and affordable" },
+        { id: "gpt-4-turbo", name: "GPT-4 Turbo", description: "High performance" },
+      ]
+    },
+    anthropic: {
+      name: "Anthropic",
+      description: "Claude models",
+      models: [
+        { id: "claude-3-5-sonnet", name: "Claude 3.5 Sonnet", description: "Best for most tasks" },
+        { id: "claude-3-opus", name: "Claude 3 Opus", description: "Most powerful" },
+        { id: "claude-3-haiku", name: "Claude 3 Haiku", description: "Fast and light" },
+      ]
+    },
+    google: {
+      name: "Google",
+      description: "Gemini models",
+      models: [
+        { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro", description: "Best for complex tasks" },
+        { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash", description: "Fast and efficient" },
+        { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash", description: "Latest experimental" },
+      ]
+    },
+  }
+
+  // Get current model display info
+  const getCurrentModelDisplay = () => {
+    const provider = aiProviderModels[aiProvider as keyof typeof aiProviderModels]
+    if (!provider) return { provider: "Unknown", model: "Unknown" }
+    const model = provider.models.find(m => m.id === selectedModel)
+    return {
+      provider: provider.name,
+      model: model?.name || provider.models[0]?.name || "Default"
+    }
+  }
+
+  // Handle model selection
+  const handleModelSelect = (providerId: string, modelId: string) => {
+    setAiProvider(providerId)
+    setSelectedModel(modelId)
+    setExpandedProvider(null)
+    setIsModelMenuOpen(false)
+  }
 
   // Material selection state
   const [selectedMaterials, setSelectedMaterials] = useState<Material[]>([])
@@ -251,28 +351,92 @@ export default function QuestionGenerator() {
   }, [availableMaterials, materialSearchQuery])
 
   const handleGenerate = async () => {
-    if (selectedMaterials.length === 0) {
-      toast.error('Please select at least one material')
+    // Require either materials or a prompt
+    if (selectedMaterials.length === 0 && !customPrompt.trim()) {
+      toast.error('Please select materials or enter a prompt')
+      setIsMaterialModalOpen(true)
       return
     }
 
-    // Auto-correct subject/topic from materials before generation
+    // Use material's subject/topic if available
+    let finalSubject = subject
+    let finalTopic = topic
     if (selectedMaterials.length > 0) {
       const firstMaterial = selectedMaterials[0]
       if (firstMaterial.subject) {
+        finalSubject = firstMaterial.subject
         setSubject(firstMaterial.subject)
       }
       if (firstMaterial.topic) {
+        finalTopic = firstMaterial.topic
         setTopic(firstMaterial.topic)
       }
     }
 
     setIsGenerating(true)
-    // Simulate API call
-    setTimeout(() => {
+    setGenerationError(null)
+
+    try {
+      // Build the generation request
+      const generateRequest = {
+        prompt: customPrompt || `Generate ${questionCount[0]} ${questionType} questions about ${finalTopic || 'the selected materials'}`,
+        question_count: questionCount[0],
+        question_types: [mapQuestionType(questionType)],
+        difficulty: mapDifficulty(difficulty),
+        material_ids: selectedMaterials.length > 0 ? selectedMaterials.map(m => m._id) : [],
+        subject: finalSubject || undefined,
+        topic: finalTopic || undefined,
+        ai_provider: mapAiProvider(aiProvider),
+        model_name: selectedModel
+      }
+
+      // Call the generation endpoint
+      const response = await apiClient.post<{ session_id: string; status: string; questions_count: number; message: string }>(
+        '/question-generator/generate',
+        generateRequest
+      )
+
+      if (response.error) {
+        throw new Error(response.error)
+      }
+
+      if (response.data?.session_id) {
+        // Fetch the session to get the generated questions
+        const sessionResponse = await apiClient.get<any>(`/question-generator/sessions/${response.data.session_id}`)
+
+        if (sessionResponse.error) {
+          throw new Error(sessionResponse.error)
+        }
+
+        if (sessionResponse.data?.questions) {
+          // Transform backend questions to frontend format
+          const transformedQuestions: GeneratedQuestion[] = sessionResponse.data.questions.map((q: any, index: number) => ({
+            id: q.question_id || `q-${index}`,
+            text: q.question_text || q.text,
+            type: q.type || questionType,
+            difficulty: q.difficulty?.toLowerCase() || difficulty,
+            options: q.options || [],
+            correctAnswer: q.correct_answer || '',
+            explanation: q.explanation || '',
+            points: q.points || 10,
+            tags: q.tags || []
+          }))
+
+          setSampleQuestions(transformedQuestions)
+          toast.success(`Generated ${transformedQuestions.length} questions successfully!`)
+          setActiveTab('preview') // Switch to preview tab
+        } else {
+          toast.success(response.data?.message || 'Questions generated!')
+        }
+      }
+    } catch (error: any) {
+      console.error('Generation failed:', error)
+      const errorMessage = error.message || 'Failed to generate questions'
+      setGenerationError(errorMessage)
+      toast.error(errorMessage)
+    } finally {
       setIsGenerating(false)
-      toast.success('Questions generated successfully!')
-    }, 3000)
+    }
   }
 
   const toggleMaterialSelection = (material: Material) => {
@@ -466,27 +630,47 @@ export default function QuestionGenerator() {
               {/* V0-style Chat Input */}
               <div className="relative rounded-xl border border-border bg-muted/30">
                 {/* Selected Materials Display (above input) */}
-                {selectedMaterials.length > 0 && (
-                  <div className="flex flex-wrap gap-2 p-3 pb-0">
-                    {selectedMaterials.map((material) => (
-                      <Badge
-                        key={material._id}
-                        variant="secondary"
-                        className="pl-2 pr-1 py-1 flex items-center gap-1 bg-primary/10 text-primary border-primary/20"
-                      >
-                        {getMaterialIcon(material.material_type)}
-                        <span className="max-w-[120px] truncate text-xs">{material.title}</span>
-                        <button
-                          type="button"
-                          className="ml-1 p-0.5 rounded hover:bg-destructive/20 transition-colors"
-                          onClick={() => removeMaterial(material._id)}
+                {/* Materials Selection - Always show, with different states */}
+                <div className="flex flex-wrap gap-2 p-3 pb-0">
+                  {selectedMaterials.length > 0 ? (
+                    <>
+                      {selectedMaterials.map((material) => (
+                        <Badge
+                          key={material._id}
+                          variant="secondary"
+                          className="pl-2 pr-1 py-1 flex items-center gap-1 bg-primary/10 text-primary border-primary/20"
                         >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                )}
+                          {getMaterialIcon(material.material_type)}
+                          <span className="max-w-[120px] truncate text-xs">{material.title}</span>
+                          <button
+                            type="button"
+                            className="ml-1 p-0.5 rounded hover:bg-destructive/20 transition-colors"
+                            onClick={() => removeMaterial(material._id)}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setIsMaterialModalOpen(true)}
+                        className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Add more
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsMaterialModalOpen(true)}
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted rounded-lg transition-colors border border-dashed border-border hover:border-primary/50"
+                    >
+                      <FolderOpen className="w-4 h-4" />
+                      <span>Select materials to generate questions from</span>
+                    </button>
+                  )}
+                </div>
 
                 {/* Auto-resizing Textarea */}
                 <div className="overflow-y-auto">
@@ -498,7 +682,7 @@ export default function QuestionGenerator() {
                       adjustHeight()
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey && selectedMaterials.length > 0) {
+                      if (e.key === "Enter" && !e.shiftKey && (selectedMaterials.length > 0 || customPrompt.trim())) {
                         e.preventDefault()
                         handleGenerate()
                       }
@@ -559,25 +743,82 @@ export default function QuestionGenerator() {
                             )}
                           </button>
 
-                          {/* AI Model Selection - Dropdown */}
-                          <div className="px-3 py-2">
-                            <div className="flex items-center gap-3 mb-2">
-                              <Sparkles className="w-4 h-4 text-muted-foreground" />
-                              <span className="text-sm text-muted-foreground">AI Model</span>
-                            </div>
-                            <div className="ml-7">
-                              <Select value={aiProvider} onValueChange={setAiProvider}>
-                                <SelectTrigger className="h-8 text-xs">
-                                  <SelectValue placeholder="Select model" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="anthropic">Claude 4.5</SelectItem>
-                                  <SelectItem value="google">Gemini 3</SelectItem>
-                                  <SelectItem value="openai">GPT-OSS</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+
+                    {/* AI Model Selector - ChatGPT Style */}
+                    <Popover open={isModelMenuOpen} onOpenChange={setIsModelMenuOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span className="text-xs">{getCurrentModelDisplay().model}</span>
+                          <ChevronDown className="w-3 h-3" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-64 p-0"
+                        align="start"
+                        side="top"
+                        sideOffset={8}
+                      >
+                        <div className="p-2 border-b border-border">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>Models</span>
                           </div>
+                        </div>
+                        <div className="max-h-80 overflow-y-auto">
+                          {Object.entries(aiProviderModels).map(([providerId, provider]) => (
+                            <div key={providerId} className="border-b border-border/50 last:border-0">
+                              {/* Provider Header - Expandable */}
+                              <button
+                                type="button"
+                                className={cn(
+                                  "w-full flex items-center justify-between px-3 py-2 hover:bg-muted transition-colors text-left",
+                                  expandedProvider === providerId && "bg-muted/50"
+                                )}
+                                onClick={() => setExpandedProvider(expandedProvider === providerId ? null : providerId)}
+                              >
+                                <div>
+                                  <div className="font-medium text-sm">{provider.name}</div>
+                                  <div className="text-xs text-muted-foreground">{provider.description}</div>
+                                </div>
+                                <ChevronRight className={cn(
+                                  "w-4 h-4 text-muted-foreground transition-transform",
+                                  expandedProvider === providerId && "rotate-90"
+                                )} />
+                              </button>
+
+                              {/* Models Submenu */}
+                              {expandedProvider === providerId && (
+                                <div className="bg-muted/30 py-1">
+                                  {provider.models.map((model) => (
+                                    <button
+                                      key={model.id}
+                                      type="button"
+                                      className={cn(
+                                        "w-full flex items-center gap-3 px-4 py-2 hover:bg-muted transition-colors text-left",
+                                        selectedModel === model.id && aiProvider === providerId && "bg-primary/10"
+                                      )}
+                                      onClick={() => handleModelSelect(providerId, model.id)}
+                                    >
+                                      <div className="flex-1">
+                                        <div className="text-sm">{model.name}</div>
+                                        <div className="text-xs text-muted-foreground">{model.description}</div>
+                                      </div>
+                                      {selectedModel === model.id && aiProvider === providerId && (
+                                        <Check className="w-4 h-4 text-primary" />
+                                      )}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       </PopoverContent>
                     </Popover>
@@ -595,13 +836,19 @@ export default function QuestionGenerator() {
 
                   {/* Right side - Send Button */}
                   <div className="flex items-center gap-2">
+                    {/* Show hint when no materials and no prompt */}
+                    {selectedMaterials.length === 0 && !customPrompt.trim() && (
+                      <span className="text-xs text-muted-foreground mr-2">
+                        Select materials or enter a prompt
+                      </span>
+                    )}
                     <button
                       type="button"
-                      disabled={isGenerating || selectedMaterials.length === 0}
+                      disabled={isGenerating || (selectedMaterials.length === 0 && !customPrompt.trim())}
                       onClick={handleGenerate}
                       className={cn(
                         "p-2 rounded-full transition-all flex items-center justify-center",
-                        selectedMaterials.length > 0 && !isGenerating
+                        (selectedMaterials.length > 0 || customPrompt.trim()) && !isGenerating
                           ? "bg-foreground text-background hover:bg-foreground/90"
                           : "bg-muted text-muted-foreground cursor-not-allowed"
                       )}
@@ -749,6 +996,40 @@ export default function QuestionGenerator() {
                   </div>
                 )}
               </div>
+
+              {/* Error Display */}
+              {generationError && (
+                <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-destructive">Generation Failed</p>
+                      <p className="text-sm text-muted-foreground mt-1">{generationError}</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => setGenerationError(null)}
+                      >
+                        Dismiss
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Generation Progress (when generating) */}
+              {isGenerating && (
+                <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <RefreshCw className="w-5 h-5 text-primary animate-spin" />
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground">Generating questions...</p>
+                      <p className="text-sm text-muted-foreground">This may take a few moments depending on the AI provider</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
