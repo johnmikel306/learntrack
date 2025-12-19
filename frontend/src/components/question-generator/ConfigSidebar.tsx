@@ -17,6 +17,17 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu'
+import {
   Sparkles,
   Settings2,
   ChevronDown,
@@ -27,13 +38,30 @@ import {
   Target,
   Brain,
   Zap,
+  Check,
+  AlertCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@clerk/clerk-react'
 
 interface Material {
   _id: string
   title: string
   material_type: string
+}
+
+interface ModelInfo {
+  id: string
+  name: string
+  description: string
+}
+
+interface ProviderInfo {
+  id: string
+  name: string
+  description: string
+  available: boolean
+  models: ModelInfo[]
 }
 
 interface ConfigSidebarProps {
@@ -48,13 +76,15 @@ interface ConfigSidebarProps {
   onDifficultyChange: (value: string) => void
   aiProvider: string
   onAiProviderChange: (value: string) => void
+  selectedModel: string
+  onModelChange: (value: string) => void
   bloomsLevels: string[]
   onBloomsLevelsChange: (value: string[]) => void
-  
+
   // Materials
   selectedMaterials: Material[]
   onMaterialsClick: () => void
-  
+
   // Actions
   isGenerating: boolean
   onGenerate: () => void
@@ -72,13 +102,6 @@ const difficulties = [
   { value: 'beginner', label: 'Easy', dotColor: 'bg-green-500' },
   { value: 'intermediate', label: 'Medium', dotColor: 'bg-yellow-500' },
   { value: 'advanced', label: 'Hard', dotColor: 'bg-red-500' },
-]
-
-const aiProviders = [
-  { value: 'groq', label: 'Groq' },
-  { value: 'openai', label: 'OpenAI' },
-  { value: 'anthropic', label: 'Anthropic' },
-  { value: 'google', label: 'Google' },
 ]
 
 const bloomsOptions = [
@@ -101,6 +124,8 @@ export function ConfigSidebar({
   onDifficultyChange,
   aiProvider,
   onAiProviderChange,
+  selectedModel,
+  onModelChange,
   bloomsLevels,
   onBloomsLevelsChange,
   selectedMaterials,
@@ -109,8 +134,51 @@ export function ConfigSidebar({
   onGenerate,
   onStop,
 }: ConfigSidebarProps) {
+  const { getToken } = useAuth()
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false)
+  const [providers, setProviders] = useState<ProviderInfo[]>([])
+  const [isLoadingProviders, setIsLoadingProviders] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Fetch available providers and models
+  useEffect(() => {
+    const fetchProviders = async () => {
+      setIsLoadingProviders(true)
+      try {
+        const token = await getToken()
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/question-generator/available-models`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        if (response.ok) {
+          const data = await response.json()
+          setProviders(data.providers || [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch providers:', error)
+      } finally {
+        setIsLoadingProviders(false)
+      }
+    }
+    fetchProviders()
+  }, [getToken])
+
+  // Get current model display info
+  const getCurrentModelDisplay = () => {
+    const provider = providers.find(p => p.id === aiProvider)
+    if (!provider) return { providerName: aiProvider, modelName: selectedModel }
+    const model = provider.models.find(m => m.id === selectedModel)
+    return {
+      providerName: provider.name,
+      modelName: model?.name || selectedModel || provider.models[0]?.name || 'Default'
+    }
+  }
+
+  // Handle model selection
+  const handleModelSelect = (providerId: string, modelId: string) => {
+    onAiProviderChange(providerId)
+    onModelChange(modelId)
+  }
 
   // Auto-resize textarea
   const adjustHeight = useCallback(() => {
@@ -143,7 +211,7 @@ export function ConfigSidebar({
   return (
     <div className="flex flex-col h-full">
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-4">
+        <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
           {/* Prompt Input */}
           <div className="relative rounded-xl border border-border bg-background/50 focus-within:border-primary/50 transition-colors">
             {/* Selected Materials */}
@@ -271,24 +339,89 @@ export function ConfigSidebar({
               </Select>
             </div>
 
-            {/* AI Provider */}
+            {/* AI Model Selector - ChatGPT style */}
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                 <Sparkles className="h-3 w-3" />
                 AI Model
               </label>
-              <Select value={aiProvider} onValueChange={onAiProviderChange}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {aiProviders.map(p => (
-                    <SelectItem key={p.value} value={p.value}>
-                      {p.label}
-                    </SelectItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full h-8 justify-between text-xs font-normal"
+                    disabled={isLoadingProviders}
+                  >
+                    <span className="flex items-center gap-2 truncate">
+                      <span className="font-medium">{getCurrentModelDisplay().providerName}</span>
+                      <span className="text-muted-foreground">·</span>
+                      <span className="truncate">{getCurrentModelDisplay().modelName}</span>
+                    </span>
+                    <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-72">
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">
+                    Select AI Provider & Model
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {providers.map((provider) => (
+                    <DropdownMenuSub key={provider.id}>
+                      <DropdownMenuSubTrigger
+                        className={cn(
+                          "flex items-center gap-2",
+                          !provider.available && "opacity-50"
+                        )}
+                        disabled={!provider.available}
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{provider.name}</span>
+                            {aiProvider === provider.id && (
+                              <Check className="h-3 w-3 text-primary" />
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {provider.description}
+                          </p>
+                        </div>
+                        {!provider.available && (
+                          <AlertCircle className="h-3 w-3 text-muted-foreground" />
+                        )}
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="w-64">
+                        {provider.models.map((model) => (
+                          <DropdownMenuItem
+                            key={model.id}
+                            onClick={() => handleModelSelect(provider.id, model.id)}
+                            className="flex items-center justify-between"
+                          >
+                            <div>
+                              <div className="font-medium text-sm">{model.name}</div>
+                              <p className="text-xs text-muted-foreground line-clamp-1">
+                                {model.description}
+                              </p>
+                            </div>
+                            {aiProvider === provider.id && selectedModel === model.id && (
+                              <Check className="h-4 w-4 text-primary shrink-0" />
+                            )}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
                   ))}
-                </SelectContent>
-              </Select>
+                  {providers.length === 0 && !isLoadingProviders && (
+                    <DropdownMenuItem disabled>
+                      <span className="text-muted-foreground">No providers available</span>
+                    </DropdownMenuItem>
+                  )}
+                  {isLoadingProviders && (
+                    <DropdownMenuItem disabled>
+                      <span className="text-muted-foreground">Loading providers...</span>
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 

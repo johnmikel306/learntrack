@@ -1,9 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { SignedIn } from '@clerk/clerk-react'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { UserProvider } from './contexts/UserContext'
 import { ToastProvider } from './contexts/ToastContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import ProtectedRoute from './components/ProtectedRoute'
 import HomePage from './pages/HomePage'
 import GetStartedPage from './pages/GetStartedPage'
 import SignInPage from './pages/SignInPage'
@@ -31,29 +31,29 @@ function App() {
               <Route path="/sign-up/*" element={<SignUpPage />} />
               <Route path="/accept-invitation/:token" element={<AcceptInvitationPage />} />
 
-              {/* Onboarding routes */}
+              {/* Onboarding routes - Protected */}
               <Route
                 path="/onboarding/teacher"
                 element={
-                  <SignedIn>
+                  <ProtectedRoute>
                     <TeacherOnboarding />
-                  </SignedIn>
+                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/onboarding/student"
                 element={
-                  <SignedIn>
+                  <ProtectedRoute>
                     <StudentOnboarding />
-                  </SignedIn>
+                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/onboarding/parent"
                 element={
-                  <SignedIn>
+                  <ProtectedRoute>
                     <ParentOnboarding />
-                  </SignedIn>
+                  </ProtectedRoute>
                 }
               />
 
@@ -61,9 +61,9 @@ function App() {
               <Route
                 path="/dashboard/*"
                 element={
-                  <SignedIn>
+                  <ProtectedRoute>
                     <DashboardPage />
-                  </SignedIn>
+                  </ProtectedRoute>
                 }
               />
 
@@ -72,21 +72,21 @@ function App() {
               <Route path="/questions" element={<Navigate to="/dashboard/content/bank" replace />} />
               <Route path="/students" element={<Navigate to="/dashboard/students" replace />} />
 
-              {/* Role setup and settings */}
+              {/* Role setup and settings - Protected */}
               <Route
                 path="/role-setup"
                 element={
-                  <SignedIn>
+                  <ProtectedRoute>
                     <RoleSetupPage />
-                  </SignedIn>
+                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/settings"
                 element={
-                  <SignedIn>
+                  <ProtectedRoute>
                     <SettingsPage />
-                  </SignedIn>
+                  </ProtectedRoute>
                 }
               />
               </Routes>

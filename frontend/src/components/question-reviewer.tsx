@@ -32,6 +32,8 @@ import { toast } from '@/contexts/ToastContext'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
+import { MathText } from '@/components/ui/math-text'
+import { cn } from '@/lib/utils'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
@@ -360,14 +362,16 @@ export default function QuestionReviewer() {
   })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
             Review Questions
           </h1>
-          <p className="text-muted-foreground mt-1">Review and approve AI-generated questions for quality assurance</p>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            Review and approve AI-generated questions for quality assurance
+          </p>
         </div>
         {selectedQuestions.size > 0 && (
           <div className="flex items-center gap-3">
@@ -376,6 +380,7 @@ export default function QuestionReviewer() {
             </span>
             <Button
               onClick={handleBulkApprove}
+              size="sm"
               className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <ThumbsUp className="w-4 h-4 mr-2" />
@@ -385,73 +390,93 @@ export default function QuestionReviewer() {
         )}
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      {/* Stats Cards - Responsive grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         <Card className="border-0 shadow-sm bg-card">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-muted-foreground text-sm font-medium">Total Questions</p>
-                <p className="text-3xl font-bold text-foreground mt-1">{reviewStats.totalQuestions}</p>
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
               </div>
-              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-primary" />
+              <div className="min-w-0">
+                <p className="text-muted-foreground text-xs sm:text-sm font-medium truncate">
+                  Total Questions
+                </p>
+                <p className="text-2xl sm:text-3xl font-bold text-foreground">
+                  {reviewStats.totalQuestions}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-sm bg-card">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-muted-foreground text-sm font-medium">Pending Review</p>
-                <p className="text-3xl font-bold text-foreground mt-1">{reviewStats.pendingReview}</p>
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-yellow-500/10 flex items-center justify-center flex-shrink-0">
+                <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600 dark:text-yellow-500" />
               </div>
-              <div className="w-12 h-12 rounded-lg bg-yellow-500/10 flex items-center justify-center">
-                <Clock className="w-6 h-6 text-yellow-600 dark:text-yellow-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm bg-card">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-muted-foreground text-sm font-medium">Approved</p>
-                <p className="text-3xl font-bold text-foreground mt-1">{reviewStats.approved}</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-green-500/10 flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-500" />
+              <div className="min-w-0">
+                <p className="text-muted-foreground text-xs sm:text-sm font-medium truncate">
+                  Pending Review
+                </p>
+                <p className="text-2xl sm:text-3xl font-bold text-foreground">
+                  {reviewStats.pendingReview}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-sm bg-card">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-muted-foreground text-sm font-medium">Rejected</p>
-                <p className="text-3xl font-bold text-foreground mt-1">{reviewStats.rejected}</p>
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-500" />
               </div>
-              <div className="w-12 h-12 rounded-lg bg-red-500/10 flex items-center justify-center">
-                <XCircle className="w-6 h-6 text-red-600 dark:text-red-500" />
+              <div className="min-w-0">
+                <p className="text-muted-foreground text-xs sm:text-sm font-medium truncate">
+                  Approved
+                </p>
+                <p className="text-2xl sm:text-3xl font-bold text-foreground">
+                  {reviewStats.approved}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-sm bg-card">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-muted-foreground text-sm font-medium">Avg. Rating</p>
-                <p className="text-3xl font-bold text-foreground mt-1">{reviewStats.averageRating.toFixed(1)}</p>
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                <XCircle className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 dark:text-red-500" />
               </div>
-              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Star className="w-6 h-6 text-primary" />
+              <div className="min-w-0">
+                <p className="text-muted-foreground text-xs sm:text-sm font-medium truncate">
+                  Rejected
+                </p>
+                <p className="text-2xl sm:text-3xl font-bold text-foreground">
+                  {reviewStats.rejected}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm bg-card col-span-2 sm:col-span-1">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Star className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-muted-foreground text-xs sm:text-sm font-medium truncate">
+                  Avg. Rating
+                </p>
+                <p className="text-2xl sm:text-3xl font-bold text-foreground">
+                  {reviewStats.averageRating.toFixed(1)}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -459,25 +484,34 @@ export default function QuestionReviewer() {
       </div>
 
       {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="bg-muted/50 border border-border">
-          <TabsTrigger value="review" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
+        <TabsList className="bg-muted/30 border border-border p-1 h-auto w-full grid grid-cols-3 gap-1">
+          <TabsTrigger
+            value="review"
+            className="px-4 py-2.5 text-xs sm:text-sm font-medium rounded-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50"
+          >
             Review Queue
           </TabsTrigger>
-          <TabsTrigger value="approved" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            Approved Questions
+          <TabsTrigger
+            value="approved"
+            className="px-4 py-2.5 text-xs sm:text-sm font-medium rounded-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50"
+          >
+            Approved
           </TabsTrigger>
-          <TabsTrigger value="analytics" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            Review Analytics
+          <TabsTrigger
+            value="analytics"
+            className="px-4 py-2.5 text-xs sm:text-sm font-medium rounded-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50"
+          >
+            Analytics
           </TabsTrigger>
         </TabsList>
 
         {/* Review Queue Tab */}
-        <TabsContent value="review" className="space-y-6">
+        <TabsContent value="review" className="space-y-4 sm:space-y-6">
           {/* Filters and Search */}
           <Card className="border-border shadow-sm bg-card">
-            <CardContent className="p-4">
-              <div className="flex flex-col md:flex-row gap-3">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <div className="flex-1">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -485,44 +519,46 @@ export default function QuestionReviewer() {
                       placeholder="Search questions..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 bg-background border-border h-10"
+                      className="pl-10 bg-background border-border h-9 sm:h-10 text-sm"
                     />
                   </div>
                 </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full md:w-[180px] h-10 border-border">
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                    <SelectItem value="needs-revision">Needs Revision</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-                  <SelectTrigger className="w-full md:w-[180px] h-10 border-border">
-                    <SelectValue placeholder="Filter by subject" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Subjects</SelectItem>
-                    <SelectItem value="Mathematics">Mathematics</SelectItem>
-                    <SelectItem value="Physics">Physics</SelectItem>
-                    <SelectItem value="Chemistry">Chemistry</SelectItem>
-                    <SelectItem value="Biology">Biology</SelectItem>
-                    <SelectItem value="Geography">Geography</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="grid grid-cols-2 sm:flex gap-3">
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-full sm:w-[150px] h-9 sm:h-10 border-border text-sm">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                      <SelectItem value="needs-revision">Needs Revision</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+                    <SelectTrigger className="w-full sm:w-[150px] h-9 sm:h-10 border-border text-sm">
+                      <SelectValue placeholder="Subject" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Subjects</SelectItem>
+                      <SelectItem value="Mathematics">Mathematics</SelectItem>
+                      <SelectItem value="Physics">Physics</SelectItem>
+                      <SelectItem value="Chemistry">Chemistry</SelectItem>
+                      <SelectItem value="Biology">Biology</SelectItem>
+                      <SelectItem value="Geography">Geography</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Questions List */}
-          <Card className="border-border shadow-sm bg-card">
+          <Card className="border-border shadow-sm bg-card overflow-visible">
             <CardHeader className="border-b border-border">
               <CardTitle className="flex items-center text-foreground">
-                <Eye className="w-5 h-5 mr-2 text-primary" />
+                <Eye className="w-5 h-5 mr-2 text-primary flex-shrink-0" />
                 Questions for Review ({filteredQuestions.length})
               </CardTitle>
             </CardHeader>
@@ -634,9 +670,9 @@ export default function QuestionReviewer() {
 
                         {/* Question text - most prominent */}
                         <div className="px-6 py-6">
-                          <p className="text-lg font-medium text-foreground leading-relaxed">
-                            {question.text}
-                          </p>
+                          <div className="text-lg font-medium text-foreground leading-relaxed">
+                            <MathText className="text-lg">{question.text}</MathText>
+                          </div>
                         </div>
 
                         {/* Options */}
@@ -659,7 +695,9 @@ export default function QuestionReviewer() {
                                     <span className="font-bold text-foreground text-lg flex-shrink-0">
                                       {String.fromCharCode(65 + optIndex)}.
                                     </span>
-                                    <span className="text-foreground flex-1">{option}</span>
+                                    <span className="text-foreground flex-1">
+                                      <MathText className="text-inherit">{option}</MathText>
+                                    </span>
                                     {option === question.correctAnswer && (
                                       <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-500 flex-shrink-0" />
                                     )}
@@ -685,9 +723,9 @@ export default function QuestionReviewer() {
                               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
                                 Correct Answer
                               </p>
-                              <p className="text-sm font-semibold text-green-700 dark:text-green-400">
-                                {question.correctAnswer}
-                              </p>
+                              <div className="text-sm font-semibold text-green-700 dark:text-green-400">
+                                <MathText className="text-inherit text-sm">{question.correctAnswer}</MathText>
+                              </div>
                             </div>
                             <div>
                               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
@@ -706,7 +744,9 @@ export default function QuestionReviewer() {
                             Explanation
                           </h4>
                           <div className="bg-primary/5 border-l-4 border-primary rounded-r-lg p-4">
-                            <p className="text-foreground leading-relaxed">{question.explanation}</p>
+                            <div className="text-foreground leading-relaxed">
+                              <MathText className="text-inherit">{question.explanation}</MathText>
+                            </div>
                           </div>
                         </div>
 

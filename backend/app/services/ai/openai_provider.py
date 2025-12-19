@@ -12,14 +12,35 @@ from app.core.exceptions import AIProviderError
 
 logger = structlog.get_logger()
 
+# Available OpenAI models
+OPENAI_MODELS = {
+    "gpt-4o": {"context_window": 128000, "description": "GPT-4o - Most capable multimodal"},
+    "gpt-4o-mini": {"context_window": 128000, "description": "GPT-4o Mini - Fast and affordable"},
+    "gpt-4-turbo": {"context_window": 128000, "description": "GPT-4 Turbo - High performance"},
+    "gpt-4": {"context_window": 8192, "description": "GPT-4 - Original powerful model"},
+    "gpt-3.5-turbo": {"context_window": 16385, "description": "GPT-3.5 Turbo - Fast and cost-effective"},
+}
+
 
 class OpenAIProvider(BaseAIProvider):
     """OpenAI provider for question generation"""
-    
-    def __init__(self, api_key: str):
+
+    def __init__(self, api_key: str, model: str = "gpt-4o"):
         super().__init__(api_key)
         self.client = AsyncOpenAI(api_key=api_key)
-        self.model = "gpt-4"
+        self.model = model
+
+    @classmethod
+    def get_available_models(cls) -> Dict[str, Dict[str, Any]]:
+        """Get available OpenAI models"""
+        return OPENAI_MODELS
+
+    def set_model(self, model: str):
+        """Change the active model"""
+        if model in OPENAI_MODELS:
+            self.model = model
+        else:
+            raise ValueError(f"Model {model} not available. Choose from: {list(OPENAI_MODELS.keys())}")
     
     async def extract_text_from_content(self, content: str, file_type: str) -> str:
         """Extract and clean text from file content using OpenAI"""

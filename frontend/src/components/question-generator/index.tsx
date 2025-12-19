@@ -19,6 +19,7 @@ import { useAuth } from '@clerk/clerk-react'
 import { toast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
 import { useMaterials } from '@/hooks/useQueries'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
@@ -79,16 +80,25 @@ interface Material {
 
 export function OpenCanvasGenerator() {
   const { getToken } = useAuth()
-  
-  // Sidebar state
+  const isMobile = useIsMobile()
+
+  // Sidebar state - collapsed by default on mobile
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+
+  // Auto-collapse sidebar on mobile
+  useEffect(() => {
+    if (isMobile) {
+      setIsSidebarCollapsed(true)
+    }
+  }, [isMobile])
   
   // Form state
   const [prompt, setPrompt] = useState('')
-  const [questionCount, setQuestionCount] = useState(5)
+  const [questionCount, setQuestionCount] = useState(1)
   const [questionType, setQuestionType] = useState('multiple-choice')
   const [difficulty, setDifficulty] = useState('intermediate')
   const [aiProvider, setAiProvider] = useState('groq')
+  const [selectedModel, setSelectedModel] = useState('llama-3.3-70b-versatile')
   const [bloomsLevels, setBloomsLevels] = useState<string[]>([])
   const [selectedMaterials, setSelectedMaterials] = useState<Material[]>([])
   const [isMaterialsDialogOpen, setIsMaterialsDialogOpen] = useState(false)
@@ -202,6 +212,7 @@ export function OpenCanvasGenerator() {
         difficulty: mapDifficulty(difficulty),
         material_ids: selectedMaterials.map(m => m._id),
         ai_provider: aiProvider,
+        model_name: selectedModel,
         blooms_levels: bloomsLevels.length > 0 ? bloomsLevels : undefined,
       }
 
@@ -399,26 +410,63 @@ export function OpenCanvasGenerator() {
     setIsGenerating(false)
   }, [])
 
+  const handleDeleteSession = useCallback(async (sessionIdToDelete: string) => {
+    const token = await getToken()
+    const response = await fetch(`${API_BASE_URL}/question-generator/sessions/${sessionIdToDelete}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to delete session')
+    }
+
+    // Remove from local state
+    setSessions(prev => prev.filter(s => s.session_id !== sessionIdToDelete))
+
+    // If this was the selected session, clear it
+    if (selectedSessionId === sessionIdToDelete) {
+      setSelectedSessionId(null)
+      setSessionId(null)
+      setQuestions([])
+    }
+  }, [getToken, selectedSessionId])
+
+  // Responsive sidebar width: full on mobile when open, 320px on tablet, 360px on desktop
+  const sidebarWidth = isMobile ? (typeof window !== 'undefined' ? window.innerWidth : 320) : 360
+
   return (
-    <div className="flex h-[calc(100vh-120px)] gap-0 overflow-hidden rounded-lg border bg-background">
+    <div className="flex h-[calc(100vh-120px)] gap-0 overflow-hidden rounded-lg border bg-background relative">
+      {/* Mobile overlay backdrop */}
+      {isMobile && !isSidebarCollapsed && (
+        <div
+          className="fixed inset-0 bg-black/50 z-20 md:hidden"
+          onClick={() => setIsSidebarCollapsed(true)}
+        />
+      )}
+
       {/* Left Sidebar - Configuration */}
       <motion.div
         initial={false}
-        animate={{ width: isSidebarCollapsed ? 0 : 360 }}
+        animate={{ width: isSidebarCollapsed ? 0 : sidebarWidth }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className="relative border-r bg-muted/30 overflow-hidden"
+        className={cn(
+          'border-r bg-muted/30 overflow-hidden',
+          isMobile ? 'fixed left-0 top-0 h-full z-30' : 'relative'
+        )}
       >
-        <div className="w-[360px] h-full">
-          <div className="flex items-center justify-between p-4 border-b">
+        <div className={cn('h-full', isMobile ? 'w-[100vw] max-w-[360px]' : 'w-[360px]')}>
+          <div className="flex items-center justify-between p-3 sm:p-4 border-b">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              <span className="font-semibold">AI Generator</span>
+              <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+              <span className="font-semibold text-sm sm:text-base">AI Generator</span>
             </div>
             <SessionDrawer
               sessions={sessions}
               isLoading={isLoadingSessions}
               onRefresh={fetchSessions}
               onSelectSession={handleSelectSession}
+              onDeleteSession={handleDeleteSession}
               selectedSessionId={selectedSessionId}
             />
           </div>
@@ -433,6 +481,8 @@ export function OpenCanvasGenerator() {
             onDifficultyChange={setDifficulty}
             aiProvider={aiProvider}
             onAiProviderChange={setAiProvider}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
             bloomsLevels={bloomsLevels}
             onBloomsLevelsChange={setBloomsLevels}
             selectedMaterials={selectedMaterials}
@@ -448,8 +498,13 @@ export function OpenCanvasGenerator() {
       <Button
         variant="ghost"
         size="icon"
-        className="absolute left-[360px] top-1/2 -translate-y-1/2 z-10 h-8 w-6 rounded-l-none border border-l-0 bg-background hover:bg-muted"
-        style={{ left: isSidebarCollapsed ? 0 : 360 }}
+        className={cn(
+          'z-10 h-8 w-8 sm:w-6 rounded-l-none border border-l-0 bg-background hover:bg-muted',
+          isMobile
+            ? 'fixed left-0 top-20 rounded-r-md'
+            : 'absolute top-1/2 -translate-y-1/2'
+        )}
+        style={{ left: isMobile ? (isSidebarCollapsed ? 0 : 'auto') : (isSidebarCollapsed ? 0 : sidebarWidth) }}
         onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       >
         {isSidebarCollapsed ? (

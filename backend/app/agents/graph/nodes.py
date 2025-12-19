@@ -28,6 +28,59 @@ from app.agents.tools.material_retriever import retrieve_materials
 logger = structlog.get_logger()
 
 
+def sanitize_json_string(content: str) -> str:
+    """
+    Sanitize a JSON string by fixing common escape sequence issues.
+    This handles cases where LLMs generate invalid JSON with unescaped backslashes,
+    especially in LaTeX formulas like \\frac, \\sqrt, etc.
+    """
+    import re
+
+    # First, try to parse as-is
+    try:
+        json.loads(content)
+        return content  # Already valid
+    except json.JSONDecodeError:
+        pass
+
+    # Fix common LaTeX escape issues in JSON strings
+    # Replace single backslashes with double backslashes, but not already escaped ones
+    # This regex finds backslashes that are NOT followed by valid JSON escape chars or another backslash
+
+    def fix_escapes(match):
+        s = match.group(0)
+        result = []
+        i = 0
+        while i < len(s):
+            if s[i] == '\\':
+                if i + 1 < len(s):
+                    next_char = s[i + 1]
+                    # Valid JSON escape sequences
+                    if next_char in '"\\bfnrtu/':
+                        result.append(s[i:i+2])
+                        i += 2
+                        continue
+                    else:
+                        # Invalid escape - double the backslash
+                        result.append('\\\\')
+                        i += 1
+                        continue
+                else:
+                    # Trailing backslash
+                    result.append('\\\\')
+                    i += 1
+            else:
+                result.append(s[i])
+                i += 1
+        return ''.join(result)
+
+    # Process string contents (between quotes)
+    # This regex matches JSON string contents
+    fixed = re.sub(r'"([^"]*)"', lambda m: '"' + fix_escapes(m) + '"', content)
+
+    return fixed
+
+
 class BaseNode:
     """Base class for agent nodes"""
 
@@ -225,7 +278,7 @@ Example format:
                 if self.sse_handler:
                     await self.sse_handler.send_question_complete(
                         question_id=q.question_id,
-                        question_data=q.model_dump(),
+                        question_data=q.model_dump(mode='json'),
                         score=q.quality_score or 0.85
                     )
 
@@ -274,6 +327,7 @@ Enhanced Prompt: {state.get('enhanced_prompt', state['original_prompt'])}
     def _parse_questions(self, content: str, state: AgentState) -> List[GeneratedQuestion]:
         """Parse generated questions from LLM response"""
         questions = []
+        import re
 
         try:
             # Try to extract JSON array or objects
@@ -284,22 +338,31 @@ Enhanced Prompt: {state.get('enhanced_prompt', state['original_prompt'])}
             else:
                 json_content = content
 
-            # Try parsing as array first
+            json_content = json_content.strip()
+
+            # Try parsing as array first with sanitization fallback
             try:
-                data = json.loads(json_content.strip())
-                if isinstance(data, list):
-                    items = data
-                else:
-                    items = [data]
+                data = json.loads(json_content)
+                items = data if isinstance(data, list) else [data]
             except json.JSONDecodeError:
-                # Try to find individual JSON objects
-                import re
-                items = []
-                for match in re.finditer(r'\{[^{}]*\}', json_content, re.DOTALL):
-                    try:
-                        items.append(json.loads(match.group()))
-                    except:
-                        continue
+                # Try sanitizing first
+                try:
+                    sanitized = sanitize_json_string(json_content)
+                    data = json.loads(sanitized)
+                    items = data if isinstance(data, list) else [data]
+                except json.JSONDecodeError:
+                    # Fallback: find individual JSON objects
+                    items = []
+                    for match in re.finditer(r'\{[^{}]*\}', json_content, re.DOTALL):
+                        try:
+                            item_str = match.group()
+                            try:
+                                items.append(json.loads(item_str))
+                            except json.JSONDecodeError:
+                                sanitized_item = sanitize_json_string(item_str)
+                                items.append(json.loads(sanitized_item))
+                        except:
+                            continue
 
             for i, item in enumerate(items):
                 q = GeneratedQuestion(
@@ -578,10 +641,11 @@ class GenerateArtifactNode(BaseNode):
                     questions.append(question)
 
                     # Emit question complete immediately
+                    # Use mode='json' to serialize enums and nested models properly
                     if self.sse_handler:
                         await self.sse_handler.send_question_complete(
                             question_id=question.question_id,
-                            question_data=question.model_dump(),
+                            question_data=question.model_dump(mode='json'),
                             score=question.quality_score or 0.85
                         )
 
@@ -591,7 +655,7 @@ class GenerateArtifactNode(BaseNode):
                 artifact_type=ArtifactType.QUESTION_SET,
                 title=f"Questions: {config.topic or state['original_prompt'][:50]}",
                 current_index=1,
-                contents=[q.model_dump() for q in questions]
+                contents=[q.model_dump(mode='json') for q in questions]
             )
 
             state["artifact"] = artifact
@@ -734,7 +798,25 @@ Output as a single JSON object (not an array).
                 logger.error("No JSON object found in response")
                 return None
 
-            item = json.loads(match.group())
+            json_str = match.group()
+
+            # Try parsing, with fallback to sanitized version
+            try:
+                item = json.loads(json_str)
+            except json.JSONDecodeError as parse_error:
+                logger.warning(
+                    f"JSON parse error for question {question_number}, attempting to sanitize",
+                    error=str(parse_error)
+                )
+                # Try to fix common escape sequence issues
+                sanitized = sanitize_json_string(json_str)
+                try:
+                    item = json.loads(sanitized)
+                    logger.info(f"Successfully parsed question {question_number} after sanitization")
+                except json.JSONDecodeError:
+                    # Last resort: try removing problematic characters
+                    cleaned = re.sub(r'\\(?!["\\/bfnrtu])', r'\\\\', json_str)
+                    item = json.loads(cleaned)
 
             question = GeneratedQuestion(
                 question_id=item.get("question_id", f"q{question_number}"),
@@ -761,6 +843,7 @@ Output as a single JSON object (not an array).
     def _parse_questions(self, content: str, state: AgentState) -> List[GeneratedQuestion]:
         """Parse generated questions from LLM response"""
         questions = []
+        import re
 
         try:
             if "```json" in content:
@@ -770,17 +853,31 @@ Output as a single JSON object (not an array).
             else:
                 json_content = content
 
+            json_content = json_content.strip()
+
+            # Try to parse with sanitization fallback
             try:
-                data = json.loads(json_content.strip())
+                data = json.loads(json_content)
                 items = data if isinstance(data, list) else [data]
             except json.JSONDecodeError:
-                import re
-                items = []
-                for match in re.finditer(r'\{[^{}]*\}', json_content, re.DOTALL):
-                    try:
-                        items.append(json.loads(match.group()))
-                    except:
-                        continue
+                # Try sanitizing first
+                try:
+                    sanitized = sanitize_json_string(json_content)
+                    data = json.loads(sanitized)
+                    items = data if isinstance(data, list) else [data]
+                except json.JSONDecodeError:
+                    # Fallback to finding individual JSON objects
+                    items = []
+                    for match in re.finditer(r'\{[^{}]*\}', json_content, re.DOTALL):
+                        try:
+                            item_str = match.group()
+                            try:
+                                items.append(json.loads(item_str))
+                            except json.JSONDecodeError:
+                                sanitized_item = sanitize_json_string(item_str)
+                                items.append(json.loads(sanitized_item))
+                        except:
+                            continue
 
             for i, item in enumerate(items):
                 q = GeneratedQuestion(
@@ -866,7 +963,7 @@ Apply the edit and return the updated question as JSON.
 
             # Update artifact
             if state.get("artifact"):
-                state["artifact"].contents[original_idx] = edited.model_dump()
+                state["artifact"].contents[original_idx] = edited.model_dump(mode='json')
                 state["artifact"].current_index += 1
                 state["artifact"].updated_at = datetime.utcnow()
 
@@ -875,7 +972,7 @@ Apply the edit and return the updated question as JSON.
             if self.sse_handler:
                 await self.sse_handler.send_question_complete(
                     question_id=edited.question_id,
-                    question_data=edited.model_dump(),
+                    question_data=edited.model_dump(mode='json'),
                     score=edited.quality_score or 0.85
                 )
 
@@ -986,7 +1083,7 @@ Output a single question as JSON.
 
             # Update artifact
             if state.get("artifact"):
-                state["artifact"].contents[original_idx] = new_question.model_dump()
+                state["artifact"].contents[original_idx] = new_question.model_dump(mode='json')
                 state["artifact"].current_index += 1
                 state["artifact"].updated_at = datetime.utcnow()
 
@@ -995,7 +1092,7 @@ Output a single question as JSON.
             if self.sse_handler:
                 await self.sse_handler.send_question_complete(
                     question_id=new_question.question_id,
-                    question_data=new_question.model_dump(),
+                    question_data=new_question.model_dump(mode='json'),
                     score=new_question.quality_score or 0.85
                 )
 
@@ -1117,7 +1214,7 @@ Output as JSON.
             state["questions"][original_idx] = new_question
 
             if state.get("artifact"):
-                state["artifact"].contents[original_idx] = new_question.model_dump()
+                state["artifact"].contents[original_idx] = new_question.model_dump(mode='json')
                 state["artifact"].current_index += 1
                 state["artifact"].updated_at = datetime.utcnow()
 
@@ -1126,7 +1223,7 @@ Output as JSON.
             if self.sse_handler:
                 await self.sse_handler.send_question_complete(
                     question_id=new_question.question_id,
-                    question_data=new_question.model_dump(),
+                    question_data=new_question.model_dump(mode='json'),
                     score=new_question.quality_score or 0.85
                 )
 
@@ -1314,6 +1411,20 @@ Consider:
 
             # Parse reflection
             content = response.content
+
+            # Handle empty response
+            if not content or not content.strip():
+                logger.warning("Empty response from LLM in reflect node, using default")
+                reflection = ReflectionResult(
+                    overall_quality=0.85,
+                    strengths=["Questions generated successfully"],
+                    improvements=[],
+                    should_regenerate=False,
+                    regenerate_indices=[]
+                )
+                state["reflection_result"] = reflection
+                return state
+
             if "```json" in content:
                 json_content = content.split("```json")[1].split("```")[0]
             elif "```" in content:
@@ -1321,7 +1432,27 @@ Consider:
             else:
                 json_content = content
 
-            data = json.loads(json_content.strip())
+            json_content = json_content.strip()
+
+            # Handle empty JSON content
+            if not json_content:
+                logger.warning("Empty JSON content in reflect node, using default")
+                reflection = ReflectionResult(
+                    overall_quality=0.85,
+                    strengths=["Questions generated successfully"],
+                    improvements=[],
+                    should_regenerate=False,
+                    regenerate_indices=[]
+                )
+                state["reflection_result"] = reflection
+                return state
+
+            # Try to parse, with sanitization fallback
+            try:
+                data = json.loads(json_content)
+            except json.JSONDecodeError:
+                sanitized = sanitize_json_string(json_content)
+                data = json.loads(sanitized)
 
             reflection = ReflectionResult(
                 overall_quality=data.get("overall_quality", 0.85),
@@ -1344,7 +1475,14 @@ Consider:
 
         except Exception as e:
             logger.error("reflect failed", error=str(e))
-            state["reflection_result"] = None
+            # Provide default reflection instead of None
+            state["reflection_result"] = ReflectionResult(
+                overall_quality=0.8,
+                strengths=["Questions generated"],
+                improvements=[],
+                should_regenerate=False,
+                regenerate_indices=[]
+            )
 
         return state
 

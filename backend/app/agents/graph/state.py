@@ -155,7 +155,7 @@ class PromptAnalysis(BaseModel):
 
 class GenerationConfig(BaseModel):
     """Configuration for question generation"""
-    question_count: int = 5
+    question_count: int = 1
     question_types: List[QuestionType] = [QuestionType.MCQ]
     difficulty: Difficulty = Difficulty.MEDIUM
     blooms_levels: List[BloomsLevel] | Literal["AUTO"] = "AUTO"

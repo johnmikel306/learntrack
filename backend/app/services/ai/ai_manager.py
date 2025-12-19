@@ -24,6 +24,21 @@ class AIManager:
         self.ai_settings = ai_settings or {}
         self._initialize_providers()
 
+    def _is_valid_api_key(self, key: Optional[str], provider: str) -> bool:
+        """Check if API key is valid (not a placeholder)"""
+        if not key:
+            return False
+        # Reject common placeholder patterns
+        placeholders = [
+            "your_", "YOUR_", "sk_test_", "api_key", "API_KEY",
+            "placeholder", "PLACEHOLDER", "xxx", "XXX", "<", ">"
+        ]
+        for placeholder in placeholders:
+            if placeholder in key and provider != "clerk":  # Allow clerk test keys
+                return False
+        # Check minimum key length (most API keys are > 20 chars)
+        return len(key) > 20
+
     def _initialize_providers(self):
         """Initialize available AI providers"""
         openai_key = self._get_api_key("openai") or settings.OPENAI_API_KEY
@@ -35,40 +50,51 @@ class AIManager:
         if self.ai_settings.get("default_provider"):
             self.default_provider = self.ai_settings["default_provider"]
 
-        # OpenAI
-        if openai_key:
+        # OpenAI - only initialize with valid key
+        if self._is_valid_api_key(openai_key, "openai"):
             try:
                 self.providers[AIProvider.OPENAI] = OpenAIProvider(openai_key)
                 logger.info("OpenAI provider initialized")
             except Exception as e:
                 logger.error("Failed to initialize OpenAI provider", error=str(e))
+        elif openai_key:
+            logger.warning("OpenAI API key appears to be a placeholder, skipping initialization")
 
-        # Groq (LangChain)
-        if groq_key:
+        # Groq (LangChain) - only initialize with valid key
+        if self._is_valid_api_key(groq_key, "groq"):
             try:
                 self.providers[AIProvider.GROQ] = GroqProvider(groq_key)
                 logger.info("Groq provider initialized")
             except Exception as e:
                 logger.error("Failed to initialize Groq provider", error=str(e))
+        elif groq_key:
+            logger.warning("Groq API key appears to be a placeholder, skipping initialization")
 
-        # Gemini (LangChain)
-        if gemini_key:
+        # Gemini (LangChain) - only initialize with valid key
+        if self._is_valid_api_key(gemini_key, "gemini"):
             try:
                 self.providers[AIProvider.GEMINI] = GeminiProvider(gemini_key)
                 logger.info("Gemini provider initialized")
             except Exception as e:
                 logger.error("Failed to initialize Gemini provider", error=str(e))
+        elif gemini_key:
+            logger.warning("Gemini API key appears to be a placeholder, skipping initialization")
 
         # Anthropic (placeholder)
-        if anthropic_key:
+        if self._is_valid_api_key(anthropic_key, "anthropic"):
             logger.info("Anthropic provider available but not implemented")
 
         # Google (placeholder - use Gemini instead)
         if google_key and not gemini_key:
             logger.info("Google API key found - use GEMINI_API_KEY for Gemini models")
 
+        # Set default provider to first available if current default is not available
+        if self.default_provider not in self.providers and self.providers:
+            self.default_provider = next(iter(self.providers.keys()))
+            logger.info("Default provider set to first available", provider=self.default_provider)
+
         if not self.providers:
-            logger.warning("No AI providers initialized")
+            logger.warning("No AI providers initialized - check your API keys in .env")
 
     def _get_api_key(self, provider: str) -> Optional[str]:
         """Get API key for provider from database settings"""

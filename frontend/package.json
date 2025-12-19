@@ -70,9 +70,14 @@
     "tailwindcss-animate": "^1.0.7",
     "uploadthing": "^7.7.4",
     "vaul": "^0.9.6",
+    "katex": "^0.16.11",
+    "react-markdown": "^9.0.1",
+    "rehype-katex": "^7.0.1",
+    "remark-math": "^6.0.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/katex": "^0.16.7",
     "@playwright/test": "^1.57.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",

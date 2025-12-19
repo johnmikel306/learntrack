@@ -1,6 +1,7 @@
 /**
  * QuestionCanvas - Main canvas area for displaying generated questions
  * Inspired by Open Canvas's artifact view with real-time streaming
+ * Features: Streaming markdown display with ChatGPT-like typing effect
  */
 import React, { useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
@@ -10,6 +11,11 @@ import { Card } from '@/components/ui/card'
 import { AgentStatusBar } from './AgentStatusBar'
 import { QuestionCard } from './QuestionCard'
 import { Sparkles, FileQuestion, Download, CheckCircle, Loader2 } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
+import 'katex/dist/katex.min.css'
+import { cn } from '@/lib/utils'
 
 interface GeneratedQuestion {
   question_id: string
@@ -43,6 +49,58 @@ interface QuestionCanvasProps {
   onDelete?: (id: string) => void
   onApproveAll?: () => void
   onExport?: () => void
+}
+
+/**
+ * StreamingMarkdown - Renders markdown content as it streams in
+ * Hides the JSON block at the end for cleaner display during streaming
+ */
+function StreamingMarkdown({ content }: { content: string }) {
+  // Filter out the JSON code block at the end (it's for parsing, not display)
+  // The prompt outputs readable markdown first, then JSON at the end
+  const displayContent = React.useMemo(() => {
+    let processed = content
+
+    // Remove completed JSON code blocks (```json ... ```)
+    processed = processed.replace(/```json[\s\S]*?```/g, '')
+
+    // Also remove partial/in-progress JSON blocks (```json ... without closing ```)
+    // This handles the case where the model is in the middle of outputting JSON
+    const partialJsonMatch = processed.match(/```json[\s\S]*$/)
+    if (partialJsonMatch) {
+      processed = processed.substring(0, processed.indexOf('```json'))
+    }
+
+    // Remove any trailing partial code fence that might be starting
+    processed = processed.replace(/```\s*$/, '')
+
+    return processed.trim()
+  }, [content])
+
+  if (!displayContent) {
+    return null
+  }
+
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkMath]}
+      rehypePlugins={[rehypeKatex]}
+      className={cn(
+        'prose prose-sm dark:prose-invert max-w-none',
+        // Custom styling for streaming markdown
+        '[&>h2]:text-lg [&>h2]:font-semibold [&>h2]:text-primary [&>h2]:mt-4 [&>h2]:mb-2',
+        '[&>h3]:text-base [&>h3]:font-medium [&>h3]:text-foreground [&>h3]:mt-3 [&>h3]:mb-1',
+        '[&>p]:text-sm [&>p]:text-foreground/90 [&>p]:my-2',
+        '[&>ul]:text-sm [&>ul]:my-2 [&>ul]:space-y-1',
+        '[&>ul>li]:text-foreground/90',
+        '[&>hr]:my-3 [&>hr]:border-border',
+        '[&_strong]:text-foreground [&_strong]:font-semibold',
+        '[&_code]:text-xs [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded'
+      )}
+    >
+      {displayContent}
+    </ReactMarkdown>
+  )
 }
 
 export function QuestionCanvas({
@@ -124,47 +182,56 @@ export function QuestionCanvas({
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <Card className="p-4 bg-zinc-900/95 border-zinc-800 border-dashed border-2">
-                      {/* Header matching QuestionCard style */}
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/20">
-                          <Loader2 className="h-3 w-3 text-primary animate-spin" />
+                    <Card className="p-4 bg-card border border-border overflow-hidden">
+                      {/* Header with spinner */}
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10">
+                          <Loader2 className="h-4 w-4 text-primary animate-spin" />
                         </div>
-                        <span className="text-xs text-zinc-400">
-                          Generating Question {progress.current + 1} of {progress.total}
-                        </span>
+                        <div>
+                          <p className="text-sm font-medium">
+                            Generating Question {progress.current + 1} of {progress.total}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {streamingContent ? 'Streaming response...' : 'AI is crafting your question...'}
+                          </p>
+                        </div>
                       </div>
 
+                      {/* Streaming markdown content OR skeleton */}
                       {streamingContent ? (
-                        <div className="space-y-3">
-                          {/* Question text streaming */}
-                          <p className="text-sm text-zinc-200 leading-relaxed">
-                            {streamingContent}
-                            <span className="inline-block w-2 h-4 ml-1 bg-primary/60 animate-pulse" />
-                          </p>
-
-                          {/* Skeleton for options */}
-                          <div className="space-y-1 mt-4">
-                            <div className="h-8 bg-zinc-800/50 rounded animate-pulse w-full" />
-                            <div className="h-8 bg-zinc-800/50 rounded animate-pulse w-full" />
-                            <div className="h-8 bg-zinc-800/50 rounded animate-pulse w-full" />
-                            <div className="h-8 bg-zinc-800/50 rounded animate-pulse w-full" />
-                          </div>
+                        <div className="relative">
+                          <StreamingMarkdown content={streamingContent} />
+                          {/* Blinking cursor effect */}
+                          <span className="inline-block w-2 h-4 bg-primary/80 ml-0.5 animate-pulse" />
                         </div>
                       ) : (
-                        <div className="space-y-3">
-                          {/* Question skeleton */}
+                        <div className="space-y-4">
+                          {/* Question text skeleton */}
                           <div className="space-y-2">
-                            <div className="h-4 bg-zinc-800/50 rounded animate-pulse w-3/4" />
-                            <div className="h-4 bg-zinc-800/50 rounded animate-pulse w-full" />
+                            <div className="h-4 bg-muted rounded animate-pulse w-full" />
+                            <div className="h-4 bg-muted rounded animate-pulse w-5/6" />
+                            <div className="h-4 bg-muted rounded animate-pulse w-4/6" />
                           </div>
 
                           {/* Options skeleton */}
-                          <div className="space-y-1 mt-4">
-                            <div className="h-8 bg-zinc-800/50 rounded animate-pulse w-full" />
-                            <div className="h-8 bg-zinc-800/50 rounded animate-pulse w-full" />
-                            <div className="h-8 bg-zinc-800/50 rounded animate-pulse w-full" />
-                            <div className="h-8 bg-zinc-800/50 rounded animate-pulse w-full" />
+                          <div className="space-y-2 pt-2">
+                            <div className="flex items-center gap-3">
+                              <div className="h-5 w-5 rounded-full bg-muted animate-pulse flex-shrink-0" />
+                              <div className="h-4 bg-muted rounded animate-pulse flex-1" />
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="h-5 w-5 rounded-full bg-muted animate-pulse flex-shrink-0" />
+                              <div className="h-4 bg-muted rounded animate-pulse flex-1" />
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="h-5 w-5 rounded-full bg-muted animate-pulse flex-shrink-0" />
+                              <div className="h-4 bg-muted rounded animate-pulse flex-1" />
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="h-5 w-5 rounded-full bg-muted animate-pulse flex-shrink-0" />
+                              <div className="h-4 bg-muted rounded animate-pulse flex-1" />
+                            </div>
                           </div>
                         </div>
                       )}

@@ -111,6 +111,28 @@ class GenerationSessionService:
         question: StoredQuestion
     ) -> bool:
         """Add a question to a session"""
+        logger.info(
+            "Adding question to session",
+            session_id=session_id,
+            user_id=user_id,
+            question_id=question.question_id
+        )
+
+        # First verify the session exists
+        existing = await self.collection.find_one({"_id": session_id})
+        if not existing:
+            logger.error("Session not found for add_question", session_id=session_id)
+            return False
+
+        if existing.get("user_id") != user_id:
+            logger.error(
+                "User ID mismatch",
+                session_id=session_id,
+                expected_user_id=existing.get("user_id"),
+                provided_user_id=user_id
+            )
+            return False
+
         result = await self.collection.update_one(
             {"_id": session_id, "user_id": user_id},
             {
@@ -119,6 +141,14 @@ class GenerationSessionService:
                 "$set": {"updated_at": datetime.now(timezone.utc)}
             }
         )
+
+        logger.info(
+            "Add question result",
+            session_id=session_id,
+            matched_count=result.matched_count,
+            modified_count=result.modified_count
+        )
+
         return result.modified_count > 0
     
     async def update_question_status(

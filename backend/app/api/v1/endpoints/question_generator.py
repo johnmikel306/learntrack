@@ -32,7 +32,7 @@ async def get_session_service(db = Depends(get_database)):
 class GenerateRequest(BaseModel):
     """Request body for question generation"""
     prompt: str = Field(..., description="User's generation prompt")
-    question_count: int = Field(default=5, ge=1, le=20, description="Number of questions")
+    question_count: int = Field(default=1, ge=1, le=20, description="Number of questions")
     question_types: List[str] = Field(default=["MCQ"], description="Question types to generate")
     difficulty: str = Field(default="MEDIUM", description="Difficulty level")
     material_ids: Optional[List[str]] = Field(default=None, description="Material IDs to use")
@@ -142,6 +142,23 @@ async def generate_questions(
                 q_difficulty = get_enum_value(question_data.get("difficulty"), "MEDIUM")
                 q_blooms = get_enum_value(question_data.get("blooms_level"), "UNDERSTAND")
 
+                # Handle source_citations - may be SourceCitation objects or dicts
+                raw_citations = question_data.get("source_citations", [])
+                citations = []
+                for c in raw_citations:
+                    if hasattr(c, 'model_dump'):
+                        citations.append(c.model_dump())
+                    elif isinstance(c, dict):
+                        citations.append(c)
+
+                logger.info(
+                    "Saving question to database",
+                    session_id=session.session_id,
+                    question_id=question_data.get("question_id"),
+                    type=q_type,
+                    difficulty=q_difficulty
+                )
+
                 stored_q = StoredQuestion(
                     question_id=question_data.get("question_id", f"q{saved_questions_count + 1}"),
                     type=q_type,
@@ -151,7 +168,7 @@ async def generate_questions(
                     options=question_data.get("options"),
                     correct_answer=question_data.get("correct_answer", ""),
                     explanation=question_data.get("explanation", ""),
-                    source_citations=question_data.get("source_citations", []),
+                    source_citations=citations,
                     tags=question_data.get("tags", []),
                     quality_score=question_data.get("quality_score", 0.85)
                 )
@@ -163,14 +180,27 @@ async def generate_questions(
                 if result:
                     saved_questions_count += 1
                     logger.info(
-                        "Question saved to database",
+                        "Question saved to database successfully",
                         session_id=session.session_id,
                         question_id=stored_q.question_id,
                         total_saved=saved_questions_count
                     )
+                else:
+                    logger.warning(
+                        "Question save returned False",
+                        session_id=session.session_id,
+                        question_id=stored_q.question_id
+                    )
                 return result
             except Exception as e:
-                logger.error("Failed to save question", error=str(e), question_data=question_data)
+                logger.error(
+                    "Failed to save question",
+                    error=str(e),
+                    error_type=type(e).__name__,
+                    question_id=question_data.get("question_id")
+                )
+                import traceback
+                logger.error("Traceback", traceback=traceback.format_exc())
                 return False
 
         # Create SSE handler with session ID and save callback
@@ -640,3 +670,88 @@ async def get_generation_stats(
         tenant_id=current_user.tutor_id  # tutor_id is used for tenant isolation
     )
     return stats
+
+
+@router.get("/available-models")
+async def get_available_models(
+    current_user: ClerkUserContext = Depends(require_tutor)
+):
+    """
+    Get all available AI providers and their models.
+
+    Returns a structure like:
+    {
+        "providers": [
+            {
+                "id": "groq",
+                "name": "Groq",
+                "description": "Ultra-fast inference",
+                "available": true,
+                "models": [
+                    {"id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B", "description": "..."}
+                ]
+            }
+        ]
+    }
+    """
+    from app.services.ai.groq_provider import GROQ_MODELS
+    from app.services.ai.gemini_provider import GEMINI_MODELS
+    from app.services.ai.openai_provider import OPENAI_MODELS
+    from app.core.config import settings
+
+    providers = []
+
+    # Groq
+    groq_available = bool(settings.GROQ_API_KEY)
+    providers.append({
+        "id": "groq",
+        "name": "Groq",
+        "description": "Ultra-fast inference with open models",
+        "available": groq_available,
+        "models": [
+            {"id": model_id, "name": model_id.replace("-", " ").title(), "description": info.get("description", "")}
+            for model_id, info in GROQ_MODELS.items()
+        ]
+    })
+
+    # OpenAI
+    openai_available = bool(settings.OPENAI_API_KEY)
+    providers.append({
+        "id": "openai",
+        "name": "OpenAI",
+        "description": "GPT models from OpenAI",
+        "available": openai_available,
+        "models": [
+            {"id": model_id, "name": model_id.upper().replace("-", " "), "description": info.get("description", "")}
+            for model_id, info in OPENAI_MODELS.items()
+        ]
+    })
+
+    # Gemini (Google)
+    gemini_available = bool(settings.GEMINI_API_KEY)
+    providers.append({
+        "id": "gemini",
+        "name": "Google Gemini",
+        "description": "Gemini models from Google",
+        "available": gemini_available,
+        "models": [
+            {"id": model_id, "name": model_id.replace("-", " ").title(), "description": info.get("description", "")}
+            for model_id, info in GEMINI_MODELS.items()
+        ]
+    })
+
+    # Anthropic (placeholder)
+    anthropic_available = bool(settings.ANTHROPIC_API_KEY)
+    providers.append({
+        "id": "anthropic",
+        "name": "Anthropic",
+        "description": "Claude models from Anthropic",
+        "available": anthropic_available,
+        "models": [
+            {"id": "claude-3-5-sonnet-20241022", "name": "Claude 3.5 Sonnet", "description": "Most intelligent model"},
+            {"id": "claude-3-5-haiku-20241022", "name": "Claude 3.5 Haiku", "description": "Fast and affordable"},
+            {"id": "claude-3-opus-20240229", "name": "Claude 3 Opus", "description": "Powerful for complex tasks"},
+        ]
+    })
+
+    return {"providers": providers}

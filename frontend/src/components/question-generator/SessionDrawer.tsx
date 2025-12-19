@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Sheet,
   SheetContent,
@@ -36,13 +37,13 @@ import {
   History,
   FileQuestion,
   CheckCircle,
-  Clock,
-  XCircle,
   RefreshCw,
   MoreVertical,
   Trash2,
   Eye,
   Copy,
+  CheckSquare,
+  X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
@@ -125,26 +126,27 @@ export function SessionDrawer({
             )}
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-[400px] sm:w-[540px] p-0">
-          <SheetHeader className="p-4 border-b">
+        <SheetContent side="left" className="w-full max-w-[100vw] sm:max-w-[400px] md:max-w-[480px] p-0">
+          <SheetHeader className="p-3 sm:p-4 border-b">
             <div className="flex items-center justify-between">
-              <SheetTitle className="flex items-center gap-2">
-                <History className="h-5 w-5" />
-                Generation History
+              <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <History className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="truncate">Generation History</span>
               </SheetTitle>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={onRefresh}
                 disabled={isLoading}
+                className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0"
               >
                 <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
               </Button>
             </div>
           </SheetHeader>
 
-          <ScrollArea className="h-[calc(100vh-80px)]">
-            <div className="p-3 space-y-1">
+          <ScrollArea className="h-[calc(100vh-70px)] sm:h-[calc(100vh-80px)]">
+            <div className="p-2 sm:p-3 space-y-1">
               {isLoading ? (
                 // Loading skeletons
                 Array.from({ length: 5 }).map((_, i) => (
@@ -217,7 +219,7 @@ interface SessionCardProps {
 }
 
 function SessionCard({ session, index, isSelected, onClick, onDelete }: SessionCardProps) {
-  const [isHovered, setIsHovered] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const timeAgo = formatDistanceToNow(new Date(session.created_at), { addSuffix: true })
 
   const handleCopyPrompt = (e: React.MouseEvent) => {
@@ -232,96 +234,83 @@ function SessionCard({ session, index, isSelected, onClick, onDelete }: SessionC
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ delay: index * 0.03, duration: 0.2 }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
       <div
         onClick={onClick}
         className={cn(
-          'group relative flex items-center gap-3 p-3 rounded-lg cursor-pointer',
+          'group relative flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg cursor-pointer',
           'transition-all duration-150 ease-out',
-          'hover:bg-accent/50',
-          isSelected && 'bg-accent ring-1 ring-primary/20'
+          'hover:bg-muted/50',
+          isSelected && 'bg-muted/80 ring-1 ring-border'
         )}
       >
         {/* Icon */}
-        <div className={cn(
-          'flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg',
-          'bg-primary/10 text-primary',
-          isSelected && 'bg-primary/20'
-        )}>
-          <FileQuestion className="h-4 w-4" />
+        <div className="flex-shrink-0 flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-md border bg-background">
+          <FileQuestion className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
         </div>
 
         {/* Content */}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+        <div className="flex-1 min-w-0 pr-8 sm:pr-10">
+          <p className="text-xs sm:text-sm font-medium line-clamp-2 sm:line-clamp-1 break-words leading-relaxed">
             {session.prompt || 'Untitled Generation'}
           </p>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-xs text-muted-foreground">{timeAgo}</span>
-            <span className="text-xs text-muted-foreground">•</span>
-            <span className="text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 mt-1.5">
+            <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">{timeAgo}</span>
+            <span className="text-[10px] sm:text-xs text-muted-foreground">•</span>
+            <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
               {session.question_count} {session.question_count === 1 ? 'question' : 'questions'}
             </span>
             {session.pending_count > 0 && (
               <>
-                <span className="text-xs text-muted-foreground">•</span>
-                <span className="text-xs text-amber-500 font-medium">
+                <span className="text-[10px] sm:text-xs text-muted-foreground">•</span>
+                <Badge variant="outline" className="h-4 sm:h-5 px-1.5 text-[10px] sm:text-xs text-amber-500 border-amber-500/50 bg-amber-500/10">
                   {session.pending_count} pending
-                </span>
+                </Badge>
               </>
             )}
           </div>
         </div>
 
-        {/* Status indicator */}
-        {session.approved_count > 0 && session.approved_count === session.question_count && (
-          <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+        {/* Status indicator - only show when not hovered and fully approved */}
+        {!menuOpen && session.approved_count > 0 && session.approved_count === session.question_count && (
+          <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 group-hover:hidden" />
         )}
 
-        {/* Actions menu - appears on hover */}
-        <AnimatePresence>
-          {isHovered && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.1 }}
-              className="absolute right-2"
-            >
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 bg-background/80 backdrop-blur-sm shadow-sm"
-                  >
-                    <MoreVertical className="h-3.5 w-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40">
-                  <DropdownMenuItem onClick={onClick}>
-                    <Eye className="h-4 w-4 mr-2" />
-                    View
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleCopyPrompt}>
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copy Prompt
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={onDelete}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Actions menu - visible on hover via group-hover */}
+        <div className={cn(
+          'absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity',
+          menuOpen && 'opacity-100'
+        )}>
+          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+              >
+                <MoreVertical className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onClick={onClick}>
+                <Eye className="h-4 w-4 mr-2" />
+                View
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleCopyPrompt}>
+                <Copy className="h-4 w-4 mr-2" />
+                Copy Prompt
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={onDelete}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </motion.div>
   )

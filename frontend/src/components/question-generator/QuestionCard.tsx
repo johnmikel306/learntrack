@@ -1,6 +1,6 @@
 /**
  * QuestionCard - Interactive card for displaying and editing a single question
- * Features: inline editing, quick actions on hover, status indicators
+ * Features: inline editing, quick actions on hover, status indicators, markdown/math rendering
  * Design: Dark themed card matching reference design
  */
 import React, { useState, useEffect } from 'react'
@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { MathText } from '@/components/ui/math-text'
 
 interface QuestionData {
   question_id: string
@@ -192,20 +193,20 @@ export function QuestionCard({
           </DropdownMenu>
         </motion.div>
 
-        <CardContent className="p-4">
+        <CardContent className="p-3 sm:p-4">
           {/* Header */}
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-sm font-medium text-zinc-300">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3">
+            <span className="text-xs sm:text-sm font-medium text-zinc-300">
               {index + 1}
             </span>
-            <Badge className={cn('text-xs rounded-md px-2 py-0.5', difficultyColors[question.difficulty])}>
+            <Badge className={cn('text-[10px] sm:text-xs rounded-md px-1.5 sm:px-2 py-0.5', difficultyColors[question.difficulty])}>
               {question.difficulty}
             </Badge>
-            <Badge className="text-xs bg-emerald-600/80 text-white rounded-md px-2 py-0.5">
+            <Badge className="text-[10px] sm:text-xs bg-emerald-600/80 text-white rounded-md px-1.5 sm:px-2 py-0.5">
               {typeLabels[question.type] || question.type}
             </Badge>
             {question.blooms_level && (
-              <Badge variant="outline" className="text-xs text-zinc-400 border-zinc-700">
+              <Badge variant="outline" className="text-[10px] sm:text-xs text-zinc-400 border-zinc-700 hidden sm:inline-flex">
                 {question.blooms_level}
               </Badge>
             )}
@@ -287,7 +288,9 @@ export function QuestionCard({
               </div>
             </div>
           ) : (
-            <p className="text-sm text-zinc-200 leading-relaxed">{question.question_text}</p>
+            <div className="text-sm text-zinc-200 leading-relaxed">
+              <MathText>{question.question_text}</MathText>
+            </div>
           )}
 
           {/* Options & Answer (Collapsible) */}
@@ -316,7 +319,7 @@ export function QuestionCard({
                         )}
                       >
                         {isCorrect && <Check className="h-3.5 w-3.5 flex-shrink-0" />}
-                        <span>{option}</span>
+                        <MathText className="text-inherit">{option}</MathText>
                       </div>
                     )
                   })}
@@ -327,14 +330,16 @@ export function QuestionCard({
               <div className="flex items-center gap-2 text-sm pt-2">
                 <span className="text-zinc-500">Answer:</span>
                 <span className="font-medium text-green-400">
-                  {question.correct_answer}
+                  <MathText className="text-inherit">{question.correct_answer}</MathText>
                 </span>
               </div>
 
               {/* Explanation */}
               {question.explanation && (
                 <div className="rounded bg-zinc-800/50 p-3 mt-2">
-                  <p className="text-xs text-zinc-400 italic">{question.explanation}</p>
+                  <div className="text-xs text-zinc-400 italic">
+                    <MathText className="text-inherit text-xs">{question.explanation}</MathText>
+                  </div>
                 </div>
               )}
             </motion.div>

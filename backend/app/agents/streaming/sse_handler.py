@@ -66,25 +66,47 @@ class SSEHandler:
     
     async def send_question_complete(self, question_id: str, question_data: dict, score: float) -> None:
         """Signal question completion and save to database if callback is set"""
+        logger.info(
+            "send_question_complete called",
+            session_id=self.session_id,
+            question_id=question_id,
+            has_callback=self._on_question_complete is not None
+        )
+
         # Send SSE event to client
         await self.send(StreamEvent.question_complete(question_id, question_data, score))
 
         # Save question to database via callback if provided
         if self._on_question_complete:
             try:
-                await self._on_question_complete(question_data)
                 logger.info(
-                    "Question saved via callback",
+                    "Invoking save callback",
                     session_id=self.session_id,
                     question_id=question_id
+                )
+                result = await self._on_question_complete(question_data)
+                logger.info(
+                    "Question save callback completed",
+                    session_id=self.session_id,
+                    question_id=question_id,
+                    result=result
                 )
             except Exception as e:
                 logger.error(
                     "Failed to save question via callback",
                     session_id=self.session_id,
                     question_id=question_id,
-                    error=str(e)
+                    error=str(e),
+                    error_type=type(e).__name__
                 )
+                import traceback
+                logger.error("Callback traceback", traceback=traceback.format_exc())
+        else:
+            logger.warning(
+                "No save callback set",
+                session_id=self.session_id,
+                question_id=question_id
+            )
     
     async def send_source_found(self, source_id: str, title: str, excerpt: str) -> None:
         """Signal source discovery"""

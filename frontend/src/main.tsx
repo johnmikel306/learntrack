@@ -6,6 +6,8 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './lib/query-client'
 import App from './App.tsx'
 import './index.css'
+// Global KaTeX styles for math rendering
+import 'katex/dist/katex.min.css'
 
 // Import your publishable key
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
