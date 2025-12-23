@@ -12,13 +12,18 @@ from app.core.exceptions import AIProviderError
 
 logger = structlog.get_logger()
 
-# Available OpenAI models
+# Available OpenAI models (Updated December 2024)
 OPENAI_MODELS = {
+    # GPT-4o - Latest flagship
     "gpt-4o": {"context_window": 128000, "description": "GPT-4o - Most capable multimodal"},
     "gpt-4o-mini": {"context_window": 128000, "description": "GPT-4o Mini - Fast and affordable"},
+    # o3 Reasoning models - Newest
+    "o3-mini": {"context_window": 200000, "description": "o3 Mini - Latest reasoning model"},
+    # o1 Reasoning models
+    "o1": {"context_window": 200000, "description": "o1 - Advanced reasoning"},
+    "o1-mini": {"context_window": 128000, "description": "o1 Mini - Fast reasoning"},
+    # GPT-4 Turbo
     "gpt-4-turbo": {"context_window": 128000, "description": "GPT-4 Turbo - High performance"},
-    "gpt-4": {"context_window": 8192, "description": "GPT-4 - Original powerful model"},
-    "gpt-3.5-turbo": {"context_window": 16385, "description": "GPT-3.5 Turbo - Fast and cost-effective"},
 }
 
 

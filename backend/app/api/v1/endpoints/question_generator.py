@@ -677,7 +677,7 @@ async def get_available_models(
     current_user: ClerkUserContext = Depends(require_tutor)
 ):
     """
-    Get all available AI providers and their models.
+    Get all available AI providers and their models (fetched dynamically from provider APIs).
 
     Returns a structure like:
     {
@@ -694,10 +694,11 @@ async def get_available_models(
         ]
     }
     """
-    from app.services.ai.groq_provider import GROQ_MODELS
-    from app.services.ai.gemini_provider import GEMINI_MODELS
-    from app.services.ai.openai_provider import OPENAI_MODELS
+    from app.services.ai.models_fetcher import fetch_all_provider_models
     from app.core.config import settings
+
+    # Fetch models from all providers (with caching)
+    fetched_models = await fetch_all_provider_models(limit=3)
 
     providers = []
 
@@ -708,10 +709,7 @@ async def get_available_models(
         "name": "Groq",
         "description": "Ultra-fast inference with open models",
         "available": groq_available,
-        "models": [
-            {"id": model_id, "name": model_id.replace("-", " ").title(), "description": info.get("description", "")}
-            for model_id, info in GROQ_MODELS.items()
-        ]
+        "models": fetched_models.get("groq", [])
     })
 
     # OpenAI
@@ -721,10 +719,7 @@ async def get_available_models(
         "name": "OpenAI",
         "description": "GPT models from OpenAI",
         "available": openai_available,
-        "models": [
-            {"id": model_id, "name": model_id.upper().replace("-", " "), "description": info.get("description", "")}
-            for model_id, info in OPENAI_MODELS.items()
-        ]
+        "models": fetched_models.get("openai", [])
     })
 
     # Gemini (Google)
@@ -734,24 +729,17 @@ async def get_available_models(
         "name": "Google Gemini",
         "description": "Gemini models from Google",
         "available": gemini_available,
-        "models": [
-            {"id": model_id, "name": model_id.replace("-", " ").title(), "description": info.get("description", "")}
-            for model_id, info in GEMINI_MODELS.items()
-        ]
+        "models": fetched_models.get("gemini", [])
     })
 
-    # Anthropic (placeholder)
+    # Anthropic
     anthropic_available = bool(settings.ANTHROPIC_API_KEY)
     providers.append({
         "id": "anthropic",
         "name": "Anthropic",
         "description": "Claude models from Anthropic",
         "available": anthropic_available,
-        "models": [
-            {"id": "claude-3-5-sonnet-20241022", "name": "Claude 3.5 Sonnet", "description": "Most intelligent model"},
-            {"id": "claude-3-5-haiku-20241022", "name": "Claude 3.5 Haiku", "description": "Fast and affordable"},
-            {"id": "claude-3-opus-20240229", "name": "Claude 3 Opus", "description": "Powerful for complex tasks"},
-        ]
+        "models": fetched_models.get("anthropic", [])
     })
 
     return {"providers": providers}

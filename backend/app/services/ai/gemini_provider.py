@@ -11,19 +11,25 @@ from app.models.question import QuestionCreate, QuestionDifficulty, QuestionType
 
 logger = structlog.get_logger()
 
-# Available Gemini models
+# Available Gemini models (Updated December 2024)
 GEMINI_MODELS = {
-    "gemini-1.5-pro": {"context_window": 2097152, "description": "Gemini 1.5 Pro - Best for complex tasks"},
-    "gemini-1.5-flash": {"context_window": 1048576, "description": "Gemini 1.5 Flash - Fast and efficient"},
-    "gemini-1.5-flash-8b": {"context_window": 1048576, "description": "Gemini 1.5 Flash 8B - Lightweight"},
-    "gemini-2.0-flash-exp": {"context_window": 1048576, "description": "Gemini 2.0 Flash - Experimental"},
+    # Gemini 2.5 - Latest (Best performance)
+    "gemini-2.5-flash": {"context_window": 1048576, "description": "Gemini 2.5 Flash - Best price-performance"},
+    "gemini-2.5-pro": {"context_window": 1048576, "description": "Gemini 2.5 Pro - Advanced thinking"},
+    "gemini-2.5-flash-lite": {"context_window": 1048576, "description": "Gemini 2.5 Flash Lite - Ultra fast"},
+    # Gemini 2.0
+    "gemini-2.0-flash": {"context_window": 1048576, "description": "Gemini 2.0 Flash - Fast multimodal"},
+    "gemini-2.0-flash-lite": {"context_window": 1048576, "description": "Gemini 2.0 Flash Lite - Lightweight"},
+    # Gemini 1.5
+    "gemini-1.5-pro": {"context_window": 2097152, "description": "Gemini 1.5 Pro - Complex tasks"},
+    "gemini-1.5-flash": {"context_window": 1048576, "description": "Gemini 1.5 Flash - Balanced"},
 }
 
 
 class GeminiProvider(BaseAIProvider):
     """Google Gemini AI provider using LangChain"""
 
-    def __init__(self, api_key: str, model: str = "gemini-1.5-flash"):
+    def __init__(self, api_key: str, model: str = "gemini-2.5-flash"):
         super().__init__(api_key)
         self.model = model
         self.llm = ChatGoogleGenerativeAI(google_api_key=api_key, model=model, temperature=0.7)

@@ -11,21 +11,26 @@ from app.models.question import QuestionCreate, QuestionDifficulty, QuestionType
 
 logger = structlog.get_logger()
 
-# Available Groq models
+# Available Groq models (Updated December 2024)
 GROQ_MODELS = {
-    "openai/gpt-oss-120b": {"context_window": 128000, "description": "GPT-OSS 120B - Most capable open model"},
-    "openai/gpt-oss-20b": {"context_window": 128000, "description": "GPT-OSS 20B - Fast and efficient"},
-    "llama-3.3-70b-versatile": {"context_window": 128000, "description": "Llama 3.3 70B - Versatile tasks"},
-    "llama-3.1-8b-instant": {"context_window": 128000, "description": "Llama 3.1 8B - Instant responses"},
-    "mixtral-8x7b-32768": {"context_window": 32768, "description": "Mixtral 8x7B - Balanced performance"},
-    "gemma2-9b-it": {"context_window": 8192, "description": "Gemma 2 9B - Instruction tuned"},
+    # Llama 4 - Newest (multimodal)
+    "meta-llama/llama-4-maverick-17b-128e-instruct": {"context_window": 131072, "description": "Llama 4 Maverick 17B - Latest multimodal"},
+    "meta-llama/llama-4-scout-17b-16e-instruct": {"context_window": 131072, "description": "Llama 4 Scout 17B - Fast multimodal"},
+    # Llama 3.3
+    "llama-3.3-70b-versatile": {"context_window": 131072, "description": "Llama 3.3 70B - Most versatile"},
+    # Llama 3.1
+    "llama-3.1-8b-instant": {"context_window": 131072, "description": "Llama 3.1 8B - Fast responses"},
+    # Qwen 3
+    "qwen/qwen3-32b": {"context_window": 131072, "description": "Qwen3 32B - Balanced performance"},
+    # Kimi K2
+    "moonshotai/kimi-k2-instruct-0905": {"context_window": 262144, "description": "Kimi K2 - Advanced reasoning"},
 }
 
 
 class GroqProvider(BaseAIProvider):
     """Groq AI provider using LangChain"""
 
-    def __init__(self, api_key: str, model: str = "openai/gpt-oss-120b"):
+    def __init__(self, api_key: str, model: str = "llama-3.3-70b-versatile"):
         super().__init__(api_key)
         self.model = model
         self.llm = ChatGroq(api_key=api_key, model_name=model, temperature=0.7)
