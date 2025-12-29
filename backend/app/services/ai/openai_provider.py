@@ -9,6 +9,7 @@ from openai import AsyncOpenAI
 from app.services.ai.base import BaseAIProvider
 from app.models.question import QuestionCreate, QuestionDifficulty, QuestionType
 from app.core.exceptions import AIProviderError
+from app.agents.prompts import get_prompt
 
 logger = structlog.get_logger()
 
@@ -63,10 +64,13 @@ class OpenAIProvider(BaseAIProvider):
             {content[:8000]}  # Limit to avoid token limits
             """
             
+            # Use centralized prompt from registry
+            system_prompt = get_prompt("text_extraction")
+
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are a text extraction specialist."},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=2000,
@@ -96,14 +100,14 @@ class OpenAIProvider(BaseAIProvider):
             prompt = self._build_question_prompt(
                 text_content, subject, topic, question_count, difficulty, question_types
             )
-            
+
+            # Use centralized prompt from registry
+            system_prompt = get_prompt("simple_question_generator")
+
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {
-                        "role": "system", 
-                        "content": "You are an expert educator and assessment designer. Generate high-quality educational questions in valid JSON format."
-                    },
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=4000,
@@ -147,10 +151,13 @@ class OpenAIProvider(BaseAIProvider):
             Format as JSON.
             """
             
+            # Use centralized prompt from registry
+            system_prompt = get_prompt("simple_question_validator")
+
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are an educational assessment expert."},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=1000,

@@ -17,10 +17,14 @@ ACTIVE_VERSION = "v1"
 # Available prompt types
 PROMPT_TYPES = [
     "prompt_analyzer",
-    "question_generator", 
+    "question_generator",
     "question_validator",
     "question_editor",
     "formatter",
+    # Simple prompts for provider-level operations
+    "text_extraction",
+    "simple_question_generator",
+    "simple_question_validator",
 ]
 
 

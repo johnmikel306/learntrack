@@ -594,7 +594,12 @@ class GenerateArtifactNode(BaseNode):
         config = state["config"]
         total = config.question_count
 
-        await self.emit_action(f"Creating artifact with {total} question(s)...")
+        # ReAct pattern: Increment iteration count
+        current_iteration = state.get("iteration_count", 0)
+        state["iteration_count"] = current_iteration + 1
+        max_iterations = state.get("max_iterations", config.max_iterations)
+
+        await self.emit_action(f"Creating artifact with {total} question(s)... (iteration {state['iteration_count']}/{max_iterations})")
 
         try:
             # First, retrieve materials if needed

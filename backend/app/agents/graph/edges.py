@@ -72,14 +72,40 @@ def route_after_reflect(state: AgentState) -> str:
     """
     Route after reflection.
     Check if regeneration is needed based on reflection result.
+
+    ReAct Pattern: Enforces max_iterations limit to prevent infinite loops.
+    If iteration_count >= max_iterations, forces completion even if
+    reflection suggests regeneration.
     """
     reflection = state.get("reflection_result")
+    iteration_count = state.get("iteration_count", 0)
+    max_iterations = state.get("max_iterations", 3)  # Default to 3 if not set
+
+    # Check iteration limit first (ReAct pattern safety)
+    if iteration_count >= max_iterations:
+        # Force completion - we've hit the iteration limit
+        return "clean_state"
 
     if reflection and reflection.should_regenerate:
         # Go back to generate for regeneration
         return "generate_artifact"
 
     return "clean_state"
+
+
+def check_iteration_limit(state: AgentState) -> bool:
+    """
+    Check if the agent has exceeded the maximum iteration limit.
+
+    This is a ReAct pattern safety mechanism to prevent infinite loops
+    in the reasoning/action cycle.
+
+    Returns:
+        True if iteration limit has been reached, False otherwise.
+    """
+    iteration_count = state.get("iteration_count", 0)
+    max_iterations = state.get("max_iterations", 3)
+    return iteration_count >= max_iterations
 
 
 # =============================================================================

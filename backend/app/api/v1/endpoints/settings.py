@@ -201,6 +201,67 @@ async def set_default_ai_provider(
 
 
 # ============================================
+# AI Defaults Endpoint for Frontend
+# ============================================
+
+class AIDefaultsResponse(BaseModel):
+    """Response model for AI defaults"""
+    default_provider: str
+    default_model: str
+    available_providers: list
+    temperature: float = 0.7
+    max_tokens: int = 4000
+
+
+@router.get("/ai/defaults")
+async def get_ai_defaults(
+    current_user: ClerkUserContext = Depends(require_tutor),
+    database: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Get AI generation defaults for the frontend.
+
+    Returns the default provider, model, and available providers
+    so the frontend can initialize with saved settings instead of hardcoded values.
+    """
+    service = SettingsService(database)
+    settings = await service.get_settings()
+
+    # Find the default provider and its default model
+    default_provider = settings.ai.default_provider.value
+    default_model = None
+    temperature = 0.7
+    max_tokens = 4000
+
+    # Get the default model from the default provider config
+    default_provider_config = settings.ai.get_provider_config(settings.ai.default_provider)
+    if default_provider_config:
+        default_model = default_provider_config.default_model
+        temperature = default_provider_config.temperature
+        max_tokens = default_provider_config.max_tokens
+
+    # Get list of available (enabled) providers
+    available_providers = []
+    for provider_name, config in settings.ai.providers.items():
+        if config.enabled and config.api_key:
+            available_providers.append({
+                "id": provider_name,
+                "name": provider_name.capitalize(),
+                "models": config.models,
+                "default_model": config.default_model,
+                "enabled": config.enabled
+            })
+
+    return {
+        "default_provider": default_provider,
+        "default_model": default_model or "gpt-4o-mini",  # Fallback
+        "available_providers": available_providers,
+        "temperature": temperature,
+        "max_tokens": max_tokens
+    }
+
+
+# ============================================
 # User-specific settings endpoints
 # ============================================
 

@@ -92,17 +92,56 @@ export function OpenCanvasGenerator() {
     }
   }, [isMobile])
   
-  // Form state
+  // Form state - defaults will be loaded from settings
   const [prompt, setPrompt] = useState('')
   const [questionCount, setQuestionCount] = useState(1)
   const [questionType, setQuestionType] = useState('multiple-choice')
   const [difficulty, setDifficulty] = useState('intermediate')
-  const [aiProvider, setAiProvider] = useState('groq')
-  const [selectedModel, setSelectedModel] = useState('llama-3.3-70b-versatile')
+  const [aiProvider, setAiProvider] = useState('')  // Will be loaded from settings
+  const [selectedModel, setSelectedModel] = useState('')  // Will be loaded from settings
   const [bloomsLevels, setBloomsLevels] = useState<string[]>([])
   const [selectedMaterials, setSelectedMaterials] = useState<Material[]>([])
   const [isMaterialsDialogOpen, setIsMaterialsDialogOpen] = useState(false)
-  
+  const [isLoadingDefaults, setIsLoadingDefaults] = useState(true)
+
+  // Fetch AI defaults from settings on mount
+  useEffect(() => {
+    const fetchAIDefaults = async () => {
+      try {
+        const token = await getToken()
+        const response = await fetch(`${API_BASE_URL}/settings/ai/defaults`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (response.ok) {
+          const data = await response.json()
+          // Set provider and model from saved settings
+          if (data.default_provider) {
+            setAiProvider(data.default_provider)
+          } else {
+            setAiProvider('groq')  // Fallback
+          }
+          if (data.default_model) {
+            setSelectedModel(data.default_model)
+          } else {
+            setSelectedModel('llama-3.3-70b-versatile')  // Fallback
+          }
+        } else {
+          // Fallback to defaults if settings not available
+          setAiProvider('groq')
+          setSelectedModel('llama-3.3-70b-versatile')
+        }
+      } catch (error) {
+        console.error('Failed to fetch AI defaults:', error)
+        // Fallback to defaults
+        setAiProvider('groq')
+        setSelectedModel('llama-3.3-70b-versatile')
+      } finally {
+        setIsLoadingDefaults(false)
+      }
+    }
+    fetchAIDefaults()
+  }, [getToken])
+
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false)
   const [currentAction, setCurrentAction] = useState<string | null>(null)

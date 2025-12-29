@@ -163,6 +163,8 @@ class GenerationConfig(BaseModel):
     topic: Optional[str] = None
     grade_level: Optional[str] = None
     special_requirements: List[str] = []
+    # ReAct agent iteration limit
+    max_iterations: int = 3  # Maximum reasoning/action loops before forcing completion
 
 
 class GenerationSession(BaseModel):
@@ -261,4 +263,10 @@ class AgentState(TypedDict):
     is_complete: bool
     should_reflect: bool  # Whether to run reflection node
     error: Optional[str]
+
+    # =========================================================================
+    # ReAct Iteration Control
+    # =========================================================================
+    iteration_count: int  # Current iteration number (starts at 0)
+    max_iterations: int  # Maximum iterations before forcing completion (default: 3)
 

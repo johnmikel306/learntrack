@@ -8,6 +8,7 @@ from langchain.schema import HumanMessage, SystemMessage
 
 from app.services.ai.base import BaseAIProvider
 from app.models.question import QuestionCreate, QuestionDifficulty, QuestionType
+from app.agents.prompts import get_prompt
 
 logger = structlog.get_logger()
 
@@ -51,8 +52,11 @@ class GroqProvider(BaseAIProvider):
     async def extract_text_from_content(self, content: str, file_type: str) -> str:
         """Extract and clean text from file content"""
         try:
+            # Use centralized prompt from registry
+            system_prompt = get_prompt("text_extraction")
+
             messages = [
-                SystemMessage(content="You are a text extraction assistant. Extract and clean the main text content."),
+                SystemMessage(content=system_prompt),
                 HumanMessage(content=f"Extract the main text from this {file_type} content:\n\n{content[:8000]}")
             ]
             response = await self.llm.ainvoke(messages)
@@ -71,10 +75,13 @@ class GroqProvider(BaseAIProvider):
             question_types = [QuestionType.MULTIPLE_CHOICE]
         
         prompt = self._build_question_prompt(text_content, subject, topic, question_count, difficulty, question_types)
-        
+
         try:
+            # Use centralized prompt from registry
+            system_prompt = get_prompt("simple_question_generator")
+
             messages = [
-                SystemMessage(content="You are an expert educator. Generate questions in valid JSON format only."),
+                SystemMessage(content=system_prompt),
                 HumanMessage(content=prompt)
             ]
             response = await self.llm.ainvoke(messages)
@@ -93,9 +100,12 @@ Options: {question.options if question.options else 'N/A'}
 Correct Answer: {question.correct_answer if question.correct_answer else 'See options'}
 
 Respond with JSON: {{"is_valid": true/false, "issues": [], "suggestions": [], "quality_score": 0-100}}"""
-            
+
+            # Use centralized prompt from registry
+            system_prompt = get_prompt("simple_question_validator")
+
             messages = [
-                SystemMessage(content="You are a question quality validator. Respond only with valid JSON."),
+                SystemMessage(content=system_prompt),
                 HumanMessage(content=prompt)
             ]
             response = await self.llm.ainvoke(messages)

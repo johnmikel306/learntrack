@@ -227,6 +227,10 @@ class QuestionGeneratorAgent:
             "is_complete": False,
             "error": None,
 
+            # ReAct iteration control
+            "iteration_count": 0,
+            "max_iterations": config.max_iterations,
+
             # Open Canvas routing
             "next_action": None,
             "target_question_id": target_question_id,
