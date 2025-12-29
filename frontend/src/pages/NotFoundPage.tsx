@@ -1,9 +1,10 @@
 /**
  * NotFoundPage - 404 Error Page
- * 
+ *
  * Displays a user-friendly 404 error page when users navigate to non-existent routes.
  * Provides navigation options to help users find their way back.
  */
+import { useEffect } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { useAuth } from "@clerk/clerk-react"
 import { Home, ArrowLeft, Search, LayoutDashboard } from "lucide-react"
@@ -13,6 +14,39 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export default function NotFoundPage() {
   const navigate = useNavigate()
   const { isSignedIn } = useAuth()
+
+  // Set document title and meta tags for SEO
+  useEffect(() => {
+    // Store original title
+    const originalTitle = document.title
+
+    // Set 404-specific title
+    document.title = "Page Not Found | LearnTrack"
+
+    // Add noindex meta tag to prevent indexing of error pages
+    let metaRobots = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null
+    const hadOriginalMeta = !!metaRobots
+    const originalContent = metaRobots?.getAttribute('content') || ''
+
+    if (!metaRobots) {
+      metaRobots = document.createElement('meta')
+      metaRobots.name = 'robots'
+      document.head.appendChild(metaRobots)
+    }
+    metaRobots.content = 'noindex, nofollow'
+
+    // Cleanup on unmount
+    return () => {
+      document.title = originalTitle
+      if (metaRobots) {
+        if (hadOriginalMeta) {
+          metaRobots.content = originalContent
+        } else {
+          metaRobots.remove()
+        }
+      }
+    }
+  }, [])
 
   const handleGoBack = () => {
     if (window.history.length > 1) {

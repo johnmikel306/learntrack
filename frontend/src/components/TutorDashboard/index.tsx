@@ -2,7 +2,7 @@ import { useState } from "react"
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
-import { useNavigate, useLocation, Routes, Route } from "react-router-dom"
+import { useNavigate, useLocation, Routes, Route, Navigate } from "react-router-dom"
 import { AppSidebar } from "./AppSidebar"
 import { OverviewView } from "./views/OverviewView"
 import { PlaceholderView } from "./views/PlaceholderView"
@@ -196,6 +196,9 @@ export default function TutorDashboard({ onBack }: TutorDashboardProps) {
             {/* Messages routes */}
             <Route path="messages/chats" element={<ConversationsView />} />
             <Route path="messages/emails" element={<MessagingView type="emails" />} />
+
+            {/* 404 Catch-all for undefined dashboard routes */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </div>
       </SidebarInset>

@@ -114,6 +114,8 @@ function App() {
                 <Route path="tenants" element={<TenantsPage />} />
                 <Route path="users" element={<UsersPage />} />
                 <Route path="settings" element={<AdminSettingsPage />} />
+                {/* 404 Catch-all for undefined admin routes */}
+                <Route path="*" element={<NotFoundPage />} />
               </Route>
 
               {/* Access Denied route */}

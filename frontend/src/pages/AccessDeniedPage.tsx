@@ -1,9 +1,10 @@
 /**
  * AccessDeniedPage - 403 Forbidden Error Page
- * 
+ *
  * Displays when users attempt to access resources they don't have permission for.
  * Provides helpful guidance on how to proceed.
  */
+import { useEffect } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { useAuth, useUser } from "@clerk/clerk-react"
 import { ShieldX, ArrowLeft, Home, LayoutDashboard, LogIn, Mail } from "lucide-react"
@@ -30,6 +31,39 @@ export default function AccessDeniedPage({
   const navigate = useNavigate()
   const { isSignedIn, signOut } = useAuth()
   const { user } = useUser()
+
+  // Set document title and meta tags for SEO
+  useEffect(() => {
+    // Store original title
+    const originalTitle = document.title
+
+    // Set 403-specific title
+    document.title = "Access Denied | LearnTrack"
+
+    // Add noindex meta tag to prevent indexing of error pages
+    let metaRobots = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null
+    const hadOriginalMeta = !!metaRobots
+    const originalContent = metaRobots?.getAttribute('content') || ''
+
+    if (!metaRobots) {
+      metaRobots = document.createElement('meta')
+      metaRobots.name = 'robots'
+      document.head.appendChild(metaRobots)
+    }
+    metaRobots.content = 'noindex, nofollow'
+
+    // Cleanup on unmount
+    return () => {
+      document.title = originalTitle
+      if (metaRobots) {
+        if (hadOriginalMeta) {
+          metaRobots.content = originalContent
+        } else {
+          metaRobots.remove()
+        }
+      }
+    }
+  }, [])
 
   const handleGoBack = () => {
     if (window.history.length > 1) {
