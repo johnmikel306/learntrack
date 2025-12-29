@@ -3,6 +3,7 @@ import { useAuth } from '@clerk/clerk-react'
 import { useNavigate } from 'react-router-dom'
 import { Users, Search, ChevronLeft, ChevronRight, MoreVertical, Eye, Edit, Shield, UserCheck } from 'lucide-react'
 import { useImpersonation } from '../../contexts/ImpersonationContext'
+import { BatchOperationsPanel, SelectCheckbox, BatchOperationType } from '../../components/admin/BatchOperationsPanel'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
@@ -41,6 +42,8 @@ export function UsersPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [isBatchLoading, setIsBatchLoading] = useState(false)
 
   const handleImpersonate = async (user: AdminUserInfo) => {
     if (user.is_super_admin) {
@@ -95,6 +98,59 @@ export function UsersPage() {
     fetchUsers()
   }
 
+  const toggleSelection = (userId: string) => {
+    setSelectedIds(prev =>
+      prev.includes(userId)
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    )
+  }
+
+  const selectAll = () => {
+    const selectableUsers = users.filter(u => !u.is_super_admin)
+    setSelectedIds(selectableUsers.map(u => u.clerk_id))
+  }
+
+  const clearSelection = () => {
+    setSelectedIds([])
+  }
+
+  const handleBatchOperation = async (operation: BatchOperationType, reason?: string) => {
+    try {
+      setIsBatchLoading(true)
+      const token = await getToken()
+
+      const response = await fetch(`${API_BASE_URL}/admin/users/batch`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_ids: selectedIds,
+          operation: operation,
+          reason: reason,
+          notify_users: false
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.detail || `Failed: ${response.status}`)
+      }
+
+      const result = await response.json()
+      alert(`${result.message}`)
+
+      setSelectedIds([])
+      fetchUsers()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Batch operation failed')
+    } finally {
+      setIsBatchLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -106,6 +162,17 @@ export function UsersPage() {
           <p className="text-gray-500 dark:text-gray-400">Manage all users across tenants</p>
         </div>
       </div>
+
+      {/* Batch Operations Panel */}
+      <BatchOperationsPanel
+        selectedIds={selectedIds}
+        totalItems={users.filter(u => !u.is_super_admin).length}
+        onSelectAll={selectAll}
+        onClearSelection={clearSelection}
+        onBatchOperation={handleBatchOperation}
+        isLoading={isBatchLoading}
+        entityType="users"
+      />
 
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
@@ -131,6 +198,7 @@ export function UsersPage() {
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-700/50">
               <tr>
+                <th className="w-12 px-4 py-3"></th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">User</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Role</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
@@ -141,6 +209,7 @@ export function UsersPage() {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {isLoading ? [...Array(5)].map((_, i) => (
                 <tr key={i} className="animate-pulse">
+                  <td className="px-4 py-4"><div className="h-5 w-5 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
                   <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32"></div></td>
                   <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16"></div></td>
                   <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16"></div></td>
@@ -148,9 +217,16 @@ export function UsersPage() {
                   <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-8 ml-auto"></div></td>
                 </tr>
               )) : users.length === 0 ? (
-                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500"><Users className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>No users found</p></td></tr>
+                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500"><Users className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>No users found</p></td></tr>
               ) : users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <tr key={user.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 ${selectedIds.includes(user.clerk_id) ? 'bg-purple-50 dark:bg-purple-900/10' : ''}`}>
+                  <td className="px-4 py-4">
+                    <SelectCheckbox
+                      checked={selectedIds.includes(user.clerk_id)}
+                      onChange={() => toggleSelection(user.clerk_id)}
+                      disabled={user.is_super_admin}
+                    />
+                  </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-medium">{user.name?.[0] || 'U'}</div>

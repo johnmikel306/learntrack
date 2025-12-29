@@ -13,7 +13,10 @@ import structlog
 from app.core.database import get_database
 from app.core.enhanced_auth import require_super_admin, ClerkUserContext, require_admin_permission
 from app.models.user import UserRole, AdminPermission
-from app.models.admin import AuditAction
+from app.models.admin import (
+    AuditAction, BatchUserOperationRequest, BatchOperationType,
+    BatchOperationResponse, BatchOperationResult
+)
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -313,3 +316,114 @@ async def update_user(
         logger.error("Failed to update user", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to update user: {str(e)}")
 
+
+@router.post("/batch", response_model=BatchOperationResponse)
+async def batch_user_operations(
+    request: BatchUserOperationRequest,
+    current_user: ClerkUserContext = Depends(require_admin_permission(AdminPermission.MANAGE_USERS)),
+    database: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Perform batch operations on multiple users.
+    Supports: activate, deactivate, delete
+    """
+    try:
+        results: List[BatchOperationResult] = []
+        successful = 0
+        failed = 0
+
+        for user_id in request.user_ids:
+            try:
+                # Find user across all collections
+                user_found = False
+                user_collection = None
+                user_doc = None
+
+                for collection_name in ["tutors", "students", "parents"]:
+                    collection = database[collection_name]
+                    user = await collection.find_one({"clerk_id": user_id})
+                    if not user:
+                        try:
+                            user = await collection.find_one({"_id": ObjectId(user_id)})
+                        except Exception:
+                            pass
+                    if user:
+                        user_found = True
+                        user_collection = collection
+                        user_doc = user
+                        break
+
+                if not user_found:
+                    results.append(BatchOperationResult(id=user_id, success=False, error="User not found"))
+                    failed += 1
+                    continue
+
+                # Prevent operations on super admins
+                if user_doc.get("is_super_admin", False) and request.operation == BatchOperationType.DELETE:
+                    results.append(BatchOperationResult(id=user_id, success=False, error="Cannot delete super admin"))
+                    failed += 1
+                    continue
+
+                # Perform the operation
+                if request.operation == BatchOperationType.ACTIVATE:
+                    await user_collection.update_one(
+                        {"_id": user_doc["_id"]},
+                        {"$set": {"is_active": True, "updated_at": datetime.now(timezone.utc)}}
+                    )
+                elif request.operation == BatchOperationType.DEACTIVATE:
+                    await user_collection.update_one(
+                        {"_id": user_doc["_id"]},
+                        {"$set": {"is_active": False, "updated_at": datetime.now(timezone.utc)}}
+                    )
+                elif request.operation == BatchOperationType.DELETE:
+                    await user_collection.delete_one({"_id": user_doc["_id"]})
+                else:
+                    results.append(BatchOperationResult(id=user_id, success=False, error="Invalid operation for users"))
+                    failed += 1
+                    continue
+
+                results.append(BatchOperationResult(id=user_id, success=True))
+                successful += 1
+
+            except Exception as e:
+                results.append(BatchOperationResult(id=user_id, success=False, error=str(e)))
+                failed += 1
+
+        # Log the batch operation
+        audit_action = {
+            BatchOperationType.ACTIVATE: AuditAction.BATCH_USERS_ACTIVATED,
+            BatchOperationType.DEACTIVATE: AuditAction.BATCH_USERS_DEACTIVATED,
+            BatchOperationType.DELETE: AuditAction.BATCH_USERS_DELETED,
+        }.get(request.operation, AuditAction.USER_UPDATED)
+
+        await _log_admin_action(
+            database, current_user.clerk_id, current_user.email,
+            audit_action, "users", None,
+            {
+                "operation": request.operation.value,
+                "total_requested": len(request.user_ids),
+                "successful": successful,
+                "failed": failed,
+                "reason": request.reason
+            }
+        )
+
+        logger.info(
+            "Batch user operation completed",
+            operation=request.operation.value,
+            successful=successful,
+            failed=failed,
+            admin=current_user.email
+        )
+
+        return BatchOperationResponse(
+            operation=request.operation,
+            total_requested=len(request.user_ids),
+            successful=successful,
+            failed=failed,
+            results=results,
+            message=f"Batch {request.operation.value} completed: {successful} successful, {failed} failed"
+        )
+    except Exception as e:
+        logger.error("Failed to perform batch user operation", error=str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to perform batch operation: {str(e)}")

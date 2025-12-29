@@ -15,8 +15,10 @@ from app.models.user import AdminPermission
 from app.models.admin import (
     TenantInfo, TenantListResponse, TenantStatus,
     TenantSuspendRequest, TenantActivateRequest,
-    AuditLog, AuditAction
+    AuditLog, AuditAction, BatchTenantOperationRequest,
+    BatchOperationType, BatchOperationResponse, BatchOperationResult
 )
+from typing import List
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -264,3 +266,126 @@ async def activate_tenant(
         logger.error("Failed to activate tenant", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to activate tenant: {str(e)}")
 
+
+@router.post("/batch", response_model=BatchOperationResponse)
+async def batch_tenant_operations(
+    request: BatchTenantOperationRequest,
+    current_user: ClerkUserContext = Depends(require_admin_permission(AdminPermission.SUSPEND_TENANTS)),
+    database: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Perform batch operations on multiple tenants.
+    Supports: suspend, activate
+    """
+    try:
+        results: List[BatchOperationResult] = []
+        successful = 0
+        failed = 0
+
+        # Validate operation type for tenants
+        if request.operation not in [BatchOperationType.SUSPEND, BatchOperationType.ACTIVATE]:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid operation for tenants. Supported: suspend, activate"
+            )
+
+        for tenant_id in request.tenant_ids:
+            try:
+                # Find tenant
+                tutor = await database.tutors.find_one({"clerk_id": tenant_id})
+                if not tutor:
+                    try:
+                        tutor = await database.tutors.find_one({"_id": ObjectId(tenant_id)})
+                    except Exception:
+                        pass
+
+                if not tutor:
+                    results.append(BatchOperationResult(id=tenant_id, success=False, error="Tenant not found"))
+                    failed += 1
+                    continue
+
+                # Prevent operations on super admins
+                if tutor.get("is_super_admin", False):
+                    results.append(BatchOperationResult(
+                        id=tenant_id, success=False, error="Cannot modify super admin tenant"
+                    ))
+                    failed += 1
+                    continue
+
+                # Perform the operation
+                now = datetime.now(timezone.utc)
+
+                if request.operation == BatchOperationType.SUSPEND:
+                    await database.tutors.update_one(
+                        {"_id": tutor["_id"]},
+                        {
+                            "$set": {
+                                "status": TenantStatus.SUSPENDED.value,
+                                "suspended_at": now,
+                                "suspension_reason": request.reason or "Batch suspension",
+                                "updated_at": now
+                            }
+                        }
+                    )
+                elif request.operation == BatchOperationType.ACTIVATE:
+                    await database.tutors.update_one(
+                        {"_id": tutor["_id"]},
+                        {
+                            "$set": {
+                                "status": TenantStatus.ACTIVE.value,
+                                "activated_at": now,
+                                "updated_at": now
+                            },
+                            "$unset": {
+                                "suspended_at": "",
+                                "suspension_reason": ""
+                            }
+                        }
+                    )
+
+                results.append(BatchOperationResult(id=tenant_id, success=True))
+                successful += 1
+
+            except Exception as e:
+                results.append(BatchOperationResult(id=tenant_id, success=False, error=str(e)))
+                failed += 1
+
+        # Log the batch operation
+        audit_action = {
+            BatchOperationType.SUSPEND: AuditAction.BATCH_TENANTS_SUSPENDED,
+            BatchOperationType.ACTIVATE: AuditAction.BATCH_TENANTS_ACTIVATED,
+        }.get(request.operation, AuditAction.TENANT_ACTIVATED)
+
+        await _log_admin_action(
+            database, current_user.clerk_id, current_user.email,
+            audit_action, "tenants", None,
+            {
+                "operation": request.operation.value,
+                "total_requested": len(request.tenant_ids),
+                "successful": successful,
+                "failed": failed,
+                "reason": request.reason
+            }
+        )
+
+        logger.info(
+            "Batch tenant operation completed",
+            operation=request.operation.value,
+            successful=successful,
+            failed=failed,
+            admin=current_user.email
+        )
+
+        return BatchOperationResponse(
+            operation=request.operation,
+            total_requested=len(request.tenant_ids),
+            successful=successful,
+            failed=failed,
+            results=results,
+            message=f"Batch {request.operation.value} completed: {successful} successful, {failed} failed"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to perform batch tenant operation", error=str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to perform batch operation: {str(e)}")

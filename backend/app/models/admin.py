@@ -130,6 +130,13 @@ class AuditAction(str, Enum):
     IMPERSONATION_STARTED = "impersonation_started"
     IMPERSONATION_ENDED = "impersonation_ended"
 
+    # Batch operation actions
+    BATCH_USERS_ACTIVATED = "batch_users_activated"
+    BATCH_USERS_DEACTIVATED = "batch_users_deactivated"
+    BATCH_USERS_DELETED = "batch_users_deleted"
+    BATCH_TENANTS_SUSPENDED = "batch_tenants_suspended"
+    BATCH_TENANTS_ACTIVATED = "batch_tenants_activated"
+
 
 class AuditLog(BaseModel):
     """Audit log entry for admin actions"""
@@ -184,5 +191,48 @@ class ImpersonationResponse(BaseModel):
     session_id: str
     target_user: Dict[str, Any]
     expires_in_minutes: int = 60
+    message: str
+
+
+# ============== Batch Operations Models ==============
+
+class BatchOperationType(str, Enum):
+    """Types of batch operations"""
+    ACTIVATE = "activate"
+    DEACTIVATE = "deactivate"
+    DELETE = "delete"
+    SUSPEND = "suspend"
+
+
+class BatchUserOperationRequest(BaseModel):
+    """Request for batch user operations"""
+    user_ids: List[str]  # List of clerk_ids or MongoDB _ids
+    operation: BatchOperationType
+    reason: Optional[str] = None
+    notify_users: bool = False
+
+
+class BatchTenantOperationRequest(BaseModel):
+    """Request for batch tenant operations"""
+    tenant_ids: List[str]  # List of clerk_ids or MongoDB _ids
+    operation: BatchOperationType
+    reason: Optional[str] = None
+    notify_users: bool = True
+
+
+class BatchOperationResult(BaseModel):
+    """Result of a single item in a batch operation"""
+    id: str
+    success: bool
+    error: Optional[str] = None
+
+
+class BatchOperationResponse(BaseModel):
+    """Response for batch operations"""
+    operation: BatchOperationType
+    total_requested: int
+    successful: int
+    failed: int
+    results: List[BatchOperationResult]
     message: str
 

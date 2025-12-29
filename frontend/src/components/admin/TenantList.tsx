@@ -1,16 +1,17 @@
 import React, { useState } from 'react'
-import { 
-  Building2, 
-  Search, 
-  MoreVertical, 
-  Eye, 
-  Ban, 
+import {
+  Building2,
+  Search,
+  MoreVertical,
+  Eye,
+  Ban,
   CheckCircle,
   ChevronLeft,
   ChevronRight,
   Users,
   FileQuestion
 } from 'lucide-react'
+import { SelectCheckbox } from './BatchOperationsPanel'
 
 interface TenantInfo {
   _id: string
@@ -42,6 +43,8 @@ interface TenantListProps {
   onViewTenant: (tenantId: string) => void
   onSuspendTenant: (tenantId: string) => void
   onActivateTenant: (tenantId: string) => void
+  selectedIds?: string[]
+  onToggleSelection?: (tenantId: string) => void
 }
 
 const statusColors = {
@@ -54,7 +57,8 @@ const statusColors = {
 
 export function TenantList({
   tenants, total, page, perPage, totalPages, isLoading, error,
-  onPageChange, onSearch, onStatusFilter, onViewTenant, onSuspendTenant, onActivateTenant
+  onPageChange, onSearch, onStatusFilter, onViewTenant, onSuspendTenant, onActivateTenant,
+  selectedIds = [], onToggleSelection
 }: TenantListProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
@@ -107,6 +111,7 @@ export function TenantList({
         <table className="w-full">
           <thead className="bg-gray-50 dark:bg-gray-700/50">
             <tr>
+              {onToggleSelection && <th className="w-12 px-4 py-3"></th>}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tenant</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Users</th>
@@ -119,6 +124,7 @@ export function TenantList({
             {isLoading ? (
               [...Array(5)].map((_, i) => (
                 <tr key={i} className="animate-pulse">
+                  {onToggleSelection && <td className="px-4 py-4"><div className="h-5 w-5 bg-gray-200 dark:bg-gray-700 rounded"></div></td>}
                   <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32"></div></td>
                   <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16"></div></td>
                   <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-12"></div></td>
@@ -129,14 +135,22 @@ export function TenantList({
               ))
             ) : tenants.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                <td colSpan={onToggleSelection ? 7 : 6} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                   <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p>No tenants found</p>
                 </td>
               </tr>
             ) : (
               tenants.map((tenant) => (
-                <tr key={tenant._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                <tr key={tenant._id} className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${selectedIds.includes(tenant.clerk_id) ? 'bg-purple-50 dark:bg-purple-900/10' : ''}`}>
+                  {onToggleSelection && (
+                    <td className="px-4 py-4">
+                      <SelectCheckbox
+                        checked={selectedIds.includes(tenant.clerk_id)}
+                        onChange={() => onToggleSelection(tenant.clerk_id)}
+                      />
+                    </td>
+                  )}
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">

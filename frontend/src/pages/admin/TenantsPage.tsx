@@ -3,6 +3,7 @@ import { useAuth } from '@clerk/clerk-react'
 import { useNavigate } from 'react-router-dom'
 import { TenantList } from '../../components/admin/TenantList'
 import { Building2 } from 'lucide-react'
+import { BatchOperationsPanel, BatchOperationType } from '../../components/admin/BatchOperationsPanel'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
@@ -34,6 +35,8 @@ export function TenantsPage() {
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [isBatchLoading, setIsBatchLoading] = useState(false)
 
   const fetchTenants = useCallback(async () => {
     try {
@@ -115,6 +118,61 @@ export function TenantsPage() {
     }
   }
 
+  const toggleSelection = (tenantId: string) => {
+    setSelectedIds(prev =>
+      prev.includes(tenantId)
+        ? prev.filter(id => id !== tenantId)
+        : [...prev, tenantId]
+    )
+  }
+
+  const selectAll = () => {
+    setSelectedIds(tenants.map(t => t.clerk_id))
+  }
+
+  const clearSelection = () => {
+    setSelectedIds([])
+  }
+
+  const handleBatchOperation = async (operation: BatchOperationType, reason?: string) => {
+    try {
+      setIsBatchLoading(true)
+      const token = await getToken()
+
+      // Map frontend operation to backend operation
+      const backendOperation = operation === 'deactivate' ? 'suspend' : operation
+
+      const response = await fetch(`${API_BASE_URL}/admin/tenants/batch`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          tenant_ids: selectedIds,
+          operation: backendOperation,
+          reason: reason,
+          notify_users: true
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.detail || `Failed: ${response.status}`)
+      }
+
+      const result = await response.json()
+      alert(`${result.message}`)
+
+      setSelectedIds([])
+      fetchTenants()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Batch operation failed')
+    } finally {
+      setIsBatchLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -129,6 +187,17 @@ export function TenantsPage() {
           </div>
         </div>
       </div>
+
+      {/* Batch Operations Panel */}
+      <BatchOperationsPanel
+        selectedIds={selectedIds}
+        totalItems={tenants.length}
+        onSelectAll={selectAll}
+        onClearSelection={clearSelection}
+        onBatchOperation={handleBatchOperation}
+        isLoading={isBatchLoading}
+        entityType="tenants"
+      />
 
       {/* Tenant List */}
       <TenantList
@@ -145,6 +214,8 @@ export function TenantsPage() {
         onViewTenant={(id) => navigate(`/admin/tenants/${id}`)}
         onSuspendTenant={handleSuspendTenant}
         onActivateTenant={handleActivateTenant}
+        selectedIds={selectedIds}
+        onToggleSelection={toggleSelection}
       />
     </div>
   )
