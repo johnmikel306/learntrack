@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@clerk/clerk-react'
-import { Users, Search, ChevronLeft, ChevronRight, MoreVertical, Eye, Edit, Shield } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Users, Search, ChevronLeft, ChevronRight, MoreVertical, Eye, Edit, Shield, UserCheck } from 'lucide-react'
+import { useImpersonation } from '../../contexts/ImpersonationContext'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
@@ -27,6 +29,8 @@ const roleColors: Record<string, string> = {
 
 export function UsersPage() {
   const { getToken } = useAuth()
+  const navigate = useNavigate()
+  const { startImpersonation, isLoading: isImpersonating } = useImpersonation()
   const [users, setUsers] = useState<AdminUserInfo[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -38,6 +42,24 @@ export function UsersPage() {
   const [roleFilter, setRoleFilter] = useState<string>('')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
+  const handleImpersonate = async (user: AdminUserInfo) => {
+    if (user.is_super_admin) {
+      alert('Cannot impersonate super admin users')
+      return
+    }
+    try {
+      await startImpersonation(user.clerk_id)
+      setOpenMenuId(null)
+      // Navigate to the appropriate dashboard based on role
+      const dashboardPath = user.role === 'tutor' ? '/dashboard/tutor' :
+                           user.role === 'student' ? '/dashboard/student' :
+                           user.role === 'parent' ? '/dashboard/parent' : '/dashboard'
+      navigate(dashboardPath)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to start impersonation')
+    }
+  }
+
   const fetchUsers = useCallback(async () => {
     try {
       setIsLoading(true)
@@ -48,7 +70,7 @@ export function UsersPage() {
       if (searchQuery) params.append('search', searchQuery)
       if (roleFilter) params.append('role_filter', roleFilter)
 
-      const response = await fetch(`${API_BASE_URL}/admin/users?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/admin/users/?${params}`, {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       })
 
@@ -144,9 +166,19 @@ export function UsersPage() {
                   <td className="px-6 py-4 text-right relative">
                     <button onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"><MoreVertical className="w-5 h-5 text-gray-500" /></button>
                     {openMenuId === user.id && (
-                      <div className="absolute right-6 top-full mt-1 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
-                        <button onClick={() => setOpenMenuId(null)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"><Eye className="w-4 h-4" /> View</button>
+                      <div className="absolute right-6 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
+                        <button onClick={() => setOpenMenuId(null)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-t-lg"><Eye className="w-4 h-4" /> View</button>
                         <button onClick={() => setOpenMenuId(null)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"><Edit className="w-4 h-4" /> Edit</button>
+                        {!user.is_super_admin && (
+                          <button
+                            onClick={() => handleImpersonate(user)}
+                            disabled={isImpersonating}
+                            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-b-lg disabled:opacity-50"
+                          >
+                            <UserCheck className="w-4 h-4" />
+                            {isImpersonating ? 'Starting...' : 'Impersonate'}
+                          </button>
+                        )}
                       </div>
                     )}
                   </td>

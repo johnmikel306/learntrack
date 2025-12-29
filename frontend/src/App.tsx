@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { UserProvider } from './contexts/UserContext'
 import { ToastProvider } from './contexts/ToastContext'
+import { ImpersonationProvider } from './contexts/ImpersonationContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import ProtectedRoute from './components/ProtectedRoute'
 import HomePage from './pages/HomePage'
@@ -20,15 +21,18 @@ import SettingsPage from './pages/SettingsPage'
 import { AdminLayout } from './components/admin/AdminLayout'
 import { AdminDashboardPage, TenantsPage, UsersPage, AdminSettingsPage } from './pages/admin'
 import { AdminProtectedRoute } from './components/admin/AdminProtectedRoute'
+import { ImpersonationBanner } from './components/admin/ImpersonationBanner'
 
 function App() {
   return (
     <ThemeProvider>
       <UserProvider>
-        <ToastProvider>
-          <ErrorBoundary>
-            <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
-              <Routes>
+        <ImpersonationProvider>
+          <ToastProvider>
+            <ErrorBoundary>
+              <ImpersonationBanner />
+              <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
+                <Routes>
               {/* Public routes */}
               <Route path="/" element={<HomePage />} />
               <Route path="/get-started" element={<GetStartedPage />} />
@@ -109,10 +113,11 @@ function App() {
                 <Route path="users" element={<UsersPage />} />
                 <Route path="settings" element={<AdminSettingsPage />} />
               </Route>
-              </Routes>
-            </div>
-          </ErrorBoundary>
-        </ToastProvider>
+                </Routes>
+              </div>
+            </ErrorBoundary>
+          </ToastProvider>
+        </ImpersonationProvider>
       </UserProvider>
     </ThemeProvider>
   )

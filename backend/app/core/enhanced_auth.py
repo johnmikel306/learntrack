@@ -248,7 +248,7 @@ class EnhancedClerkJWTBearer:
             # Set permissions based on role
             permissions = self._get_role_permissions(role)
 
-            # Check for super admin status
+            # Check for super admin status from JWT metadata first
             is_super_admin = metadata.get("is_super_admin", False) or role == UserRole.SUPER_ADMIN
             admin_permissions_raw = metadata.get("admin_permissions", [])
             admin_permissions = []
@@ -257,6 +257,24 @@ class EnhancedClerkJWTBearer:
                     admin_permissions.append(AdminPermission(perm))
                 except ValueError:
                     logger.warning("Invalid admin permission", permission=perm)
+
+            # Check database for super admin status (database overrides JWT)
+            db_user = await self._get_user_from_database(user_id)
+            if db_user:
+                # Override with database values if they exist
+                if db_user.get("is_super_admin"):
+                    is_super_admin = True
+                if db_user.get("role") == "super_admin":
+                    role = UserRole.SUPER_ADMIN
+                    is_super_admin = True
+                db_admin_perms = db_user.get("admin_permissions", [])
+                if db_admin_perms:
+                    admin_permissions = []
+                    for perm in db_admin_perms:
+                        try:
+                            admin_permissions.append(AdminPermission(perm.lower() if isinstance(perm, str) else perm))
+                        except ValueError:
+                            logger.warning("Invalid admin permission from DB", permission=perm)
 
             # If super admin role but no permissions specified, grant full access
             if is_super_admin and not admin_permissions:
@@ -268,7 +286,7 @@ class EnhancedClerkJWTBearer:
             else:
                 # For students and parents, we'll need to look up their tutor_id from the database
                 # For now, use a placeholder - this will be set by _sync_user_to_database
-                tutor_id = "placeholder"
+                tutor_id = db_user.get("tutor_id", "placeholder") if db_user else "placeholder"
 
             # Create user context
             user_context = ClerkUserContext(
@@ -284,7 +302,7 @@ class EnhancedClerkJWTBearer:
                 created_at=datetime.fromtimestamp(payload.get("iat", 0), tz=timezone.utc),
                 last_sign_in=datetime.now(timezone.utc),
                 tutor_id=tutor_id,
-                student_ids=[],  # Will be populated by _sync_user_to_database for parents
+                student_ids=db_user.get("student_ids", []) if db_user else [],
                 is_super_admin=is_super_admin,
                 admin_permissions=admin_permissions
             )
@@ -310,7 +328,25 @@ class EnhancedClerkJWTBearer:
             UserRole.SUPER_ADMIN: ["read", "write", "create", "delete", "manage_students", "admin", "manage_system"]
         }
         return permission_map.get(role, ["read"])
-    
+
+    async def _get_user_from_database(self, clerk_id: str) -> Optional[dict]:
+        """Get user from database by clerk_id to check for super admin status"""
+        try:
+            db = await get_database()
+
+            # Check all role collections for the user
+            collections = ["tutors", "students", "parents"]
+            for collection_name in collections:
+                collection = db[collection_name]
+                user = await collection.find_one({"clerk_id": clerk_id})
+                if user:
+                    return user
+
+            return None
+        except Exception as e:
+            logger.error("Failed to get user from database", error=str(e), clerk_id=clerk_id)
+            return None
+
     async def _sync_user_to_database(self, user_context: ClerkUserContext):
         """Sync user information to database"""
         try:

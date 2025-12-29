@@ -126,6 +126,10 @@ class AuditAction(str, Enum):
     ADMIN_LOGIN = "admin_login"
     ADMIN_PERMISSION_CHANGED = "admin_permission_changed"
 
+    # Impersonation actions
+    IMPERSONATION_STARTED = "impersonation_started"
+    IMPERSONATION_ENDED = "impersonation_ended"
+
 
 class AuditLog(BaseModel):
     """Audit log entry for admin actions"""
@@ -153,4 +157,32 @@ class AuditLogListResponse(BaseModel):
     total: int
     page: int
     per_page: int
+
+
+class ImpersonationSession(BaseModel):
+    """Represents an active impersonation session"""
+    session_id: str
+    admin_clerk_id: str
+    admin_email: str
+    target_user_id: str
+    target_clerk_id: str
+    target_email: str
+    target_name: str
+    target_role: str
+    target_tutor_id: Optional[str] = None
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: datetime
+
+
+class ImpersonationStartRequest(BaseModel):
+    """Request to start impersonating a user"""
+    target_user_id: str  # MongoDB _id or clerk_id of the user to impersonate
+
+
+class ImpersonationResponse(BaseModel):
+    """Response containing impersonation session details"""
+    session_id: str
+    target_user: Dict[str, Any]
+    expires_in_minutes: int = 60
+    message: str
 

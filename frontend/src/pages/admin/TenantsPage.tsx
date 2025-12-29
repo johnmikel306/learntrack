@@ -48,7 +48,7 @@ export function TenantsPage() {
       if (searchQuery) params.append('search', searchQuery)
       if (statusFilter) params.append('status_filter', statusFilter)
 
-      const response = await fetch(`${API_BASE_URL}/admin/tenants?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/admin/tenants/?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

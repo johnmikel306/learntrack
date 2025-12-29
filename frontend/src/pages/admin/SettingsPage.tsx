@@ -38,7 +38,7 @@ export function AdminSettingsPage() {
       const token = await getToken()
       
       const [settingsRes, flagsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/admin/settings`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_BASE_URL}/admin/settings/`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${API_BASE_URL}/admin/settings/feature-flags`, { headers: { 'Authorization': `Bearer ${token}` } })
       ])
 
@@ -84,7 +84,7 @@ export function AdminSettingsPage() {
       setIsSaving(true)
       const token = await getToken()
       
-      const response = await fetch(`${API_BASE_URL}/admin/settings`, {
+      const response = await fetch(`${API_BASE_URL}/admin/settings/`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ settings })
