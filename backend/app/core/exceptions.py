@@ -116,21 +116,58 @@ async def learntrack_exception_handler(request: Request, exc: LearnTrackExceptio
 
 
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    """Handle HTTP exceptions"""
+    """Handle HTTP exceptions with enhanced error messages"""
     logger.warning(
         "HTTP exception occurred",
         status_code=exc.status_code,
         detail=exc.detail,
         path=request.url.path
     )
-    
+
+    # Provide more helpful messages for common HTTP errors
+    error_type = "HTTPException"
+    message = exc.detail
+    details = {}
+
+    if exc.status_code == 404:
+        error_type = "NotFound"
+        message = exc.detail or f"The requested resource '{request.url.path}' was not found"
+        details = {
+            "path": request.url.path,
+            "method": request.method,
+            "suggestion": "Please check the URL and try again. See /docs for available endpoints."
+        }
+    elif exc.status_code == 403:
+        error_type = "Forbidden"
+        message = exc.detail or "You don't have permission to access this resource"
+        details = {
+            "path": request.url.path,
+            "suggestion": "Please ensure you have the required permissions or contact an administrator."
+        }
+    elif exc.status_code == 401:
+        error_type = "Unauthorized"
+        message = exc.detail or "Authentication is required to access this resource"
+        details = {
+            "path": request.url.path,
+            "suggestion": "Please provide a valid authentication token in the Authorization header."
+        }
+    elif exc.status_code == 405:
+        error_type = "MethodNotAllowed"
+        message = exc.detail or f"The {request.method} method is not allowed for this endpoint"
+        details = {
+            "path": request.url.path,
+            "method": request.method,
+            "suggestion": "Check the API documentation for allowed methods on this endpoint."
+        }
+
     return JSONResponse(
         status_code=exc.status_code,
         content={
             "error": {
-                "type": "HTTPException",
-                "message": exc.detail,
-                "details": {}
+                "type": error_type,
+                "message": message,
+                "details": details,
+                "status_code": exc.status_code
             }
         }
     )

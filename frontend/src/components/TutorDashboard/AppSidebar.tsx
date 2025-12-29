@@ -178,8 +178,16 @@ export function AppSidebar({ activeView, onViewChange }: AppSidebarProps) {
       try {
         const response = await client.get('/notifications')
         if (response.data) {
-          setNotifications(response.data as any[])
-          setUnreadCount((response.data as any[]).filter((n: any) => !n.is_read).length)
+          // Handle paginated response format: { items: [], meta: {} }
+          const items = response.data.items || response.data
+          if (Array.isArray(items)) {
+            setNotifications(items)
+            setUnreadCount(items.filter((n: any) => !n.is_read).length)
+          } else {
+            // Fallback if data is not in expected format
+            setNotifications([])
+            setUnreadCount(0)
+          }
         }
       } catch (err) {
         console.error('Failed to fetch notifications:', err)

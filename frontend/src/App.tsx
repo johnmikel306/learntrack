@@ -16,6 +16,8 @@ import TeacherOnboarding from './components/onboarding/TeacherOnboarding'
 import StudentOnboarding from './components/onboarding/StudentOnboarding'
 import ParentOnboarding from './components/onboarding/ParentOnboarding'
 import SettingsPage from './pages/SettingsPage'
+import NotFoundPage from './pages/NotFoundPage'
+import AccessDeniedPage from './pages/AccessDeniedPage'
 
 // Admin imports
 import { AdminLayout } from './components/admin/AdminLayout'
@@ -113,6 +115,12 @@ function App() {
                 <Route path="users" element={<UsersPage />} />
                 <Route path="settings" element={<AdminSettingsPage />} />
               </Route>
+
+              {/* Access Denied route */}
+              <Route path="/access-denied" element={<AccessDeniedPage />} />
+
+              {/* 404 Catch-all route - must be last */}
+              <Route path="*" element={<NotFoundPage />} />
                 </Routes>
               </div>
             </ErrorBoundary>
