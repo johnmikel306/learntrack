@@ -43,7 +43,7 @@ export default function SignInPage() {
           <SignIn
             routing="path"
             path="/sign-in"
-            redirectUrl="/dashboard"
+            fallbackRedirectUrl="/dashboard"
             signUpUrl="/sign-up"
             appearance={{
               variables: {

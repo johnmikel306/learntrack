@@ -413,8 +413,8 @@ async def require_authenticated_user(
 async def require_tutor(
     current_user: ClerkUserContext = Depends(get_current_user)
 ) -> ClerkUserContext:
-    """Require tutor role"""
-    if current_user.role != UserRole.TUTOR:
+    """Require tutor role (super admins also have access)"""
+    if current_user.role != UserRole.TUTOR and not current_user.is_super_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Tutor access required"

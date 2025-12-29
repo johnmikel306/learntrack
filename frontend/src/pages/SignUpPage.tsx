@@ -50,7 +50,7 @@ export default function SignUpPage() {
           <SignUp
             routing="path"
             path="/sign-up"
-            redirectUrl="/dashboard"
+            fallbackRedirectUrl="/dashboard"
             signInUrl="/sign-in"
             unsafeMetadata={{
               role: selectedRole
