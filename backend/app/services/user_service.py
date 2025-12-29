@@ -32,6 +32,9 @@ class UserService:
             return self.students_collection
         elif role == UserRole.PARENT:
             return self.parents_collection
+        elif role == UserRole.SUPER_ADMIN:
+            # Super admins are stored in the tutors collection (they function as top-level users)
+            return self.tutors_collection
         else:
             raise ValueError(f"Unknown role: {role}")
     
@@ -70,6 +73,10 @@ class UserService:
                 # Tutors are their own tenant
                 user_dict["tenant_id"] = user_data.clerk_id
                 user_dict["tutor_subjects"] = []
+            elif user_data.role == UserRole.SUPER_ADMIN:
+                # Super admins are their own tenant (similar to tutors but with system-wide access)
+                user_dict["tenant_id"] = user_data.clerk_id
+                user_dict["is_super_admin"] = True
             elif user_data.role in [UserRole.STUDENT, UserRole.PARENT]:
                 # Students and parents need to be assigned to a tutor's tenant
                 # For now, set to provided tenant_id or None (will be set during assignment)
@@ -153,8 +160,8 @@ class UserService:
                 return existing_user
 
             # Determine tutor_id based on role
-            if user_context.role == UserRole.TUTOR:
-                tutor_id = user_context.clerk_id  # Tutors use their own clerk_id
+            if user_context.role in [UserRole.TUTOR, UserRole.SUPER_ADMIN]:
+                tutor_id = user_context.clerk_id  # Tutors and super admins use their own clerk_id
             else:
                 tutor_id = user_context.tutor_id or "placeholder"  # Will be updated later
 
@@ -244,7 +251,14 @@ class UserService:
                 oid = to_object_id(user_id)
                 # Determine correct collection based on existing user role
                 existing_user = await self.get_user_by_id(user_id)
-                collection_name = "tutors" if existing_user.role == UserRole.TUTOR else ("students" if existing_user.role == UserRole.STUDENT else "parents")
+                # Map role to collection name (SUPER_ADMIN uses tutors collection)
+                role_to_collection = {
+                    UserRole.TUTOR: "tutors",
+                    UserRole.SUPER_ADMIN: "tutors",
+                    UserRole.STUDENT: "students",
+                    UserRole.PARENT: "parents"
+                }
+                collection_name = role_to_collection.get(existing_user.role, "tutors")
                 update_data["slug"] = await generate_unique_slug(
                     self.db,
                     collection_name,
