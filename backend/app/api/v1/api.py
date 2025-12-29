@@ -6,6 +6,9 @@ from fastapi import APIRouter
 # Import working endpoints
 from app.api.v1.endpoints import questions, assignments, subjects, students, progress, webhooks, users, dashboard, topics, invitations, parents, conversations, messages, visibility, materials, notifications, activities, groups, websocket, assignment_templates, rag, question_generator, settings
 
+# Import admin router
+from app.api.v1.admin import admin_router
+
 api_router = APIRouter()
 
 # Include all endpoint routers
@@ -32,6 +35,9 @@ api_router.include_router(websocket.router, tags=["websocket"])
 api_router.include_router(rag.router, prefix="/rag", tags=["rag"])
 api_router.include_router(question_generator.router, prefix="/question-generator", tags=["question-generator"])
 api_router.include_router(settings.router, prefix="/settings", tags=["settings"])
+
+# Admin router (super admin only)
+api_router.include_router(admin_router)
 
 # Still disabled:
 # api_router.include_router(files.router, prefix="/files", tags=["files"])

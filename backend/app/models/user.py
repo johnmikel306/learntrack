@@ -13,6 +13,37 @@ class UserRole(str, Enum):
     TUTOR = "tutor"
     STUDENT = "student"
     PARENT = "parent"
+    SUPER_ADMIN = "super_admin"
+
+
+class AdminPermission(str, Enum):
+    """Granular permissions for super admin users"""
+    # Tenant management
+    VIEW_ALL_TENANTS = "view_all_tenants"
+    MANAGE_TENANTS = "manage_tenants"
+    SUSPEND_TENANTS = "suspend_tenants"
+
+    # User management
+    VIEW_ALL_USERS = "view_all_users"
+    MANAGE_USERS = "manage_users"
+    CREATE_TUTORS = "create_tutors"
+    DELETE_USERS = "delete_users"
+
+    # System settings
+    MANAGE_SYSTEM_SETTINGS = "manage_system_settings"
+    MANAGE_AI_PROVIDERS = "manage_ai_providers"
+    MANAGE_FEATURE_FLAGS = "manage_feature_flags"
+
+    # Analytics & reporting
+    VIEW_ANALYTICS = "view_analytics"
+    EXPORT_DATA = "export_data"
+
+    # Audit & security
+    VIEW_AUDIT_LOGS = "view_audit_logs"
+    MANAGE_SECURITY = "manage_security"
+
+    # Full access
+    FULL_ACCESS = "full_access"
 
 
 # Use string type for ObjectId to avoid Pydantic v2 compatibility issues
@@ -49,6 +80,10 @@ class UserInDB(UserBase):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_login: Optional[datetime] = None
+
+    # Super admin fields
+    is_super_admin: bool = False  # Flag for super admin users
+    admin_permissions: List[AdminPermission] = []  # Granular admin permissions
 
     # Role-specific fields
     tutor_subjects: Optional[List[str]] = []  # Subject IDs for tutors

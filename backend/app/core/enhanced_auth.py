@@ -13,7 +13,7 @@ import structlog
 from pydantic import BaseModel, EmailStr
 
 from app.core.config import settings
-from app.models.user import UserRole
+from app.models.user import UserRole, AdminPermission
 from app.core.database import get_database
 
 logger = structlog.get_logger()
@@ -35,10 +35,27 @@ class ClerkUserContext(BaseModel):
     tutor_id: str  # Tutor ID for tenant isolation - for tutors: their own clerk_id, for others: their tutor's clerk_id
     student_ids: List[str] = []  # For parents: list of student IDs they can access
 
+    # Super admin fields
+    is_super_admin: bool = False
+    admin_permissions: List[AdminPermission] = []
+
     @property
     def auth0_id(self) -> str:
         """Backward compatibility property - returns clerk_id"""
         return self.clerk_id
+
+    @property
+    def has_full_admin_access(self) -> bool:
+        """Check if user has full admin access"""
+        return self.is_super_admin and AdminPermission.FULL_ACCESS in self.admin_permissions
+
+    def has_admin_permission(self, permission: AdminPermission) -> bool:
+        """Check if user has a specific admin permission"""
+        if not self.is_super_admin:
+            return False
+        if AdminPermission.FULL_ACCESS in self.admin_permissions:
+            return True
+        return permission in self.admin_permissions
 
 
 class EnhancedClerkJWTBearer:
@@ -231,9 +248,23 @@ class EnhancedClerkJWTBearer:
             # Set permissions based on role
             permissions = self._get_role_permissions(role)
 
+            # Check for super admin status
+            is_super_admin = metadata.get("is_super_admin", False) or role == UserRole.SUPER_ADMIN
+            admin_permissions_raw = metadata.get("admin_permissions", [])
+            admin_permissions = []
+            for perm in admin_permissions_raw:
+                try:
+                    admin_permissions.append(AdminPermission(perm))
+                except ValueError:
+                    logger.warning("Invalid admin permission", permission=perm)
+
+            # If super admin role but no permissions specified, grant full access
+            if is_super_admin and not admin_permissions:
+                admin_permissions = [AdminPermission.FULL_ACCESS]
+
             # Set tutor_id based on role
-            if role == UserRole.TUTOR:
-                tutor_id = user_id  # Tutors use their own clerk_id as tutor_id
+            if role == UserRole.TUTOR or role == UserRole.SUPER_ADMIN:
+                tutor_id = user_id  # Tutors and super admins use their own clerk_id as tutor_id
             else:
                 # For students and parents, we'll need to look up their tutor_id from the database
                 # For now, use a placeholder - this will be set by _sync_user_to_database
@@ -253,7 +284,9 @@ class EnhancedClerkJWTBearer:
                 created_at=datetime.fromtimestamp(payload.get("iat", 0), tz=timezone.utc),
                 last_sign_in=datetime.now(timezone.utc),
                 tutor_id=tutor_id,
-                student_ids=[]  # Will be populated by _sync_user_to_database for parents
+                student_ids=[],  # Will be populated by _sync_user_to_database for parents
+                is_super_admin=is_super_admin,
+                admin_permissions=admin_permissions
             )
 
             # Sync user with database
@@ -273,7 +306,8 @@ class EnhancedClerkJWTBearer:
         permission_map = {
             UserRole.TUTOR: ["read", "write", "create", "delete", "manage_students"],
             UserRole.STUDENT: ["read", "write_own", "submit"],
-            UserRole.PARENT: ["read", "view_children"]
+            UserRole.PARENT: ["read", "view_children"],
+            UserRole.SUPER_ADMIN: ["read", "write", "create", "delete", "manage_students", "admin", "manage_system"]
         }
         return permission_map.get(role, ["read"])
     
@@ -388,3 +422,42 @@ async def require_role(allowed_roles: List[UserRole]):
             )
         return current_user
     return role_checker
+
+
+# Super Admin Dependencies
+async def require_super_admin(
+    current_user: ClerkUserContext = Depends(get_current_user)
+) -> ClerkUserContext:
+    """Require super admin role"""
+    if not current_user.is_super_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Super admin access required"
+        )
+    return current_user
+
+
+def require_admin_permission(permission: AdminPermission):
+    """Factory function to require specific admin permission"""
+    async def permission_checker(
+        current_user: ClerkUserContext = Depends(require_super_admin)
+    ) -> ClerkUserContext:
+        if not current_user.has_admin_permission(permission):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Missing admin permission: {permission.value}"
+            )
+        return current_user
+    return permission_checker
+
+
+async def require_tutor_or_super_admin(
+    current_user: ClerkUserContext = Depends(get_current_user)
+) -> ClerkUserContext:
+    """Require tutor role or super admin"""
+    if current_user.role != UserRole.TUTOR and not current_user.is_super_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tutor or super admin access required"
+        )
+    return current_user

@@ -2,7 +2,26 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { useUser, useAuth } from '@clerk/clerk-react'
 
 // User role types matching backend
-export type UserRole = 'tutor' | 'student' | 'parent'
+export type UserRole = 'tutor' | 'student' | 'parent' | 'super_admin'
+
+// Admin permission types matching backend
+export type AdminPermission =
+  | 'view_all_tenants'
+  | 'manage_tenants'
+  | 'view_all_users'
+  | 'manage_users'
+  | 'view_audit_logs'
+  | 'manage_system_settings'
+  | 'manage_feature_flags'
+  | 'impersonate_users'
+  | 'export_data'
+  | 'delete_tenants'
+  | 'suspend_tenants'
+  | 'create_tutors'
+  | 'reset_passwords'
+  | 'manage_billing'
+  | 'view_analytics'
+  | 'full_access'
 
 // Backend user data structure
 export interface BackendUser {
@@ -15,6 +34,8 @@ export interface BackendUser {
   created_at: string
   updated_at: string
   student_ids?: string[]  // For parents
+  is_super_admin?: boolean
+  admin_permissions?: AdminPermission[]
 }
 
 interface UserContextType {
@@ -22,22 +43,28 @@ interface UserContextType {
   clerkUser: ReturnType<typeof useUser>['user']
   isLoaded: boolean
   isSignedIn: boolean
-  
+
   // Backend user data
   backendUser: BackendUser | null
   isBackendLoaded: boolean
   backendError: string | null
-  
+
   // Derived properties
   role: UserRole | null
   tutorId: string | null
   studentIds: string[]
-  
+
   // Permissions
   isTutor: boolean
   isStudent: boolean
   isParent: boolean
-  
+  isSuperAdmin: boolean
+  adminPermissions: AdminPermission[]
+
+  // Admin permission helpers
+  hasAdminPermission: (permission: AdminPermission) => boolean
+  hasFullAdminAccess: boolean
+
   // Actions
   refreshBackendUser: () => Promise<void>
 }
@@ -97,33 +124,54 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, [isLoaded, isSignedIn, clerkUser?.id, fetchBackendUser])
 
   // Derive role from backend user or Clerk metadata
-  const role = backendUser?.role || 
+  const role = backendUser?.role ||
     (clerkUser?.publicMetadata?.role as UserRole) || null
 
   const tutorId = backendUser?.tutor_id || null
   const studentIds = backendUser?.student_ids || []
+
+  // Super admin properties
+  const isSuperAdmin = backendUser?.is_super_admin ||
+    role === 'super_admin' ||
+    (clerkUser?.publicMetadata?.is_super_admin as boolean) || false
+  const adminPermissions = backendUser?.admin_permissions ||
+    (clerkUser?.publicMetadata?.admin_permissions as AdminPermission[]) || []
+
+  const hasFullAdminAccess = isSuperAdmin && adminPermissions.includes('full_access')
+
+  const hasAdminPermission = useCallback((permission: AdminPermission): boolean => {
+    if (!isSuperAdmin) return false
+    if (adminPermissions.includes('full_access')) return true
+    return adminPermissions.includes(permission)
+  }, [isSuperAdmin, adminPermissions])
 
   const value: UserContextType = {
     // Clerk data
     clerkUser,
     isLoaded,
     isSignedIn: isSignedIn ?? false,
-    
+
     // Backend data
     backendUser,
     isBackendLoaded,
     backendError,
-    
+
     // Derived
     role,
     tutorId,
     studentIds,
-    
+
     // Permissions
     isTutor: role === 'tutor',
     isStudent: role === 'student',
     isParent: role === 'parent',
-    
+    isSuperAdmin,
+    adminPermissions,
+
+    // Admin permission helpers
+    hasAdminPermission,
+    hasFullAdminAccess,
+
     // Actions
     refreshBackendUser: fetchBackendUser
   }
@@ -145,8 +193,8 @@ export function useUserContext() {
 
 // Convenience hooks for common use cases
 export function useCurrentRole() {
-  const { role, isTutor, isStudent, isParent } = useUserContext()
-  return { role, isTutor, isStudent, isParent }
+  const { role, isTutor, isStudent, isParent, isSuperAdmin } = useUserContext()
+  return { role, isTutor, isStudent, isParent, isSuperAdmin }
 }
 
 export function useTutorId() {
@@ -154,3 +202,7 @@ export function useTutorId() {
   return tutorId
 }
 
+export function useSuperAdmin() {
+  const { isSuperAdmin, adminPermissions, hasAdminPermission, hasFullAdminAccess } = useUserContext()
+  return { isSuperAdmin, adminPermissions, hasAdminPermission, hasFullAdminAccess }
+}

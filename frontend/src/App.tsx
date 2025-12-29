@@ -16,6 +16,11 @@ import StudentOnboarding from './components/onboarding/StudentOnboarding'
 import ParentOnboarding from './components/onboarding/ParentOnboarding'
 import SettingsPage from './pages/SettingsPage'
 
+// Admin imports
+import { AdminLayout } from './components/admin/AdminLayout'
+import { AdminDashboardPage, TenantsPage, UsersPage, AdminSettingsPage } from './pages/admin'
+import { AdminProtectedRoute } from './components/admin/AdminProtectedRoute'
+
 function App() {
   return (
     <ThemeProvider>
@@ -89,6 +94,21 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+
+              {/* Admin routes - Super Admin only */}
+              <Route
+                path="/admin"
+                element={
+                  <AdminProtectedRoute>
+                    <AdminLayout />
+                  </AdminProtectedRoute>
+                }
+              >
+                <Route index element={<AdminDashboardPage />} />
+                <Route path="tenants" element={<TenantsPage />} />
+                <Route path="users" element={<UsersPage />} />
+                <Route path="settings" element={<AdminSettingsPage />} />
+              </Route>
               </Routes>
             </div>
           </ErrorBoundary>

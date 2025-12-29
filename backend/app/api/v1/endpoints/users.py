@@ -34,7 +34,10 @@ async def read_users_me(
                 "role": db_user.role.value,
                 "tutor_id": db_user.tutor_id,
                 "created_at": db_user.created_at.isoformat() if db_user.created_at else None,
-                "updated_at": db_user.updated_at.isoformat() if db_user.updated_at else None
+                "updated_at": db_user.updated_at.isoformat() if db_user.updated_at else None,
+                # Super admin fields
+                "is_super_admin": db_user.is_super_admin,
+                "admin_permissions": [p.value if hasattr(p, 'value') else p for p in db_user.admin_permissions] if db_user.admin_permissions else []
             }
         else:
             # Return user data from Clerk JWT token if not in database yet
@@ -49,7 +52,10 @@ async def read_users_me(
                 "role": current_user.role.value,
                 "tutor_id": current_user.tutor_id,
                 "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
-                "last_sign_in": current_user.last_sign_in.isoformat() if current_user.last_sign_in else None
+                "last_sign_in": current_user.last_sign_in.isoformat() if current_user.last_sign_in else None,
+                # Super admin fields (from JWT context)
+                "is_super_admin": current_user.is_super_admin,
+                "admin_permissions": [p.value if hasattr(p, 'value') else p for p in current_user.admin_permissions] if current_user.admin_permissions else []
             }
     except Exception as e:
         logger.error("Failed to get user profile", error=str(e), clerk_id=current_user.clerk_id)

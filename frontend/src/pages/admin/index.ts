@@ -1,0 +1,5 @@
+export { AdminDashboardPage } from './AdminDashboardPage'
+export { TenantsPage } from './TenantsPage'
+export { UsersPage } from './UsersPage'
+export { AdminSettingsPage } from './SettingsPage'
+
