@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
 import {
   Calendar,
   Users,
@@ -18,11 +19,15 @@ import { useApiClient } from "@/lib/api-client"
 import { toast } from "@/contexts/ToastContext"
 import GroupSelector from '@/components/GroupSelector'
 import SubjectFilter from '@/components/SubjectFilter'
+import StudentSelector from '@/components/StudentSelector'
+import QuestionBankSelector, { QuestionItem } from '@/components/QuestionBankSelector'
 
 export default function CreateAssignmentView() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [assignmentType, setAssignmentType] = useState<'individual' | 'group' | 'subject'>('individual')
-  
+  const [isQuestionSelectorOpen, setIsQuestionSelectorOpen] = useState(false)
+  const [selectedQuestionData, setSelectedQuestionData] = useState<QuestionItem[]>([])
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -104,6 +109,7 @@ export default function CreateAssignmentView() {
         selectedSubject: '',
         selectedQuestions: [],
       })
+      setSelectedQuestionData([])
     } catch (err: any) {
       console.error('Failed to create assignment:', err)
       toast.error('Failed to create assignment', {
@@ -230,15 +236,10 @@ export default function CreateAssignmentView() {
               </TabsList>
 
               <TabsContent value="individual" className="space-y-4">
-                <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    Select individual students to assign this work to
-                  </p>
-                  {/* TODO: Add student multi-select component */}
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    Student selector will be available soon
-                  </div>
-                </div>
+                <StudentSelector
+                  selectedStudents={formData.selectedStudents}
+                  onChange={(students) => setFormData({ ...formData, selectedStudents: students })}
+                />
               </TabsContent>
 
               <TabsContent value="group" className="space-y-4">
@@ -271,7 +272,12 @@ export default function CreateAssignmentView() {
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 {formData.selectedQuestions.length} question(s) selected
               </p>
-              <Button type="button" variant="outline" size="sm">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsQuestionSelectorOpen(true)}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Questions
               </Button>
@@ -283,38 +289,94 @@ export default function CreateAssignmentView() {
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
                   No questions added yet
                 </p>
-                <Button type="button" variant="outline">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsQuestionSelectorOpen(true)}
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Browse Question Bank
                 </Button>
               </div>
             ) : (
               <div className="space-y-2">
-                {formData.selectedQuestions.map((questionId, index) => (
-                  <div
-                    key={questionId}
-                    className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
-                  >
-                    <span className="text-sm">Question {index + 1}</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setFormData({
-                          ...formData,
-                          selectedQuestions: formData.selectedQuestions.filter(id => id !== questionId)
-                        })
-                      }}
+                {selectedQuestionData.map((question, index) => {
+                  const truncatedText = question.text.length > 100
+                    ? question.text.slice(0, 100) + '...'
+                    : question.text
+
+                  const getDifficultyColor = (difficulty?: string) => {
+                    switch (difficulty?.toLowerCase()) {
+                      case 'easy': return 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                      case 'medium': return 'bg-amber-500/20 text-amber-600 dark:text-amber-400'
+                      case 'hard': return 'bg-red-500/20 text-red-600 dark:text-red-400'
+                      default: return 'bg-gray-500/20 text-gray-600'
+                    }
+                  }
+
+                  return (
+                    <div
+                      key={question.id}
+                      className="flex items-start justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-card"
                     >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
+                      <div className="flex-1 min-w-0 pr-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                            Q{index + 1}
+                          </span>
+                          {question.difficulty && (
+                            <Badge className={`text-xs ${getDifficultyColor(question.difficulty)}`}>
+                              {question.difficulty}
+                            </Badge>
+                          )}
+                          {question.type && (
+                            <Badge variant="secondary" className="text-xs">
+                              {question.type.replace(/_/g, ' ')}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-900 dark:text-gray-100">
+                          {truncatedText}
+                        </p>
+                        {question.subject && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Subject: {typeof question.subject === 'object'
+                              ? (question.subject as any).name
+                              : question.subject}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const newQuestions = formData.selectedQuestions.filter(id => id !== question.id)
+                          setFormData({ ...formData, selectedQuestions: newQuestions })
+                          setSelectedQuestionData(prev => prev.filter(q => q.id !== question.id))
+                        }}
+                        className="text-gray-400 hover:text-red-500"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </CardContent>
         </Card>
+
+        {/* Question Bank Selector Modal */}
+        <QuestionBankSelector
+          open={isQuestionSelectorOpen}
+          onOpenChange={setIsQuestionSelectorOpen}
+          selectedQuestions={formData.selectedQuestions}
+          onConfirm={(questionIds, questionData) => {
+            setFormData({ ...formData, selectedQuestions: questionIds })
+            setSelectedQuestionData(questionData)
+          }}
+        />
 
         {/* Actions */}
         <div className="flex justify-end gap-4">
