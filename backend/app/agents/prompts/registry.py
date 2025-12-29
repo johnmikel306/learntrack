@@ -5,7 +5,7 @@ This registry allows switching between prompt versions without code changes.
 Useful for A/B testing, rollbacks, and gradual rollouts.
 """
 
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 import importlib
 import structlog
 
@@ -26,6 +26,61 @@ PROMPT_TYPES = [
     "simple_question_generator",
     "simple_question_validator",
 ]
+
+# RAG prompt types (handled separately)
+RAG_PROMPT_TYPES = [
+    "query_analyzer",
+    "relevance_grader",
+    "query_rewriter",
+    "answer_generator",
+    "hallucination_checker",
+    "simple_query",
+    "document_summary",
+    "multi_document_synthesis",
+]
+
+
+class PromptRegistry:
+    """Registry for managing prompts across different modules."""
+
+    def __init__(self, version: Optional[str] = None):
+        self.version = version or ACTIVE_VERSION
+        self._rag_prompts = None
+
+    def get_prompt(self, module: str, prompt_type: str, **kwargs) -> str:
+        """
+        Get a prompt by module and type with variable substitution.
+
+        Args:
+            module: Module name (e.g., "rag", "question_generator")
+            prompt_type: Prompt type within the module
+            **kwargs: Variables to substitute in the prompt
+
+        Returns:
+            Formatted prompt string
+        """
+        if module == "rag":
+            return self._get_rag_prompt(prompt_type, **kwargs)
+        else:
+            # Fall back to legacy get_prompt for other modules
+            prompt = get_prompt(prompt_type, self.version)
+            if kwargs:
+                return prompt.format(**kwargs)
+            return prompt
+
+    def _get_rag_prompt(self, prompt_type: str, **kwargs) -> str:
+        """Get a RAG prompt with variable substitution."""
+        if self._rag_prompts is None:
+            from app.agents.prompts.v1.rag_prompts import RAG_PROMPTS
+            self._rag_prompts = RAG_PROMPTS
+
+        if prompt_type not in self._rag_prompts:
+            raise ValueError(f"Unknown RAG prompt: {prompt_type}")
+
+        template = self._rag_prompts[prompt_type]
+        if kwargs:
+            return template.format(**kwargs)
+        return template
 
 
 def get_prompt(prompt_type: str, version: Optional[str] = None) -> str:

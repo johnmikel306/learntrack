@@ -35,6 +35,32 @@ class EmbeddingStatus(str, Enum):
     FAILED = "failed"
 
 
+class SyncStatus(str, Enum):
+    """Document sync status for change detection"""
+    SYNCED = "synced"
+    OUT_OF_SYNC = "out_of_sync"
+    NEVER_SYNCED = "never_synced"
+
+
+class ErrorCategory(str, Enum):
+    """Categorized processing error types"""
+    FORMAT_ERROR = "format_error"
+    API_LIMIT = "api_limit"
+    NETWORK_ERROR = "network_error"
+    TIMEOUT = "timeout"
+    UNKNOWN = "unknown"
+
+
+class ProcessingHistoryEntry(BaseModel):
+    """Single entry in document processing history"""
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    action: str  # "embed", "re-embed", "delete", "sync"
+    status: str  # "started", "completed", "failed"
+    details: Optional[Dict[str, Any]] = None
+    processor_used: Optional[str] = None
+    error_message: Optional[str] = None
+
+
 class UploadedFile(BaseModel):
     """UploadThing file model"""
     id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
@@ -76,6 +102,23 @@ class UploadedFile(BaseModel):
     tags: List[str] = []
     category: Optional[str] = None
     embedding_error: Optional[str] = None
+
+    # Enhanced document processing metadata (from Docling/Unstructured)
+    character_count: Optional[int] = None
+    token_estimate: Optional[int] = None
+    content_hash: Optional[str] = None  # SHA-256 hash for change detection
+    page_count: Optional[int] = None
+    processor_used: Optional[str] = None  # docling, unstructured, pypdf, etc.
+    processing_time: Optional[float] = None  # seconds
+
+    # Governance fields for lifecycle management
+    embedding_version: int = 1  # Track embedding versions
+    last_synced_at: Optional[datetime] = None
+    sync_status: SyncStatus = SyncStatus.NEVER_SYNCED
+    processing_attempts: int = 0
+    max_processing_attempts: int = 3  # For retry logic
+    last_error_category: Optional[ErrorCategory] = None
+    processing_history: List[ProcessingHistoryEntry] = []
 
     model_config = ConfigDict(
         populate_by_name=True,

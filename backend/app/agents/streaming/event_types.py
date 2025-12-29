@@ -49,6 +49,14 @@ class StreamEventType(str, Enum):
     REFLECTION_RESULT = "reflection:result"
     QUERY_RESPONSE = "query:response"
 
+    # RAG Events
+    RAG_START = "rag:start"
+    RAG_RETRIEVING = "rag:retrieving"
+    RAG_GRADING = "rag:grading"
+    RAG_REWRITING = "rag:rewriting"
+    RAG_GENERATING = "rag:generating"
+    RAG_COMPLETE = "rag:complete"
+
     # Errors
     ERROR = "error:message"
     RETRY = "error:retry"
@@ -127,12 +135,7 @@ class StreamEventData(BaseModel):
 
 class StreamEvent:
     """Factory for creating stream events with minimal thinking display"""
-    
-    @staticmethod
-    def thinking(step: str) -> StreamEventData:
-        """Create a thinking step event (minimal display)"""
-        return StreamEventData(event_type=StreamEventType.THINKING, step=step)
-    
+
     @staticmethod
     def action(step: str) -> StreamEventData:
         """Create an action event"""
@@ -259,5 +262,37 @@ class StreamEvent:
         return StreamEventData(
             event_type=StreamEventType.QUERY_RESPONSE,
             query_response=response
+        )
+
+    # =========================================================================
+    # RAG Events
+    # =========================================================================
+
+    @staticmethod
+    def rag_start(session_id: str, query: str) -> StreamEventData:
+        """Signal RAG query is starting"""
+        return StreamEventData(
+            event_type=StreamEventType.RAG_START,
+            session_id=session_id,
+            content=query
+        )
+
+    @staticmethod
+    def rag_complete(session_id: str, status: str, sources_count: int) -> StreamEventData:
+        """Signal RAG query is complete"""
+        return StreamEventData(
+            event_type=StreamEventType.RAG_COMPLETE,
+            session_id=session_id,
+            content=status,
+            sources_count=sources_count
+        )
+
+    @staticmethod
+    def thinking(step: str, content: str = "") -> StreamEventData:
+        """Create a thinking step event with optional content"""
+        return StreamEventData(
+            event_type=StreamEventType.THINKING,
+            step=step,
+            content=content
         )
 

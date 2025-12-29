@@ -1,6 +1,8 @@
 """
 RAG (Retrieval-Augmented Generation) Service
 Handles document processing, embedding, and retrieval using Qdrant
+
+Uses LangChain's Docling and Unstructured integrations for multi-format document processing.
 """
 import asyncio
 import uuid
@@ -10,7 +12,6 @@ import structlog
 import httpx
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import UnstructuredFileLoader, PyPDFLoader, TextLoader
 from langchain.schema import Document
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct, Filter, FieldCondition, MatchValue
@@ -18,20 +19,41 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.config import settings
 from app.models.file import UploadedFile, EmbeddingStatus
+from app.services.document_processors import (
+    DocumentProcessorFactory,
+    ProcessedDocument,
+    ProcessorType
+)
 
 logger = structlog.get_logger()
 
 
 class RAGService:
-    """RAG service for document processing and retrieval"""
+    """RAG service for document processing and retrieval using LangChain integrations"""
 
-    def __init__(self, db: AsyncIOMotorDatabase = None):
+    def __init__(
+        self,
+        db: AsyncIOMotorDatabase = None,
+        chunk_size: int = 1000,
+        chunk_overlap: int = 200
+    ):
         self.db = db
         self.qdrant_client = None
         self.embedding_dimension = 1536
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
         self._initialize_qdrant()
+
+        # Initialize document processor factory (Docling + Unstructured)
+        self.document_processor = DocumentProcessorFactory(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap
+        )
+
+        # Keep text splitter for fallback/legacy support
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000, chunk_overlap=200, separators=["\n\n", "\n", ". ", " ", ""]
+            chunk_size=chunk_size, chunk_overlap=chunk_overlap,
+            separators=["\n\n", "\n", ". ", " ", ""]
         )
 
     def _initialize_qdrant(self):
@@ -80,45 +102,118 @@ class RAGService:
             raise
 
     async def process_document(
-        self, file_path: str, file_id: str, tutor_id: str, file_url: str = None
+        self, file_path: str, file_id: str, tutor_id: str, file_url: str = None,
+        force_processor: Optional[ProcessorType] = None
     ) -> Dict[str, Any]:
-        """Process document and store in vector database"""
+        """
+        Process document and store in vector database.
+
+        Uses LangChain's Docling integration for PDF, DOCX, PPTX, HTML
+        with automatic fallback to Unstructured for other formats.
+
+        Args:
+            file_path: Path to the document file
+            file_id: Unique file identifier
+            tutor_id: Tutor ID for collection isolation
+            file_url: Optional URL to fetch document from
+            force_processor: Force use of a specific processor type
+
+        Returns:
+            Dict with processing results including chunk count and metadata
+        """
         try:
             if self.db:
                 await self._update_file_embedding_status(file_id, EmbeddingStatus.PROCESSING)
-            content = await self._load_document(file_path, file_url)
-            if not content:
+
+            # Use new document processor factory (Docling/Unstructured)
+            processed_doc = await self._load_document_with_processor(
+                file_path, file_url, force_processor
+            )
+
+            if not processed_doc or not processed_doc.chunks:
                 raise ValueError("Failed to load document content")
-            chunks = self.text_splitter.split_text(content)
-            logger.info(f"Split document into {len(chunks)} chunks")
-            embeddings = await self.get_embeddings(chunks)
+
+            # Extract chunk contents for embedding
+            chunk_texts = [chunk.content for chunk in processed_doc.chunks]
+            logger.info(
+                f"Processed document with {processed_doc.processor_used.value}",
+                chunks=len(chunk_texts),
+                characters=processed_doc.character_count,
+                tokens=processed_doc.token_estimate
+            )
+
+            # Generate embeddings
+            embeddings = await self.get_embeddings(chunk_texts)
             collection_name = await self.create_tutor_collection(tutor_id)
-            await self._store_embeddings(collection_name, file_id, chunks, embeddings, tutor_id)
+
+            # Store embeddings with rich metadata from processor
+            await self._store_embeddings_with_metadata(
+                collection_name, file_id, processed_doc.chunks, embeddings, tutor_id
+            )
+
             if self.db:
-                await self._update_file_after_embedding(file_id, len(chunks), collection_name)
-            return {"file_id": file_id, "chunks": len(chunks), "collection": collection_name, "status": "completed"}
+                await self._update_file_after_embedding(
+                    file_id,
+                    len(chunk_texts),
+                    collection_name,
+                    processed_doc
+                )
+
+            return {
+                "file_id": file_id,
+                "chunks": len(chunk_texts),
+                "collection": collection_name,
+                "status": "completed",
+                "processor_used": processed_doc.processor_used.value,
+                "character_count": processed_doc.character_count,
+                "token_estimate": processed_doc.token_estimate,
+                "content_hash": processed_doc.content_hash,
+                "page_count": processed_doc.page_count,
+                "processing_time": processed_doc.processing_time
+            }
         except Exception as e:
             logger.error(f"Document processing failed: {e}")
             if self.db:
                 await self._update_file_embedding_status(file_id, EmbeddingStatus.FAILED, str(e))
             raise
 
-    async def _load_document(self, file_path: str, file_url: str = None) -> str:
-        """Load document content from file or URL"""
+    async def _load_document_with_processor(
+        self,
+        file_path: str,
+        file_url: Optional[str] = None,
+        force_processor: Optional[ProcessorType] = None
+    ) -> ProcessedDocument:
+        """
+        Load and process document using Docling/Unstructured processors.
+
+        Args:
+            file_path: Path to the document
+            file_url: Optional URL to fetch from
+            force_processor: Force specific processor type
+
+        Returns:
+            ProcessedDocument with chunks and metadata
+        """
         try:
-            if file_url:
-                async with httpx.AsyncClient() as client:
-                    response = await client.get(file_url)
-                    response.raise_for_status()
-                    return response.text
-            if file_path.endswith('.pdf'):
-                loader = PyPDFLoader(file_path)
-            elif file_path.endswith('.txt'):
-                loader = TextLoader(file_path)
-            else:
-                loader = UnstructuredFileLoader(file_path)
-            documents = loader.load()
-            return "\n".join([doc.page_content for doc in documents])
+            return await self.document_processor.process_document(
+                file_path=file_path,
+                file_url=file_url,
+                force_processor=force_processor,
+                fallback_on_error=True
+            )
+        except Exception as e:
+            logger.error(f"Document processor failed: {e}")
+            raise
+
+    async def _load_document(self, file_path: str, file_url: str = None) -> str:
+        """
+        Legacy method: Load document content from file or URL.
+        Kept for backward compatibility - prefer _load_document_with_processor.
+        """
+        try:
+            # Use new processor and extract raw text
+            processed = await self._load_document_with_processor(file_path, file_url)
+            return processed.raw_text
         except Exception as e:
             logger.error(f"Failed to load document: {e}")
             return None
@@ -127,7 +222,7 @@ class RAGService:
         self, collection_name: str, file_id: str, chunks: List[str],
         embeddings: List[List[float]], tutor_id: str
     ):
-        """Store embeddings in Qdrant"""
+        """Store embeddings in Qdrant (legacy method for string chunks)"""
         if not self.qdrant_client:
             logger.warning("Qdrant client not available, skipping storage")
             return
@@ -142,6 +237,56 @@ class RAGService:
         self.qdrant_client.upsert(collection_name=collection_name, points=points)
         logger.info(f"Stored {len(points)} embeddings in {collection_name}")
 
+    async def _store_embeddings_with_metadata(
+        self, collection_name: str, file_id: str, chunks: List,
+        embeddings: List[List[float]], tutor_id: str
+    ):
+        """
+        Store embeddings in Qdrant with rich metadata from document processors.
+
+        Includes page numbers, headings, sections from Docling/Unstructured.
+        """
+        from app.services.document_processors.base import DocumentChunk
+
+        if not self.qdrant_client:
+            logger.warning("Qdrant client not available, skipping storage")
+            return
+
+        points = []
+        for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+            point_id = str(uuid.uuid4())
+
+            # Handle both DocumentChunk objects and plain strings
+            if isinstance(chunk, DocumentChunk):
+                payload = {
+                    "file_id": file_id,
+                    "tutor_id": tutor_id,
+                    "chunk_index": chunk.chunk_index,
+                    "content": chunk.content,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    # Rich metadata from Docling/Unstructured
+                    "page_number": chunk.page_number,
+                    "heading": chunk.heading,
+                    "section": chunk.section,
+                    "token_estimate": chunk.token_estimate,
+                }
+                # Add bounding box if available (for PDF highlighting)
+                if chunk.bounding_box:
+                    payload["bounding_box"] = chunk.bounding_box
+            else:
+                # Fallback for plain string chunks
+                payload = {
+                    "file_id": file_id,
+                    "tutor_id": tutor_id,
+                    "chunk_index": i,
+                    "content": chunk,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+
+            points.append(PointStruct(id=point_id, vector=embedding, payload=payload))
+
+        self.qdrant_client.upsert(collection_name=collection_name, points=points)
+        logger.info(f"Stored {len(points)} embeddings with metadata in {collection_name}")
 
     async def _update_file_embedding_status(self, file_id: str, status: EmbeddingStatus, error: str = None):
         """Update file embedding status in database"""
@@ -150,23 +295,44 @@ class RAGService:
             update_data["embedding_error"] = error
         await self.db.files.update_one({"_id": file_id}, {"$set": update_data})
 
-    async def _update_file_after_embedding(self, file_id: str, chunk_count: int, collection_name: str):
-        """Update file record after successful embedding"""
-        await self.db.files.update_one(
-            {"_id": file_id},
-            {"$set": {
-                "embedding_status": EmbeddingStatus.COMPLETED.value,
-                "chunk_count": chunk_count,
-                "qdrant_collection_id": collection_name,
-                "last_embedded_at": datetime.now(timezone.utc),
-                "embedding_model_used": "text-embedding-3-small"
-            }}
-        )
+    async def _update_file_after_embedding(
+        self,
+        file_id: str,
+        chunk_count: int,
+        collection_name: str,
+        processed_doc: Optional[ProcessedDocument] = None
+    ):
+        """Update file record after successful embedding with enhanced metadata"""
+        update_data = {
+            "embedding_status": EmbeddingStatus.COMPLETED.value,
+            "chunk_count": chunk_count,
+            "qdrant_collection_id": collection_name,
+            "last_embedded_at": datetime.now(timezone.utc),
+            "embedding_model_used": "text-embedding-3-small"
+        }
+
+        # Add enhanced metadata from document processor
+        if processed_doc:
+            update_data.update({
+                "character_count": processed_doc.character_count,
+                "token_estimate": processed_doc.token_estimate,
+                "content_hash": processed_doc.content_hash,
+                "page_count": processed_doc.page_count,
+                "processor_used": processed_doc.processor_used.value,
+                "processing_time": processed_doc.processing_time,
+            })
+
+        await self.db.files.update_one({"_id": file_id}, {"$set": update_data})
 
     async def retrieve_context(
         self, query: str, tutor_id: str, document_ids: List[str] = None, top_k: int = 5
     ) -> List[Document]:
-        """Retrieve relevant context from tutor's documents"""
+        """
+        Retrieve relevant context from tutor's documents.
+
+        Returns documents with rich metadata including page numbers, headings,
+        and sections from Docling/Unstructured processing.
+        """
         if not self.qdrant_client:
             logger.warning("Qdrant client not available")
             return []
@@ -189,12 +355,19 @@ class RAGService:
 
             documents = []
             for result in results:
+                payload = result.payload
                 doc = Document(
-                    page_content=result.payload.get("content", ""),
+                    page_content=payload.get("content", ""),
                     metadata={
-                        "file_id": result.payload.get("file_id"),
-                        "chunk_index": result.payload.get("chunk_index"),
-                        "score": result.score
+                        "file_id": payload.get("file_id"),
+                        "chunk_index": payload.get("chunk_index"),
+                        "score": result.score,
+                        # Rich metadata from Docling/Unstructured
+                        "page_number": payload.get("page_number"),
+                        "heading": payload.get("heading"),
+                        "section": payload.get("section"),
+                        "token_estimate": payload.get("token_estimate"),
+                        "bounding_box": payload.get("bounding_box"),
                     }
                 )
                 documents.append(doc)

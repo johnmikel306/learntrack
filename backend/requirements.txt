@@ -24,26 +24,28 @@ anthropic
 google-generativeai
 
 # LangChain for RAG (pinned compatible versions)
-langchain==0.3.7
-langchain-core==0.3.17
-langchain-community==0.3.7
-langchain-groq==0.2.1
-langchain-google-genai==2.0.4
-langchain-openai==0.2.8
-langchain-text-splitters==0.3.2
-langgraph==0.2.34
+langchain
+langchain-core
+langchain-community
+langchain-groq
+langchain-google-genai
+langchain-openai
+langchain-text-splitters
+langgraph
 
 # CLI Tools
 rich>=13.0.0
 
 # Vector Database - compatible with numpy 2.x
-qdrant-client==1.12.1
+qdrant-client
 
 # Web Search
 tavily-python>=0.3.0
 
-# Document Processing
-pypdf>=3.17.0
+# Document Processing - LangChain Integrations
+
+langchain-docling
+langchain-unstructured
 
 # HTTP Client
 httpx
