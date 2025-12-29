@@ -137,6 +137,18 @@ class DocumentGovernanceService:
                     {"$set": {"status": "archived", "updated_at": datetime.now(timezone.utc)}}
                 )
 
+            return {
+                "material_id": material_id,
+                "deleted": True,
+                "hard_delete": hard_delete,
+                "deleted_files": deleted_files
+            }
+
+        except NotFoundError:
+            raise
+        except Exception as e:
+            logger.error("Failed to delete material with files", material_id=material_id, error=str(e))
+            raise DatabaseException(f"Failed to delete material: {str(e)}")
 
     # ==================== RE-SYNC & CHANGE DETECTION ====================
 
