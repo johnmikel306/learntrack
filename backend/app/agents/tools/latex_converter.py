@@ -7,7 +7,7 @@ Converts mathematical expressions to proper LaTeX format.
 from typing import Optional
 import re
 import structlog
-from langchain.tools import BaseTool
+from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
 logger = structlog.get_logger()

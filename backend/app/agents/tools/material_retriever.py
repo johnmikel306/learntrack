@@ -6,7 +6,7 @@ Retrieves relevant content from source materials using RAG.
 
 from typing import List, Optional
 import structlog
-from langchain.tools import BaseTool
+from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
 from app.agents.graph.state import SourceChunk
