@@ -8,7 +8,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
 
 from app.core.dependencies import get_database
-from app.core.enhanced_auth import require_admin, ClerkUserContext
+from app.core.enhanced_auth import require_super_admin, ClerkUserContext
 from app.models.tenant_ai_config import (
     TenantAIConfig, TenantAIConfigCreate, TenantAIConfigUpdate,
     TenantAIConfigResponse, ProviderAvailability, BulkModelOperation
@@ -32,7 +32,7 @@ async def list_tenant_configs(
     per_page: int = Query(20, ge=1, le=100),
     search: Optional[str] = None,
     service: TenantAIConfigService = Depends(get_service),
-    current_user: ClerkUserContext = Depends(require_admin)
+    current_user: ClerkUserContext = Depends(require_super_admin)
 ):
     """List all tenant AI configurations with pagination"""
     configs, total = await service.list_configs(page, per_page, search)
@@ -49,7 +49,7 @@ async def list_tenant_configs(
 async def get_available_providers(
     tenant_id: str = Query(..., description="Tenant ID to get providers for"),
     service: TenantAIConfigService = Depends(get_service),
-    current_user: ClerkUserContext = Depends(require_admin)
+    current_user: ClerkUserContext = Depends(require_super_admin)
 ):
     """Get all available AI providers and their models for a tenant"""
     return await service.get_available_providers(tenant_id)
@@ -59,7 +59,7 @@ async def get_available_providers(
 async def get_tenant_config(
     tenant_id: str,
     service: TenantAIConfigService = Depends(get_service),
-    current_user: ClerkUserContext = Depends(require_admin)
+    current_user: ClerkUserContext = Depends(require_super_admin)
 ):
     """Get AI configuration for a specific tenant"""
     config = await service.get_or_create_default(tenant_id)
@@ -71,7 +71,7 @@ async def get_tenant_config(
 async def create_tenant_config(
     config_data: TenantAIConfigCreate,
     service: TenantAIConfigService = Depends(get_service),
-    current_user: ClerkUserContext = Depends(require_admin)
+    current_user: ClerkUserContext = Depends(require_super_admin)
 ):
     """Create a new tenant AI configuration"""
     try:
@@ -88,7 +88,7 @@ async def update_tenant_config(
     tenant_id: str,
     update_data: TenantAIConfigUpdate,
     service: TenantAIConfigService = Depends(get_service),
-    current_user: ClerkUserContext = Depends(require_admin)
+    current_user: ClerkUserContext = Depends(require_super_admin)
 ):
     """Update tenant AI configuration"""
     try:
@@ -109,7 +109,7 @@ async def bulk_model_operation(
     tenant_id: str,
     operation: BulkModelOperation,
     service: TenantAIConfigService = Depends(get_service),
-    current_user: ClerkUserContext = Depends(require_admin)
+    current_user: ClerkUserContext = Depends(require_super_admin)
 ):
     """Perform bulk operations on model configuration"""
     try:
@@ -130,7 +130,7 @@ async def bulk_model_operation(
 async def delete_tenant_config(
     tenant_id: str,
     service: TenantAIConfigService = Depends(get_service),
-    current_user: ClerkUserContext = Depends(require_admin)
+    current_user: ClerkUserContext = Depends(require_super_admin)
 ):
     """Delete tenant AI configuration"""
     deleted = await service.delete_config(
@@ -148,7 +148,7 @@ async def get_audit_logs(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=100),
     service: TenantAIConfigService = Depends(get_service),
-    current_user: ClerkUserContext = Depends(require_admin)
+    current_user: ClerkUserContext = Depends(require_super_admin)
 ):
     """Get audit logs for a tenant's AI configuration changes"""
     logs, total = await service.get_audit_logs(tenant_id, page, per_page)
