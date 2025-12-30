@@ -1,0 +1,40 @@
+# Render Blueprint - Infrastructure as Code
+# This file tells Render how to build and deploy your backend
+# Docs: https://docs.render.com/blueprint-spec
+
+services:
+  - type: web
+    name: learntrack-api
+    runtime: docker
+    # Use the Dockerfile in this directory
+    dockerfilePath: ./Dockerfile
+    # The root directory for the build context
+    rootDir: ./backend
+    # Free tier (512 MB RAM, shared CPU)
+    plan: free
+    # Health check endpoint
+    healthCheckPath: /health
+    # Environment variables (set these in Render dashboard for secrets!)
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: LOG_LEVEL
+        value: INFO
+      # These should be set in Render dashboard as secrets:
+      # - MONGODB_URL
+      # - DATABASE_NAME
+      # - CLERK_SECRET_KEY
+      # - CLERK_PUBLISHABLE_KEY
+      # - CLERK_JWT_ISSUER
+      # - CLERK_JWT_AUDIENCE
+      # - CLERK_WEBHOOK_SECRET
+      # - OPENAI_API_KEY (if using)
+      # - GROQ_API_KEY (if using)
+      # - QDRANT_URL (if using)
+      # - QDRANT_API_KEY (if using)
+      # - UPLOADTHING_SECRET
+      # - UPLOADTHING_APP_ID
+      # - BACKEND_CORS_ORIGINS (your Vercel frontend URL)
+
