@@ -159,7 +159,7 @@ export function OpenCanvasGenerator() {
   
   // Materials query
   const { data: materialsData, isLoading: isLoadingMaterials } = useMaterials()
-  const materials = materialsData?.materials || []
+  const materials = materialsData?.items || []
 
   // Fetch sessions
   const fetchSessions = useCallback(async () => {

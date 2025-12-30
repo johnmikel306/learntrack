@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { useUser, useAuth } from '@clerk/clerk-react'
+import { setTokenGetter } from '@/lib/api'
 
 // User role types matching backend
 export type UserRole = 'tutor' | 'student' | 'parent' | 'super_admin'
@@ -76,10 +77,15 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const { user: clerkUser, isLoaded, isSignedIn } = useUser()
   const { getToken } = useAuth()
-  
+
   const [backendUser, setBackendUser] = useState<BackendUser | null>(null)
   const [isBackendLoaded, setIsBackendLoaded] = useState(false)
   const [backendError, setBackendError] = useState<string | null>(null)
+
+  // Initialize the API token getter
+  useEffect(() => {
+    setTokenGetter(getToken)
+  }, [getToken])
 
   const fetchBackendUser = useCallback(async () => {
     if (!isSignedIn || !clerkUser) {

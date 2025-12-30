@@ -61,7 +61,7 @@ interface Session {
   session_id: string
   prompt: string
   created_at: string
-  status: 'completed' | 'failed' | 'in_progress'
+  status: 'completed' | 'failed' | 'in_progress' | 'pending'
   question_count: number
   approved_count: number
   pending_count: number

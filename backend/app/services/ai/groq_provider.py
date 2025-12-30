@@ -4,7 +4,7 @@ Groq AI Provider using LangChain
 from typing import List, Dict, Any, Optional
 import structlog
 from langchain_groq import ChatGroq
-from langchain.schema import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.services.ai.base import BaseAIProvider
 from app.models.question import QuestionCreate, QuestionDifficulty, QuestionType

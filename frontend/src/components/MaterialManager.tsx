@@ -177,7 +177,8 @@ export default function MaterialManager() {
           subject_id: '',
           topic: '',
           tags: '',
-          shared_with_students: true
+          shared_with_students: true,
+          file_size: 0
         })
         fetchMaterials()
       } else {

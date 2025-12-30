@@ -14,7 +14,7 @@ import json
 import uuid
 from datetime import datetime
 import structlog
-from langchain.schema import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.agents.graph.state import (
     AgentState, ThinkingStep, SourceChunk, GeneratedQuestion,
