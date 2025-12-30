@@ -1,5 +1,6 @@
 """
 AI Manager for handling multiple AI providers with LangChain integration
+Supports per-tenant configuration for dynamic model selection
 """
 from typing import List, Dict, Any, Optional
 import structlog
@@ -14,14 +15,22 @@ from app.core.exceptions import AIProviderError
 
 logger = structlog.get_logger()
 
+# Cache for tenant-specific AI managers
+_tenant_ai_managers: Dict[str, "AIManager"] = {}
+
 
 class AIManager:
     """Manager for multiple AI providers with LangChain integration"""
 
-    def __init__(self, ai_settings: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        ai_settings: Optional[Dict[str, Any]] = None,
+        tenant_config: Optional[Dict[str, Any]] = None
+    ):
         self.providers: Dict[str, BaseAIProvider] = {}
         self.default_provider = AIProvider.OPENAI
         self.ai_settings = ai_settings or {}
+        self.tenant_config = tenant_config  # Per-tenant configuration
         self._initialize_providers()
 
     def _is_valid_api_key(self, key: Optional[str], provider: str) -> bool:
@@ -40,48 +49,54 @@ class AIManager:
         return len(key) > 20
 
     def _initialize_providers(self):
-        """Initialize available AI providers"""
+        """Initialize available AI providers, respecting tenant configuration"""
+        # Get enabled providers from tenant config (if available)
+        enabled_providers = self._get_enabled_providers()
+
         openai_key = self._get_api_key("openai") or settings.OPENAI_API_KEY
         anthropic_key = self._get_api_key("anthropic") or settings.ANTHROPIC_API_KEY
         google_key = self._get_api_key("google") or settings.GOOGLE_API_KEY
         groq_key = self._get_api_key("groq") or settings.GROQ_API_KEY
         gemini_key = self._get_api_key("gemini") or settings.GEMINI_API_KEY
 
-        if self.ai_settings.get("default_provider"):
+        # Set default provider from tenant config or ai_settings
+        if self.tenant_config and self.tenant_config.get("default_provider"):
+            self.default_provider = self.tenant_config["default_provider"]
+        elif self.ai_settings.get("default_provider"):
             self.default_provider = self.ai_settings["default_provider"]
 
-        # OpenAI - only initialize with valid key
-        if self._is_valid_api_key(openai_key, "openai"):
+        # OpenAI - only initialize if enabled and has valid key
+        if self._is_provider_enabled("openai", enabled_providers) and self._is_valid_api_key(openai_key, "openai"):
             try:
                 self.providers[AIProvider.OPENAI] = OpenAIProvider(openai_key)
                 logger.info("OpenAI provider initialized")
             except Exception as e:
                 logger.error("Failed to initialize OpenAI provider", error=str(e))
-        elif openai_key:
+        elif openai_key and self._is_provider_enabled("openai", enabled_providers):
             logger.warning("OpenAI API key appears to be a placeholder, skipping initialization")
 
-        # Groq (LangChain) - only initialize with valid key
-        if self._is_valid_api_key(groq_key, "groq"):
+        # Groq (LangChain) - only initialize if enabled and has valid key
+        if self._is_provider_enabled("groq", enabled_providers) and self._is_valid_api_key(groq_key, "groq"):
             try:
                 self.providers[AIProvider.GROQ] = GroqProvider(groq_key)
                 logger.info("Groq provider initialized")
             except Exception as e:
                 logger.error("Failed to initialize Groq provider", error=str(e))
-        elif groq_key:
+        elif groq_key and self._is_provider_enabled("groq", enabled_providers):
             logger.warning("Groq API key appears to be a placeholder, skipping initialization")
 
-        # Gemini (LangChain) - only initialize with valid key
-        if self._is_valid_api_key(gemini_key, "gemini"):
+        # Gemini (LangChain) - only initialize if enabled and has valid key
+        if self._is_provider_enabled("gemini", enabled_providers) and self._is_valid_api_key(gemini_key, "gemini"):
             try:
                 self.providers[AIProvider.GEMINI] = GeminiProvider(gemini_key)
                 logger.info("Gemini provider initialized")
             except Exception as e:
                 logger.error("Failed to initialize Gemini provider", error=str(e))
-        elif gemini_key:
+        elif gemini_key and self._is_provider_enabled("gemini", enabled_providers):
             logger.warning("Gemini API key appears to be a placeholder, skipping initialization")
 
         # Anthropic (placeholder)
-        if self._is_valid_api_key(anthropic_key, "anthropic"):
+        if self._is_provider_enabled("anthropic", enabled_providers) and self._is_valid_api_key(anthropic_key, "anthropic"):
             logger.info("Anthropic provider available but not implemented")
 
         # Google (placeholder - use Gemini instead)
@@ -95,6 +110,19 @@ class AIManager:
 
         if not self.providers:
             logger.warning("No AI providers initialized - check your API keys in .env")
+
+    def _get_enabled_providers(self) -> Optional[List[str]]:
+        """Get list of enabled providers from tenant config"""
+        if self.tenant_config:
+            return self.tenant_config.get("enabled_providers")
+        return None
+
+    def _is_provider_enabled(self, provider_id: str, enabled_providers: Optional[List[str]]) -> bool:
+        """Check if a provider is enabled for this tenant"""
+        # If no tenant config, all providers are enabled by default
+        if enabled_providers is None:
+            return True
+        return provider_id in enabled_providers
 
     def _get_api_key(self, provider: str) -> Optional[str]:
         """Get API key for provider from database settings"""
@@ -255,5 +283,69 @@ ADDITIONAL CONTENT:
         )
 
 
-# Global AI manager instance
+# Global AI manager instance (default, no tenant config)
 ai_manager = AIManager()
+
+
+async def get_tenant_ai_manager(
+    tenant_id: str,
+    db = None,
+    force_refresh: bool = False
+) -> AIManager:
+    """
+    Get or create an AIManager instance for a specific tenant.
+    Uses caching to avoid recreating managers for each request.
+
+    Args:
+        tenant_id: The tenant's clerk_id
+        db: MongoDB database instance (optional, will import if needed)
+        force_refresh: Force reload of tenant configuration
+
+    Returns:
+        AIManager configured for the tenant
+    """
+    global _tenant_ai_managers
+
+    # Return cached manager if available and not forcing refresh
+    if not force_refresh and tenant_id in _tenant_ai_managers:
+        return _tenant_ai_managers[tenant_id]
+
+    # Import here to avoid circular imports
+    from app.services.tenant_ai_config_service import TenantAIConfigService
+
+    tenant_config = None
+
+    if db:
+        try:
+            service = TenantAIConfigService(db)
+            config = await service.get_or_create_default(tenant_id)
+            if config:
+                tenant_config = config.model_dump()
+                logger.info("Loaded tenant AI config", tenant_id=tenant_id)
+        except Exception as e:
+            logger.warning("Failed to load tenant AI config, using defaults",
+                          tenant_id=tenant_id, error=str(e))
+
+    # Create new manager with tenant config
+    manager = AIManager(tenant_config=tenant_config)
+    _tenant_ai_managers[tenant_id] = manager
+
+    return manager
+
+
+def invalidate_tenant_ai_manager(tenant_id: str) -> None:
+    """
+    Invalidate cached AIManager for a tenant.
+    Call this when tenant configuration changes.
+    """
+    global _tenant_ai_managers
+    if tenant_id in _tenant_ai_managers:
+        del _tenant_ai_managers[tenant_id]
+        logger.info("Invalidated tenant AI manager cache", tenant_id=tenant_id)
+
+
+def clear_all_tenant_ai_managers() -> None:
+    """Clear all cached tenant AI managers"""
+    global _tenant_ai_managers
+    _tenant_ai_managers.clear()
+    logger.info("Cleared all tenant AI manager caches")

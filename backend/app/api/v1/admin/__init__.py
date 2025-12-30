@@ -4,6 +4,7 @@ Admin API endpoints for super admin functionality
 from fastapi import APIRouter
 
 from app.api.v1.admin import dashboard, tenants, users, settings as admin_settings, impersonation
+from app.api.v1.admin import tenant_ai_config
 
 admin_router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -13,3 +14,4 @@ admin_router.include_router(tenants.router, prefix="/tenants", tags=["admin-tena
 admin_router.include_router(users.router, prefix="/users", tags=["admin-users"])
 admin_router.include_router(admin_settings.router, prefix="/settings", tags=["admin-settings"])
 admin_router.include_router(impersonation.router, prefix="/impersonation", tags=["admin-impersonation"])
+admin_router.include_router(tenant_ai_config.router, tags=["admin-tenant-ai-config"])

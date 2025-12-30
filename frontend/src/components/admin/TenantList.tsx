@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Building2,
   Search,
@@ -9,7 +10,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Users,
-  FileQuestion
+  FileQuestion,
+  Cpu
 } from 'lucide-react'
 import { SelectCheckbox } from './BatchOperationsPanel'
 
@@ -60,6 +62,7 @@ export function TenantList({
   onPageChange, onSearch, onStatusFilter, onViewTenant, onSuspendTenant, onActivateTenant,
   selectedIds = [], onToggleSelection
 }: TenantListProps) {
+  const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
@@ -190,6 +193,9 @@ export function TenantList({
                       <div className="absolute right-6 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
                         <button onClick={() => { onViewTenant(tenant.clerk_id); setOpenMenuId(null) }} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                           <Eye className="w-4 h-4" /> View Details
+                        </button>
+                        <button onClick={() => { navigate(`/admin/tenants/${tenant.clerk_id}/ai-config`); setOpenMenuId(null) }} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                          <Cpu className="w-4 h-4" /> AI Config
                         </button>
                         {tenant.status === 'active' ? (
                           <button onClick={() => { onSuspendTenant(tenant.clerk_id); setOpenMenuId(null) }} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">

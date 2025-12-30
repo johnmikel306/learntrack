@@ -9,6 +9,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
 
 from app.core.dependencies import get_rag_service, get_database
@@ -674,10 +675,12 @@ async def get_generation_stats(
 
 @router.get("/available-models")
 async def get_available_models(
-    current_user: ClerkUserContext = Depends(require_tutor)
+    current_user: ClerkUserContext = Depends(require_tutor),
+    database: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """
     Get all available AI providers and their models (fetched dynamically from provider APIs).
+    Respects tenant-specific AI configuration if available.
 
     Returns a structure like:
     {
@@ -696,50 +699,51 @@ async def get_available_models(
     """
     from app.services.ai.models_fetcher import fetch_all_provider_models
     from app.core.config import settings
+    from app.services.tenant_ai_config_service import TenantAIConfigService
+
+    # Get tenant-specific configuration if available
+    tenant_config = None
+    enabled_providers = None
+    try:
+        config_service = TenantAIConfigService(database)
+        tenant_config = await config_service.get_config(current_user.clerk_id)
+        if tenant_config:
+            enabled_providers = tenant_config.enabled_providers
+    except Exception as e:
+        logger.warning("Failed to load tenant AI config", error=str(e))
 
     # Fetch models from all providers (with caching)
     fetched_models = await fetch_all_provider_models(limit=3)
 
     providers = []
 
-    # Groq
-    groq_available = bool(settings.GROQ_API_KEY)
-    providers.append({
-        "id": "groq",
-        "name": "Groq",
-        "description": "Ultra-fast inference with open models",
-        "available": groq_available,
-        "models": fetched_models.get("groq", [])
-    })
+    provider_info = [
+        ("groq", "Groq", "Ultra-fast inference with open models", settings.GROQ_API_KEY),
+        ("openai", "OpenAI", "GPT models from OpenAI", settings.OPENAI_API_KEY),
+        ("gemini", "Google Gemini", "Gemini models from Google", settings.GEMINI_API_KEY),
+        ("anthropic", "Anthropic", "Claude models from Anthropic", settings.ANTHROPIC_API_KEY),
+    ]
 
-    # OpenAI
-    openai_available = bool(settings.OPENAI_API_KEY)
-    providers.append({
-        "id": "openai",
-        "name": "OpenAI",
-        "description": "GPT models from OpenAI",
-        "available": openai_available,
-        "models": fetched_models.get("openai", [])
-    })
+    for provider_id, name, description, api_key in provider_info:
+        # Check if provider is enabled for this tenant
+        is_enabled = enabled_providers is None or provider_id in enabled_providers
+        is_available = bool(api_key) and is_enabled
 
-    # Gemini (Google)
-    gemini_available = bool(settings.GEMINI_API_KEY)
-    providers.append({
-        "id": "gemini",
-        "name": "Google Gemini",
-        "description": "Gemini models from Google",
-        "available": gemini_available,
-        "models": fetched_models.get("gemini", [])
-    })
+        # Get models, filtering by tenant config if applicable
+        models = fetched_models.get(provider_id, [])
 
-    # Anthropic
-    anthropic_available = bool(settings.ANTHROPIC_API_KEY)
-    providers.append({
-        "id": "anthropic",
-        "name": "Anthropic",
-        "description": "Claude models from Anthropic",
-        "available": anthropic_available,
-        "models": fetched_models.get("anthropic", [])
-    })
+        # If tenant has specific model restrictions, filter models
+        if tenant_config and tenant_config.provider_configs:
+            provider_config = tenant_config.provider_configs.get(provider_id)
+            if provider_config and provider_config.enabled_models:
+                models = [m for m in models if m["id"] in provider_config.enabled_models]
+
+        providers.append({
+            "id": provider_id,
+            "name": name,
+            "description": description,
+            "available": is_available,
+            "models": models
+        })
 
     return {"providers": providers}
