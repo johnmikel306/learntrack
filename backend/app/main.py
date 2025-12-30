@@ -4,7 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 import structlog
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.database import database
 from app.core.config import settings
@@ -18,6 +18,14 @@ from app.core.exceptions import (
 )
 from app.core.rate_limit import setup_rate_limiting, limiter
 from app.websocket import get_socket_app
+from app.core.security_middleware import SecurityHeadersMiddleware
+from app.core.metrics import MetricsMiddleware, metrics_collector
+from app.core.health import health_checker, HealthStatus
+from app.core.logging_config import RequestLoggingMiddleware, configure_logging
+from app.core.cache import get_cache_stats
+
+# Configure structured logging
+configure_logging()
 
 logger = structlog.get_logger()
 
@@ -78,6 +86,15 @@ app.add_exception_handler(Exception, general_exception_handler)
 # Setup rate limiting
 setup_rate_limiting(app)
 
+# Add security headers middleware (production security)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Add metrics collection middleware
+app.add_middleware(MetricsMiddleware)
+
+# Add request logging middleware
+app.add_middleware(RequestLoggingMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.BACKEND_CORS_ORIGINS,
@@ -116,23 +133,55 @@ app.mount("/socket.io", socket_app)
 
 # Authentication removed - no user role endpoint needed
 
-from app.models.responses import HealthResponse
-from datetime import datetime, timezone
-
+# Health and monitoring endpoints
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
-def health():
+async def health():
     """
-    Health check endpoint to verify API status.
-
-    Returns the current health status of the API service.
-    This endpoint can be used for monitoring and load balancer health checks.
+    Liveness probe - simple health check to verify API is running.
+    Used by load balancers and container orchestrators.
     """
+    result = await health_checker.check_liveness()
     return HealthResponse(
-        status="healthy",
-        service="learntrack-api",
-        version="1.0.0",
-        timestamp=datetime.now(timezone.utc).isoformat()
+        status=result["status"],
+        service=result["service"],
+        version=result["version"],
+        timestamp=result["timestamp"]
     )
+
+
+@app.get("/health/ready", tags=["Health"])
+async def health_ready():
+    """
+    Readiness probe - checks if application is ready to serve traffic.
+    Verifies database connectivity and other dependencies.
+    Returns 503 if not ready.
+    """
+    result = await health_checker.check_readiness()
+
+    if result["status"] == HealthStatus.UNHEALTHY.value:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=503, content=result)
+
+    return result
+
+
+@app.get("/metrics", tags=["Monitoring"])
+async def get_metrics():
+    """
+    Get application metrics including request counts, response times, and error rates.
+    Useful for monitoring dashboards and alerting.
+    """
+    return {
+        "metrics": metrics_collector.get_metrics(),
+        "cache": get_cache_stats(),
+    }
+
+
+@app.get("/metrics/summary", tags=["Monitoring"])
+async def get_metrics_summary():
+    """Get a brief summary of key metrics."""
+    return metrics_collector.get_summary()
+
 
 if __name__ == "__main__":
     import uvicorn

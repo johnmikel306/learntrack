@@ -55,6 +55,7 @@ aiohttp
 python-dateutil
 # pillow>=10.0.0  # Temporarily disabled
 python-magic
+cachetools>=5.0.0
 
 # Development
 pytest
