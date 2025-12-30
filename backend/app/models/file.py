@@ -75,7 +75,8 @@ class UploadedFile(BaseModel):
     # User and metadata
     uploaded_by: str  # user_id
     uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    tutor_id: str = Field(..., description="Tutor ID - references the tutor's Clerk user ID")
+    tutor_id: Optional[str] = Field(None, description="Tutor ID - references the tutor's Clerk user ID for tenant isolation")
+    tenant_path: Optional[str] = Field(None, description="Tenant-prefixed storage path for S3 migration readiness")
 
     # Processing metadata
     status: FileStatus = FileStatus.UPLOADED

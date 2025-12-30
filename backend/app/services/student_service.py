@@ -169,64 +169,77 @@ class StudentService:
             logger.error("Failed to delete student", student_id=student_id, error=str(e))
             raise DatabaseException(f"Failed to delete student: {str(e)}")
 
-    # Groups
-    async def list_groups(self, limit: int = 200) -> List[StudentGroup]:
+    # Groups - All methods require tutor_id for tenant isolation
+    async def list_groups(self, tutor_id: str, limit: int = 200) -> List[StudentGroup]:
+        """List groups for a specific tutor (tenant isolated)"""
         try:
-            cursor = self.groups.find({}).limit(limit).sort("created_at", -1)
+            cursor = self.groups.find({"tutor_id": tutor_id}).limit(limit).sort("created_at", -1)
             results: List[StudentGroup] = []
             async for doc in cursor:
                 results.append(StudentGroup(**doc))
             return results
         except Exception as e:
-            logger.error("Failed to list student groups", error=str(e))
+            logger.error("Failed to list student groups", error=str(e), tutor_id=tutor_id)
             raise DatabaseException(f"Failed to list student groups: {str(e)}")
 
-    async def create_group(self, data: StudentGroupCreate) -> StudentGroup:
+    async def create_group(self, data: StudentGroupCreate, tutor_id: str) -> StudentGroup:
+        """Create a new group (with tenant isolation)"""
         try:
             doc = data.dict()
+            doc["tutor_id"] = tutor_id  # Set tutor_id for tenant isolation
             doc["created_at"] = datetime.now(timezone.utc)
             doc["updated_at"] = datetime.now(timezone.utc)
             result = await self.groups.insert_one(doc)
             doc["_id"] = result.inserted_id
+            logger.info("Student group created", group_id=str(result.inserted_id), tutor_id=tutor_id)
             return StudentGroup(**doc)
         except Exception as e:
-            logger.error("Failed to create student group", error=str(e))
+            logger.error("Failed to create student group", error=str(e), tutor_id=tutor_id)
             raise DatabaseException(f"Failed to create student group: {str(e)}")
 
-    async def get_group(self, group_id: str) -> StudentGroup:
+    async def get_group(self, group_id: str, tutor_id: str) -> Optional[StudentGroup]:
+        """Get a group by ID (only if owned by tutor)"""
         try:
             oid = to_object_id(group_id)
-            doc = await self.groups.find_one({"_id": oid})
+            # Filter by tutor_id for tenant isolation
+            doc = await self.groups.find_one({"_id": oid, "tutor_id": tutor_id})
             if not doc:
-                raise NotFoundError("StudentGroup", group_id)
+                return None
             return StudentGroup(**doc)
-        except NotFoundError:
-            raise
         except Exception as e:
-            logger.error("Failed to get student group", error=str(e))
+            logger.error("Failed to get student group", error=str(e), group_id=group_id, tutor_id=tutor_id)
             raise DatabaseException(f"Failed to get student group: {str(e)}")
 
-    async def update_group(self, group_id: str, update: StudentGroupUpdate) -> StudentGroup:
+    async def update_group(self, group_id: str, update: StudentGroupUpdate, tutor_id: str) -> Optional[StudentGroup]:
+        """Update a group (only if owned by tutor)"""
         try:
             update_data = update.dict(exclude_unset=True)
             update_data["updated_at"] = datetime.now(timezone.utc)
             oid = to_object_id(group_id)
-            result = await self.groups.update_one({"_id": oid}, {"$set": update_data})
+            # Filter by tutor_id for tenant isolation
+            result = await self.groups.update_one(
+                {"_id": oid, "tutor_id": tutor_id},
+                {"$set": update_data}
+            )
             if result.matched_count == 0:
-                raise NotFoundError("StudentGroup", group_id)
-            return await self.get_group(group_id)
-        except NotFoundError:
-            raise
+                return None
+            logger.info("Student group updated", group_id=group_id, tutor_id=tutor_id)
+            return await self.get_group(group_id, tutor_id)
         except Exception as e:
-            logger.error("Failed to update student group", error=str(e))
+            logger.error("Failed to update student group", error=str(e), group_id=group_id, tutor_id=tutor_id)
             raise DatabaseException(f"Failed to update student group: {str(e)}")
 
-    async def delete_group(self, group_id: str) -> bool:
+    async def delete_group(self, group_id: str, tutor_id: str) -> bool:
+        """Delete a group (only if owned by tutor)"""
         try:
             oid = to_object_id(group_id)
-            result = await self.groups.delete_one({"_id": oid})
-            return result.deleted_count > 0
+            # Filter by tutor_id for tenant isolation
+            result = await self.groups.delete_one({"_id": oid, "tutor_id": tutor_id})
+            if result.deleted_count > 0:
+                logger.info("Student group deleted", group_id=group_id, tutor_id=tutor_id)
+                return True
+            return False
         except Exception as e:
-            logger.error("Failed to delete student group", error=str(e))
+            logger.error("Failed to delete student group", error=str(e), group_id=group_id, tutor_id=tutor_id)
             raise DatabaseException(f"Failed to delete student group: {str(e)}")
 

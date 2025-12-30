@@ -90,9 +90,26 @@ class Database:
             # Student groups collection indexes
             await self.database.student_groups.create_index("tutor_id")
 
-            # Files collection indexes
+            # Files collection indexes (with tenant isolation)
             await self.database.files.create_index("userId")
             await self.database.files.create_index("uploadthingUrl")
+            await self.database.files.create_index("tutor_id")
+            await self.database.files.create_index("uploaded_by")
+            await self.database.files.create_index([("tutor_id", 1), ("status", 1)])
+            await self.database.files.create_index([("tutor_id", 1), ("created_at", -1)])
+
+            # Topics collection indexes (with tenant isolation)
+            await self.database.topics.create_index("tutor_id")
+            await self.database.topics.create_index("subject_id")
+            await self.database.topics.create_index([("tutor_id", 1), ("subject_id", 1)])
+            await self.database.topics.create_index([("tutor_id", 1), ("name", 1)])
+
+            # Activities collection indexes (with tenant isolation)
+            await self.database.activities.create_index("tutor_id")
+            await self.database.activities.create_index("user_id")
+            await self.database.activities.create_index("student_id")
+            await self.database.activities.create_index([("tutor_id", 1), ("created_at", -1)])
+            await self.database.activities.create_index([("student_id", 1), ("created_at", -1)])
 
             # Student performance collection indexes
             await self.database.student_performance.create_index("student_id")

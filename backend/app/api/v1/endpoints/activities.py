@@ -1,5 +1,5 @@
 """
-Activity tracking endpoints
+Activity tracking endpoints with tenant isolation
 """
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Path, Query, HTTPException, status
@@ -7,7 +7,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
 
 from app.core.database import get_database
-from app.core.enhanced_auth import require_authenticated_user, require_tutor, ClerkUserContext
+from app.core.enhanced_auth import require_authenticated_user, require_tutor, ClerkUserContext, UserRole
 from app.models.activity import Activity, ActivityCreate, StudentActivitySummary
 from app.services.activity_service import ActivityService
 from app.utils.pagination import PaginationParams, PaginatedResponse, paginate
@@ -24,8 +24,35 @@ async def get_student_activities(
     current_user: ClerkUserContext = Depends(require_authenticated_user),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
-    """Get paginated activity summary for a student"""
+    """Get paginated activity summary for a student (with tenant isolation)"""
     try:
+        # Role-based access control for tenant isolation
+        if current_user.role == UserRole.TUTOR:
+            # Tutors can only view activities for their students
+            student = await database.students.find_one({
+                "clerk_id": student_id,
+                "tutor_id": current_user.clerk_id
+            })
+            if not student:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied: Student does not belong to your tenant"
+                )
+        elif current_user.role == UserRole.STUDENT:
+            # Students can only view their own activities
+            if student_id != current_user.clerk_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied: You can only view your own activities"
+                )
+        elif current_user.role == UserRole.PARENT:
+            # Parents can only view their children's activities
+            if student_id not in (current_user.student_ids or []):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied: Student is not your child"
+                )
+
         activity_service = ActivityService(database)
 
         # Create pagination params
@@ -48,8 +75,10 @@ async def get_student_activities(
             per_page=per_page,
             total=total
         )
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error("Failed to get student activities", error=str(e))
+        logger.error("Failed to get student activities", error=str(e), student_id=student_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve student activities"
@@ -63,17 +92,18 @@ async def get_recent_activities(
     current_user: ClerkUserContext = Depends(require_tutor),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
-    """Get recent activities for tutor's students"""
+    """Get recent activities for tutor's students (tenant isolated)"""
     try:
         activity_service = ActivityService(database)
+        # Use clerk_id for tenant isolation (tutor_id is the tutor's clerk_id)
         activities = await activity_service.get_recent_activities(
-            tutor_id=current_user.tutor_id,
+            tutor_id=current_user.clerk_id,
             days=days,
             limit=limit
         )
         return activities
     except Exception as e:
-        logger.error("Failed to get recent activities", error=str(e))
+        logger.error("Failed to get recent activities", error=str(e), tutor_id=current_user.clerk_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve recent activities"
@@ -95,7 +125,7 @@ async def get_my_activities(
         )
         return activities
     except Exception as e:
-        logger.error("Failed to get user activities", error=str(e))
+        logger.error("Failed to get user activities", error=str(e), user_id=current_user.clerk_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve activities"
@@ -108,13 +138,26 @@ async def create_activity(
     current_user: ClerkUserContext = Depends(require_authenticated_user),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
-    """Create a new activity record"""
+    """Create a new activity record (with tenant isolation)"""
     try:
         activity_service = ActivityService(database)
-        activity = await activity_service.create_activity(activity_data)
+
+        # Determine tutor_id based on user role for tenant isolation
+        tutor_id = None
+        if current_user.role == UserRole.TUTOR:
+            tutor_id = current_user.clerk_id
+        elif current_user.tutor_id:
+            tutor_id = current_user.tutor_id
+
+        # Create activity with tutor_id for tenant isolation
+        activity = await activity_service.create_activity(
+            activity_data=activity_data,
+            user_id=current_user.clerk_id,
+            tutor_id=tutor_id
+        )
         return activity
     except Exception as e:
-        logger.error("Failed to create activity", error=str(e))
+        logger.error("Failed to create activity", error=str(e), user_id=current_user.clerk_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create activity"

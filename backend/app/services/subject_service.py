@@ -53,12 +53,21 @@ class SubjectService:
             logger.error("Failed to create subject", error=str(e))
             raise DatabaseException(f"Failed to create subject: {str(e)}")
     
-    async def get_subject_by_id(self, subject_id: str) -> Subject:
-        """Get subject by ID"""
+    async def get_subject_by_id(self, subject_id: str, tutor_id: Optional[str] = None) -> Optional[Subject]:
+        """Get subject by ID with optional tutor_id filtering for tenant isolation"""
         try:
             oid = to_object_id(subject_id)
-            subject = await self.collection.find_one({"_id": oid, "is_active": True})
+            query = {"_id": oid, "is_active": True}
+
+            # Add tutor_id filter if provided for tenant isolation
+            if tutor_id:
+                query["tutor_id"] = tutor_id
+
+            subject = await self.collection.find_one(query)
             if not subject:
+                if tutor_id:
+                    # Subject exists but belongs to different tutor - return None for 404
+                    return None
                 raise NotFoundError("Subject", subject_id)
             return Subject(**subject)
         except NotFoundError:
@@ -85,43 +94,46 @@ class SubjectService:
             logger.error("Failed to get subjects by tutor", tutor_id=tutor_id, error=str(e))
             raise DatabaseException(f"Failed to get subjects: {str(e)}")
     
-    async def get_subject_with_stats(self, subject_id: str) -> SubjectWithStats:
-        """Get subject with statistics"""
+    async def get_subject_with_stats(self, subject_id: str, tutor_id: Optional[str] = None) -> Optional[SubjectWithStats]:
+        """Get subject with statistics (with optional tenant isolation)"""
         try:
-            subject = await self.get_subject_by_id(subject_id)
-            
-            # Get question count
-            question_count = await self.db.questions.count_documents({
-                "subject_id": subject_id,
-                "status": "active"
-            })
-            
-            # Get active assignments count
-            assignment_count = await self.db.assignments.count_documents({
-                "subject_id": subject_id,
-                "status": {"$in": ["scheduled", "active"]}
-            })
-            
-            # Get total students (from assignments)
+            subject = await self.get_subject_by_id(subject_id, tutor_id=tutor_id)
+            if not subject:
+                return None
+
+            # Build query with tenant isolation
+            stats_query = {"subject_id": subject_id}
+            if tutor_id:
+                stats_query["tutor_id"] = tutor_id
+
+            # Get question count (scoped to tutor)
+            question_query = {**stats_query, "status": "active"}
+            question_count = await self.db.questions.count_documents(question_query)
+
+            # Get active assignments count (scoped to tutor)
+            assignment_query = {**stats_query, "status": {"$in": ["scheduled", "active"]}}
+            assignment_count = await self.db.assignments.count_documents(assignment_query)
+
+            # Get total students (from assignments, scoped to tutor)
             pipeline = [
-                {"$match": {"subject_id": subject_id}},
+                {"$match": stats_query},
                 {"$unwind": "$student_ids"},
                 {"$group": {"_id": "$student_ids"}},
                 {"$count": "total"}
             ]
-            
+
             student_count_result = await self.db.assignments.aggregate(pipeline).to_list(1)
             student_count = student_count_result[0]["total"] if student_count_result else 0
-            
+
             subject_dict = subject.dict()
             subject_dict.update({
                 "total_questions": question_count,
                 "active_assignments": assignment_count,
                 "total_students": student_count
             })
-            
+
             return SubjectWithStats(**subject_dict)
-            
+
         except NotFoundError:
             raise
         except Exception as e:

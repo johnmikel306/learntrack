@@ -1,5 +1,5 @@
 """
-Student groups endpoints
+Student groups endpoints with tenant isolation
 """
 from typing import List
 from fastapi import APIRouter, Depends, Path, Query, HTTPException, status
@@ -18,25 +18,25 @@ router = APIRouter()
 @router.get("/student/{student_id}", response_model=List[StudentGroup])
 async def get_student_groups(
     student_id: str = Path(..., description="Student ID"),
-    current_user: ClerkUserContext = Depends(require_authenticated_user),
+    current_user: ClerkUserContext = Depends(require_tutor),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
-    """Get all groups that a student belongs to"""
+    """Get all groups that a student belongs to (tenant isolated)"""
     try:
         student_service = StudentService(database)
-        
-        # Get all groups for the tutor
-        all_groups = await student_service.list_groups(limit=200)
-        
+
+        # Get all groups for the tutor (tenant isolated)
+        all_groups = await student_service.list_groups(tutor_id=current_user.clerk_id, limit=200)
+
         # Filter groups that include this student
         student_groups = []
         for group in all_groups:
             if student_id in group.studentIds:
                 student_groups.append(group)
-        
+
         return student_groups
     except Exception as e:
-        logger.error("Failed to get student groups", error=str(e))
+        logger.error("Failed to get student groups", error=str(e), tutor_id=current_user.clerk_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve student groups"
@@ -49,13 +49,14 @@ async def get_all_groups(
     current_user: ClerkUserContext = Depends(require_tutor),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
-    """Get all student groups for the tutor"""
+    """Get all student groups for the authenticated tutor"""
     try:
         student_service = StudentService(database)
-        groups = await student_service.list_groups(limit=limit)
+        # Pass tutor_id for tenant isolation
+        groups = await student_service.list_groups(tutor_id=current_user.clerk_id, limit=limit)
         return groups
     except Exception as e:
-        logger.error("Failed to get groups", error=str(e))
+        logger.error("Failed to get groups", error=str(e), tutor_id=current_user.clerk_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve groups"
@@ -68,16 +69,21 @@ async def get_group(
     current_user: ClerkUserContext = Depends(require_tutor),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
-    """Get a specific group by ID"""
+    """Get a specific group by ID (only if owned by authenticated tutor)"""
     try:
         student_service = StudentService(database)
-        group = await student_service.get_group(group_id)
+        # Pass tutor_id for tenant isolation
+        group = await student_service.get_group(group_id, tutor_id=current_user.clerk_id)
+        if not group:
+            raise HTTPException(status_code=404, detail="Group not found or access denied")
         return group
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error("Failed to get group", error=str(e))
+        logger.error("Failed to get group", error=str(e), tutor_id=current_user.clerk_id)
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Group not found"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve group"
         )
 
 
@@ -87,13 +93,14 @@ async def create_group(
     current_user: ClerkUserContext = Depends(require_tutor),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
-    """Create a new student group"""
+    """Create a new student group (with tenant isolation)"""
     try:
         student_service = StudentService(database)
-        group = await student_service.create_group(group_data)
+        # Pass tutor_id for tenant isolation
+        group = await student_service.create_group(group_data, tutor_id=current_user.clerk_id)
         return group
     except Exception as e:
-        logger.error("Failed to create group", error=str(e))
+        logger.error("Failed to create group", error=str(e), tutor_id=current_user.clerk_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create group"
@@ -107,13 +114,18 @@ async def update_group(
     current_user: ClerkUserContext = Depends(require_tutor),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
-    """Update a student group"""
+    """Update a student group (only if owned by authenticated tutor)"""
     try:
         student_service = StudentService(database)
-        group = await student_service.update_group(group_id, group_update)
+        # Pass tutor_id for tenant isolation
+        group = await student_service.update_group(group_id, group_update, tutor_id=current_user.clerk_id)
+        if not group:
+            raise HTTPException(status_code=404, detail="Group not found or access denied")
         return group
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error("Failed to update group", error=str(e))
+        logger.error("Failed to update group", error=str(e), tutor_id=current_user.clerk_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update group"
@@ -126,13 +138,18 @@ async def delete_group(
     current_user: ClerkUserContext = Depends(require_tutor),
     database: AsyncIOMotorDatabase = Depends(get_database)
 ):
-    """Delete a student group"""
+    """Delete a student group (only if owned by authenticated tutor)"""
     try:
         student_service = StudentService(database)
-        await student_service.delete_group(group_id)
+        # Pass tutor_id for tenant isolation
+        deleted = await student_service.delete_group(group_id, tutor_id=current_user.clerk_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Group not found or access denied")
         return {"message": "Group deleted successfully"}
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error("Failed to delete group", error=str(e))
+        logger.error("Failed to delete group", error=str(e), tutor_id=current_user.clerk_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete group"

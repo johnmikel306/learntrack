@@ -24,19 +24,30 @@ class ActivityService:
     
     async def create_activity(
         self,
-        activity_data: ActivityCreate
+        activity_data: ActivityCreate,
+        user_id: Optional[str] = None,
+        tutor_id: Optional[str] = None
     ) -> Activity:
-        """Create a new activity record"""
+        """Create a new activity record with tenant isolation"""
         try:
             activity_dict = activity_data.model_dump()
             activity_dict["created_at"] = datetime.now(timezone.utc)
-            
+
+            # Add user_id if provided (for tracking who created the activity)
+            if user_id:
+                activity_dict["user_id"] = user_id
+
+            # Add tutor_id for tenant isolation
+            if tutor_id:
+                activity_dict["tutor_id"] = tutor_id
+
             result = await self.collection.insert_one(activity_dict)
             activity_dict["_id"] = str(result.inserted_id)
-            
+
+            logger.info("Activity created", activity_id=str(result.inserted_id), tutor_id=tutor_id)
             return Activity(**activity_dict)
         except Exception as e:
-            logger.error("Failed to create activity", error=str(e))
+            logger.error("Failed to create activity", error=str(e), tutor_id=tutor_id)
             raise
     
     async def get_user_activities(

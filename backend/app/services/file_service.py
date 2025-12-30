@@ -32,9 +32,10 @@ class FileService:
     async def register_file_metadata(
         self,
         request: FileMetadataRequest,
-        uploaded_by: str
+        uploaded_by: str,
+        tutor_id: str  # Required for tenant isolation
     ) -> UploadedFile:
-        """Register file metadata after UploadThing upload"""
+        """Register file metadata after UploadThing upload (with tenant isolation)"""
         try:
             # Validate file type
             if request.content_type not in settings.ALLOWED_FILE_TYPES:
@@ -56,8 +57,10 @@ class FileService:
                 topic=request.topic
             )
 
-            # Insert into database
+            # Insert into database with tutor_id for tenant isolation
             file_dict = file_data.dict()
+            file_dict["tutor_id"] = tutor_id  # Add tutor_id for tenant isolation
+            file_dict["tenant_path"] = f"tenants/{tutor_id}/files/{request.filename}"  # Tenant-prefixed path
             file_dict["created_at"] = datetime.now(timezone.utc)
             file_dict["updated_at"] = datetime.now(timezone.utc)
             file_dict["status"] = FileStatus.UPLOADED
@@ -70,27 +73,38 @@ class FileService:
             logger.info("File metadata registered",
                 file_id=str(result.inserted_id),
                 filename=request.filename,
-                uploadthing_key=request.uploadthing_key
+                uploadthing_key=request.uploadthing_key,
+                tutor_id=tutor_id
             )
             return uploaded_file
 
         except Exception as e:
             if isinstance(e, (ValidationError, FileProcessingError)):
                 raise
-            logger.error("File metadata registration failed", error=str(e), filename=request.filename)
+            logger.error("File metadata registration failed", error=str(e), filename=request.filename, tutor_id=tutor_id)
             raise FileProcessingError(f"File metadata registration failed: {str(e)}")
     
-    async def get_file(self, file_id: str, user_id: str) -> Optional[UploadedFile]:
-        """Get file by ID with user authorization"""
+    async def get_file(self, file_id: str, user_id: str, tutor_id: Optional[str] = None) -> Optional[UploadedFile]:
+        """Get file by ID with user authorization and optional tenant isolation"""
         try:
             oid = to_object_id(file_id)
-            file = await self.collection.find_one({"_id": oid})
+            query = {"_id": oid}
+
+            # Add tutor_id filter for tenant isolation if provided
+            if tutor_id:
+                query["tutor_id"] = tutor_id
+
+            file = await self.collection.find_one(query)
 
             if not file:
                 return None
 
-            # Check if user has access to this file
-            if file.get("uploaded_by") != user_id:
+            # Check if user has access to this file (must be uploader OR same tenant)
+            file_tutor_id = file.get("tutor_id")
+            file_uploader = file.get("uploaded_by")
+
+            # Allow access if: user is the uploader OR user is in the same tenant
+            if file_uploader != user_id and file_tutor_id != tutor_id:
                 return None
 
             return UploadedFile(**file)
@@ -98,34 +112,60 @@ class FileService:
         except Exception as e:
             logger.error("Failed to get file", file_id=file_id, error=str(e))
             return None
-    
-    async def list_user_files(self, user_id: str) -> List[UploadedFile]:
-        """List files for a user"""
+
+    async def list_user_files(self, user_id: str, tutor_id: Optional[str] = None) -> List[UploadedFile]:
+        """List files for a user with optional tenant isolation"""
         try:
-            cursor = self.collection.find({"uploaded_by": user_id}).sort("uploaded_at", -1)
+            query = {"uploaded_by": user_id, "status": {"$ne": "deleted"}}
+
+            # Add tutor_id filter for tenant isolation if provided
+            if tutor_id:
+                query["tutor_id"] = tutor_id
+
+            cursor = self.collection.find(query).sort("created_at", -1)
             files = []
             async for file in cursor:
                 files.append(UploadedFile(**file))
             return files
         except Exception as e:
-            logger.error("Failed to list user files", user_id=user_id, error=str(e))
+            logger.error("Failed to list user files", user_id=user_id, tutor_id=tutor_id, error=str(e))
             return []
-    
-    async def delete_file(self, file_id: str, user_id: str) -> bool:
-        """Delete file with user authorization"""
+
+    async def list_tutor_files(self, tutor_id: str) -> List[UploadedFile]:
+        """List all files for a tutor (tenant-scoped)"""
         try:
-            file = await self.get_file(file_id, user_id)
+            query = {"tutor_id": tutor_id, "status": {"$ne": "deleted"}}
+            cursor = self.collection.find(query).sort("created_at", -1)
+            files = []
+            async for file in cursor:
+                files.append(UploadedFile(**file))
+            return files
+        except Exception as e:
+            logger.error("Failed to list tutor files", tutor_id=tutor_id, error=str(e))
+            return []
+
+    async def delete_file(self, file_id: str, user_id: str, tutor_id: Optional[str] = None) -> bool:
+        """Delete file with user authorization and tenant isolation"""
+        try:
+            file = await self.get_file(file_id, user_id, tutor_id)
             if not file:
                 return False
 
+            # Build query with tenant isolation
+            query = {"_id": to_object_id(file_id), "uploaded_by": user_id}
+            if tutor_id:
+                query["tutor_id"] = tutor_id
+
             # Soft delete - mark as deleted
-            oid = to_object_id(file_id)
             result = await self.collection.update_one(
-                {"_id": oid, "uploaded_by": user_id},
+                query,
                 {"$set": {"status": "deleted", "updated_at": datetime.now(timezone.utc)}}
             )
 
-            return result.matched_count > 0
+            if result.matched_count > 0:
+                logger.info("File deleted", file_id=file_id, user_id=user_id, tutor_id=tutor_id)
+                return True
+            return False
 
         except Exception as e:
             logger.error("Failed to delete file", file_id=file_id, error=str(e))
@@ -296,14 +336,19 @@ class FileService:
             error_message=file.error_message
         )
 
-    async def get_storage_stats(self) -> dict:
-        """Get storage statistics"""
+    async def get_storage_stats(self, tutor_id: Optional[str] = None) -> dict:
+        """Get storage statistics (tenant-scoped if tutor_id provided)"""
         try:
-            total_files = await self.collection.count_documents({"status": {"$ne": "deleted"}})
+            # Build query with tenant isolation
+            query = {"status": {"$ne": "deleted"}}
+            if tutor_id:
+                query["tutor_id"] = tutor_id
 
-            # Get total size
+            total_files = await self.collection.count_documents(query)
+
+            # Get total size with tenant filter
             pipeline = [
-                {"$match": {"status": {"$ne": "deleted"}}},
+                {"$match": query},
                 {"$group": {"_id": None, "total_size": {"$sum": "$size"}}}
             ]
 
@@ -313,11 +358,12 @@ class FileService:
             return {
                 "total_files": total_files,
                 "total_size_bytes": total_size,
-                "total_size_mb": round(total_size / (1024 * 1024), 2)
+                "total_size_mb": round(total_size / (1024 * 1024), 2),
+                "tutor_id": tutor_id  # Include tutor_id in response for clarity
             }
         except Exception as e:
-            logger.error("Failed to get storage stats", error=str(e))
-            return {"total_files": 0, "total_size_bytes": 0, "total_size_mb": 0}
+            logger.error("Failed to get storage stats", error=str(e), tutor_id=tutor_id)
+            return {"total_files": 0, "total_size_bytes": 0, "total_size_mb": 0, "tutor_id": tutor_id}
 
     async def close(self):
         """Close HTTP client"""
