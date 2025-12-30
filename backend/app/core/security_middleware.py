@@ -44,9 +44,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Default CSP policy
         self.csp_policy = csp_policy or {
             "default-src": "'self'",
-            "script-src": "'self' 'unsafe-inline' 'unsafe-eval' https://clerk.com https://*.clerk.accounts.dev",
-            "style-src": "'self' 'unsafe-inline' https://fonts.googleapis.com",
-            "img-src": "'self' data: https: blob:",
+            "script-src": "'self' 'unsafe-inline' 'unsafe-eval' https://clerk.com https://*.clerk.accounts.dev https://cdn.jsdelivr.net",
+            "style-src": "'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
+            "img-src": "'self' data: https: blob: https://fastapi.tiangolo.com",
             "font-src": "'self' https://fonts.gstatic.com",
             "connect-src": "'self' https://api.clerk.com https://*.clerk.accounts.dev wss://* https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.groq.com",
             "frame-ancestors": "'self'",
