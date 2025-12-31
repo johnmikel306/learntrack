@@ -235,7 +235,7 @@ export default function StudentDashboard({ onBack }: StudentDashboardProps) {
                   <p className="text-purple-100 text-sm font-medium">Overall Average</p>
                   <p className="text-3xl font-bold">
                     {statsLoading ? (
-                      <Skeleton className="h-9 w-16 bg-purple-400/30" />
+                      <Skeleton className="h-9 w-16" />
                     ) : (
                       `${dashboardStats?.overall_average || 0}%`
                     )}
@@ -257,7 +257,7 @@ export default function StudentDashboard({ onBack }: StudentDashboardProps) {
                   <p className="text-green-100 text-sm font-medium">Completed</p>
                   <p className="text-3xl font-bold">
                     {statsLoading ? (
-                      <Skeleton className="h-9 w-12 bg-green-400/30" />
+                      <Skeleton className="h-9 w-12" />
                     ) : (
                       dashboardStats?.completed || 0
                     )}
@@ -277,7 +277,7 @@ export default function StudentDashboard({ onBack }: StudentDashboardProps) {
                   <p className="text-orange-100 text-sm font-medium">Pending</p>
                   <p className="text-3xl font-bold">
                     {statsLoading ? (
-                      <Skeleton className="h-9 w-10 bg-orange-400/30" />
+                      <Skeleton className="h-9 w-10" />
                     ) : (
                       dashboardStats?.pending || 0
                     )}
@@ -297,7 +297,7 @@ export default function StudentDashboard({ onBack }: StudentDashboardProps) {
                   <p className="text-blue-100 text-sm font-medium">Total Assignments</p>
                   <p className="text-3xl font-bold">
                     {statsLoading ? (
-                      <Skeleton className="h-9 w-12 bg-blue-400/30" />
+                      <Skeleton className="h-9 w-12" />
                     ) : (
                       dashboardStats?.total_assignments || 0
                     )}

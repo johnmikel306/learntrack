@@ -3,6 +3,7 @@
  */
 import React from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface CardSkeletonProps {
   /**
@@ -38,16 +39,16 @@ export function CardSkeleton({
     <Card className={`animate-pulse ${className}`}>
       {showHeader && (
         <CardHeader>
-          <div className="h-6 w-3/4 bg-gray-700 rounded"></div>
+          <Skeleton className="h-6 w-3/4" />
         </CardHeader>
       )}
       <CardContent className="space-y-3">
         {Array.from({ length: contentLines }).map((_, i) => (
-          <div 
-            key={i} 
-            className="h-4 bg-gray-700 rounded"
+          <Skeleton
+            key={i}
+            className="h-4"
             style={{ width: `${100 - (i * 10)}%` }}
-          ></div>
+          />
         ))}
       </CardContent>
     </Card>
@@ -86,9 +87,9 @@ export function StatsCardSkeleton({ count = 4 }: { count?: number }) {
       {Array.from({ length: count }).map((_, i) => (
         <Card key={i} className="animate-pulse">
           <CardContent className="p-6 space-y-2">
-            <div className="h-4 w-24 bg-gray-700 rounded"></div>
-            <div className="h-8 w-16 bg-gray-700 rounded"></div>
-            <div className="h-3 w-32 bg-gray-700 rounded"></div>
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-8 w-16" />
+            <Skeleton className="h-3 w-32" />
           </CardContent>
         </Card>
       ))}
@@ -105,15 +106,15 @@ export function ProfileCardSkeleton() {
       <CardContent className="p-6">
         <div className="flex items-start gap-4">
           {/* Avatar skeleton */}
-          <div className="h-16 w-16 bg-gray-700 rounded-full"></div>
+          <Skeleton className="h-16 w-16 rounded-full" />
           
           {/* Info skeleton */}
           <div className="flex-1 space-y-3">
-            <div className="h-6 w-48 bg-gray-700 rounded"></div>
-            <div className="h-4 w-64 bg-gray-700 rounded"></div>
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-64" />
             <div className="flex gap-2">
-              <div className="h-6 w-20 bg-gray-700 rounded-full"></div>
-              <div className="h-6 w-20 bg-gray-700 rounded-full"></div>
+              <Skeleton className="h-6 w-20 rounded-full" />
+              <Skeleton className="h-6 w-20 rounded-full" />
             </div>
           </div>
         </div>
@@ -121,4 +122,3 @@ export function ProfileCardSkeleton() {
     </Card>
   )
 }
-

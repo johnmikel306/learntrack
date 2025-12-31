@@ -211,7 +211,7 @@ export default function StudentDetailsPage() {
         const parentsRes = await client.get(`/students/${studentClerkId}/parents`)
         if (parentsRes.data) {
           const mappedParents = parentsRes.data.map((p: any) => ({
-            id: p.clerk_id || p._id,
+            id: String(p.clerk_id || p._id),
             name: p.name,
             email: p.email
           }))
@@ -237,7 +237,7 @@ export default function StudentDetailsPage() {
 
       const parents = res.data?.parents || res.data || []
       const mappedParents = parents.map((p: any) => ({
-        id: p.clerk_id || p._id,
+        id: String(p.clerk_id || p._id),
         name: p.name,
         email: p.email
       }))
@@ -286,7 +286,7 @@ export default function StudentDetailsPage() {
       const parentsRes = await client.get(`/students/${student.id}/parents`)
       if (parentsRes.data) {
         const mappedParents = parentsRes.data.map((p: any) => ({
-          id: p.clerk_id || p._id,
+          id: String(p.clerk_id || p._id),
           name: p.name,
           email: p.email
         }))
@@ -322,6 +322,8 @@ export default function StudentDetailsPage() {
 
       toast.success('Parent unlinked successfully')
       setLinkedParents(prev => prev.filter(p => p.id !== parentId))
+      queryClient.invalidateQueries({ queryKey: ['students'] })
+      fetchAvailableParents()
     } catch (error: any) {
       console.error('Failed to unlink parent:', error)
       toast.error('Failed to unlink parent', {
@@ -338,6 +340,16 @@ export default function StudentDetailsPage() {
       fetchStudentDetails()
     }
   }, [studentSlug])
+
+  useEffect(() => {
+    if (linkParentModalOpen) {
+      fetchAvailableParents()
+    } else {
+      setParentSelection('new')
+      setParentName('')
+      setParentEmail('')
+    }
+  }, [linkParentModalOpen])
 
   const getInitials = (name: string) => {
     return name
@@ -366,24 +378,24 @@ export default function StudentDetailsPage() {
               {/* Header skeleton */}
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="h-16 w-16 bg-gray-700 rounded-full animate-pulse"></div>
+                  <Skeleton className="h-16 w-16 rounded-full" />
                   <div className="space-y-2">
-                    <div className="h-6 w-48 bg-gray-700 rounded animate-pulse"></div>
-                    <div className="h-4 w-64 bg-gray-700 rounded animate-pulse"></div>
+                    <Skeleton className="h-6 w-48" />
+                    <Skeleton className="h-4 w-64" />
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <div className="h-10 w-32 bg-gray-700 rounded animate-pulse"></div>
-                  <div className="h-10 w-32 bg-gray-700 rounded animate-pulse"></div>
+                  <Skeleton className="h-10 w-32" />
+                  <Skeleton className="h-10 w-32" />
                 </div>
               </div>
 
               {/* Stats cards skeleton */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="bg-gray-800 rounded-lg p-4 space-y-2">
-                    <div className="h-4 w-24 bg-gray-700 rounded animate-pulse"></div>
-                    <div className="h-8 w-16 bg-gray-700 rounded animate-pulse"></div>
+                  <div key={i} className="bg-card border border-border rounded-lg p-4 space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-8 w-16" />
                   </div>
                 ))}
               </div>
@@ -391,12 +403,12 @@ export default function StudentDetailsPage() {
               {/* Content cards skeleton */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="bg-gray-800 rounded-lg p-6 space-y-4">
-                    <div className="h-6 w-32 bg-gray-700 rounded animate-pulse"></div>
+                  <div key={i} className="bg-card border border-border rounded-lg p-6 space-y-4">
+                    <Skeleton className="h-6 w-32" />
                     <div className="space-y-2">
-                      <div className="h-4 w-full bg-gray-700 rounded animate-pulse"></div>
-                      <div className="h-4 w-3/4 bg-gray-700 rounded animate-pulse"></div>
-                      <div className="h-4 w-1/2 bg-gray-700 rounded animate-pulse"></div>
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-4 w-1/2" />
                     </div>
                   </div>
                 ))}
@@ -722,12 +734,45 @@ export default function StudentDetailsPage() {
 
           <form onSubmit={handleLinkParent} className="space-y-4">
             <div className="space-y-2">
+              <Label htmlFor="existing-parent">Existing Parent (optional)</Label>
+              <Select
+                value={parentSelection}
+                onValueChange={handleParentSelection}
+                disabled={loadingParents}
+              >
+                <SelectTrigger id="existing-parent">
+                  <SelectValue placeholder="Select existing parent or create new" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="new">Create new parent</SelectItem>
+                  {selectableParents.map((parent) => (
+                    <SelectItem key={parent.id} value={parent.id}>
+                      {parent.name} ({parent.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {loadingParents && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Loading parents...
+                </div>
+              )}
+              {!loadingParents && selectableParents.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  No existing parents found yet.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="parent-name">Parent Name *</Label>
               <Input
                 id="parent-name"
                 placeholder="Enter parent's full name"
                 value={parentName}
                 onChange={(e) => setParentName(e.target.value)}
+                disabled={parentSelection !== 'new'}
                 required
               />
             </div>
@@ -740,6 +785,7 @@ export default function StudentDetailsPage() {
                 placeholder="parent@example.com"
                 value={parentEmail}
                 onChange={(e) => setParentEmail(e.target.value)}
+                disabled={parentSelection !== 'new'}
                 required
               />
             </div>

@@ -49,8 +49,9 @@ async def list_students_for_tutor(
             student_dict = student.model_dump()
 
             # Find parents linked to this student
+            student_identifier = student.clerk_id or str(student.id)
             parent_cursor = db.parents.find({
-                "student_ids": student.clerk_id,
+                "student_ids": student_identifier,
                 "tutor_id": current_user.clerk_id,
                 "is_active": True
             })
@@ -373,4 +374,3 @@ async def unlink_parent_from_student(
     except Exception as e:
         logger.error("Failed to unlink parent from student", student_clerk_id=student_clerk_id, parent_id=parent_id, error=str(e))
         raise HTTPException(status_code=500, detail="Failed to unlink parent")
-
