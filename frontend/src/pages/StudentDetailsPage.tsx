@@ -101,10 +101,18 @@ export default function StudentDetailsPage() {
   const [linkParentModalOpen, setLinkParentModalOpen] = useState(false)
   const [parentEmail, setParentEmail] = useState('')
   const [parentName, setParentName] = useState('')
+  const [availableParents, setAvailableParents] = useState<LinkedParent[]>([])
+  const [loadingParents, setLoadingParents] = useState(false)
+  const [parentSelection, setParentSelection] = useState('new')
   const [linkingParent, setLinkingParent] = useState(false)
   const [unlinkingParentId, setUnlinkingParentId] = useState<string | null>(null)
 
   const client = useApiClient()
+  const queryClient = useQueryClient()
+
+  const selectableParents = availableParents.filter(
+    (parent) => !linkedParents.some((linked) => linked.id === parent.id)
+  )
 
   const fetchStudentDetails = async () => {
     if (!studentSlug) return
