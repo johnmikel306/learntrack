@@ -68,12 +68,11 @@ class EnhancedClerkJWTBearer:
         self._jwks_cache: Optional[Dict] = None
         self._cache_expiry: Optional[datetime] = None
         
-    def _construct_issuer(self) -> str:
-        """Construct issuer URL from Clerk publishable key"""
-        if self.clerk_publishable_key and "pk_test_" in self.clerk_publishable_key:
-            # Extract domain from test key format
-            return "https://healthy-antelope-32.clerk.accounts.dev"
-        return "https://clerk.accounts.com"
+    def _construct_issuer(self) -> Optional[str]:
+    """Return None and warn if CLERK_JWT_ISSUER is not configured."""
+    if self.clerk_publishable_key:
+        logger.warning("CLERK_JWT_ISSUER is not set; set it to your Clerk instance URL")
+    return None
     
     async def get_jwks(self) -> Dict:
         """Get JSON Web Key Set from Clerk with caching"""
