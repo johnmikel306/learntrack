@@ -55,7 +55,7 @@ Return a JSON object with:
 - Questions with quality_score < 50 should have is_valid: false
 - Always provide at least one suggestion for improvement
 - Be specific in issue descriptions
-- Consider the question type when evaluating (MCQ vs Essay have different criteria)
+- Consider the question type when evaluating (multiple-choice vs essay have different criteria)
 
 ## Important
 - Return ONLY valid JSON
@@ -63,4 +63,3 @@ Return a JSON object with:
 - Focus on actionable improvements
 - Consider educational best practices
 """
-

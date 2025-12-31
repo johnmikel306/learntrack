@@ -14,7 +14,7 @@ from app.agents.graph.state import AgentState, ActionType
 
 
 # =============================================================================
-# Open Canvas Routing Functions
+# Agent Workflow Routing Functions
 # =============================================================================
 
 

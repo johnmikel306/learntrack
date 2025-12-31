@@ -22,7 +22,7 @@ def route_after_retrieval(state: RAGState) -> Literal["grade", "fail"]:
     return "grade"
 
 
-def route_after_grading(state: RAGState) -> Literal["generate", "rewrite", "fail"]:
+def route_after_grading(state: RAGState) -> Literal["generate", "rewrite", "complete", "fail"]:
     """Route after relevance grading"""
     next_action = state.get("next_action")
     
@@ -30,6 +30,8 @@ def route_after_grading(state: RAGState) -> Literal["generate", "rewrite", "fail
         return "generate"
     elif next_action == RAGAction.REWRITE:
         return "rewrite"
+    elif next_action == RAGAction.COMPLETE:
+        return "complete"
     else:
         return "fail"
 
@@ -71,4 +73,3 @@ def should_continue_retrieval(state: RAGState) -> bool:
     max_attempts = config.max_retrieval_attempts if config else 3
     
     return attempts < max_attempts
-

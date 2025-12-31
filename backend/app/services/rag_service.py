@@ -27,6 +27,19 @@ from app.services.document_processors import (
 
 logger = structlog.get_logger()
 
+EMBEDDING_MODELS: Dict[str, Dict[str, int]] = {
+    "openai": {
+        "text-embedding-3-small": 1536,
+        "text-embedding-3-large": 3072,
+    },
+    "gemini": {
+        "text-embedding-004": 768,
+    }
+}
+
+DEFAULT_EMBEDDING_PROVIDER = "openai"
+DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
+
 
 class RAGService:
     """RAG service for document processing and retrieval using LangChain integrations"""
@@ -39,7 +52,7 @@ class RAGService:
     ):
         self.db = db
         self.qdrant_client = None
-        self.embedding_dimension = 1536
+        self.embedding_dimension = EMBEDDING_MODELS[DEFAULT_EMBEDDING_PROVIDER][DEFAULT_EMBEDDING_MODEL]
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self._initialize_qdrant()
@@ -70,9 +83,64 @@ class RAGService:
             logger.error(f"Failed to initialize Qdrant client: {e}")
             self.qdrant_client = None
 
-    async def create_tutor_collection(self, tutor_id: str) -> str:
-        """Create isolated Qdrant collection for tutor"""
-        collection_name = f"tutor_{tutor_id.replace('-', '_')}"
+    def _format_collection_name(self, tutor_id: str, provider: str, model: str) -> str:
+        safe_provider = provider.replace("-", "_")
+        safe_model = model.replace("/", "_").replace("-", "_").replace(".", "_")
+        return f"tutor_{tutor_id.replace('-', '_')}_{safe_provider}_{safe_model}"
+
+    async def _get_embedding_config(self, tutor_id: str) -> Dict[str, Any]:
+        provider = DEFAULT_EMBEDDING_PROVIDER
+        model = DEFAULT_EMBEDDING_MODEL
+        if self.db:
+            try:
+                from app.services.tenant_ai_config_service import TenantAIConfigService
+                service = TenantAIConfigService(self.db)
+                config = await service.get_or_create_default(tutor_id)
+                if config:
+                    provider = config.embedding_provider or provider
+                    model = config.embedding_model or model
+            except Exception as e:
+                logger.warning("Failed to load embedding config, using defaults", error=str(e))
+        dimension = EMBEDDING_MODELS.get(provider, {}).get(model, self.embedding_dimension)
+        return {"provider": provider, "model": model, "dimension": dimension}
+
+    def _infer_embedding_provider(self, model: str) -> str:
+        for provider_id, models in EMBEDDING_MODELS.items():
+            if model in models:
+                return provider_id
+        return DEFAULT_EMBEDDING_PROVIDER
+
+    async def _resolve_collection_name(self, tutor_id: str, document_ids: Optional[List[str]] = None) -> Dict[str, Any]:
+        if self.db and document_ids:
+            try:
+                doc = await self.db.files.find_one(
+                    {"_id": {"$in": document_ids}},
+                    {"qdrant_collection_id": 1, "embedding_model_used": 1}
+                )
+                if doc and doc.get("qdrant_collection_id"):
+                    model = doc.get("embedding_model_used") or DEFAULT_EMBEDDING_MODEL
+                    provider = self._infer_embedding_provider(model)
+                    dimension = EMBEDDING_MODELS.get(provider, {}).get(model, self.embedding_dimension)
+                    return {
+                        "collection": doc["qdrant_collection_id"],
+                        "provider": provider,
+                        "model": model,
+                        "dimension": dimension
+                    }
+            except Exception as e:
+                logger.warning("Failed to resolve collection from documents", error=str(e))
+
+        config = await self._get_embedding_config(tutor_id)
+        return {
+            "collection": self._format_collection_name(tutor_id, config["provider"], config["model"]),
+            "provider": config["provider"],
+            "model": config["model"],
+            "dimension": config["dimension"]
+        }
+
+    async def create_tutor_collection(self, tutor_id: str, provider: str, model: str, dimension: int) -> str:
+        """Create isolated Qdrant collection for tutor and embedding model"""
+        collection_name = self._format_collection_name(tutor_id, provider, model)
         if not self.qdrant_client:
             logger.error("Qdrant client not initialized")
             return collection_name
@@ -82,7 +150,7 @@ class RAGService:
             if collection_name not in existing_names:
                 self.qdrant_client.create_collection(
                     collection_name=collection_name,
-                    vectors_config=VectorParams(size=self.embedding_dimension, distance=Distance.COSINE)
+                    vectors_config=VectorParams(size=dimension, distance=Distance.COSINE)
                 )
                 logger.info(f"Created Qdrant collection: {collection_name}")
             return collection_name
@@ -90,16 +158,49 @@ class RAGService:
             logger.error(f"Failed to create collection for tutor {tutor_id}: {e}")
             raise
 
-    async def get_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """Get embeddings using OpenAI API"""
+    async def get_embeddings(
+        self,
+        texts: List[str],
+        provider: str = DEFAULT_EMBEDDING_PROVIDER,
+        model: str = DEFAULT_EMBEDDING_MODEL
+    ) -> List[List[float]]:
+        """Get embeddings using the configured provider/model."""
         try:
-            import openai
-            client = openai.AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-            response = await client.embeddings.create(model="text-embedding-3-small", input=texts)
-            return [item.embedding for item in response.data]
+            provider = provider or DEFAULT_EMBEDDING_PROVIDER
+            model = model or DEFAULT_EMBEDDING_MODEL
+            if provider == "openai":
+                import openai
+                client = openai.AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+                response = await client.embeddings.create(model=model, input=texts)
+                return [item.embedding for item in response.data]
+            if provider == "gemini":
+                return await self._get_gemini_embeddings(texts, model)
+            raise ValueError(f"Unsupported embedding provider: {provider}")
         except Exception as e:
-            logger.error(f"Failed to get embeddings: {e}")
+            logger.error("Failed to get embeddings", error=str(e), provider=provider, model=model)
             raise
+
+    async def _get_gemini_embeddings(self, texts: List[str], model: str) -> List[List[float]]:
+        """Get embeddings using Gemini embedContent API."""
+        if not settings.GEMINI_API_KEY:
+            raise ValueError("GEMINI_API_KEY is not configured")
+
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:batchEmbedContents"
+        payload = {
+            "requests": [
+                {"content": {"parts": [{"text": text}]}}
+                for text in texts
+            ]
+        }
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(url, params={"key": settings.GEMINI_API_KEY}, json=payload)
+            response.raise_for_status()
+            data = response.json()
+
+        embeddings = []
+        for item in data.get("embeddings", []):
+            embeddings.append(item.get("values", []))
+        return embeddings
 
     async def process_document(
         self, file_path: str, file_id: str, tutor_id: str, file_url: str = None,
@@ -143,8 +244,18 @@ class RAGService:
             )
 
             # Generate embeddings
-            embeddings = await self.get_embeddings(chunk_texts)
-            collection_name = await self.create_tutor_collection(tutor_id)
+            embedding_config = await self._get_embedding_config(tutor_id)
+            embeddings = await self.get_embeddings(
+                chunk_texts,
+                provider=embedding_config["provider"],
+                model=embedding_config["model"]
+            )
+            collection_name = await self.create_tutor_collection(
+                tutor_id,
+                embedding_config["provider"],
+                embedding_config["model"],
+                embedding_config["dimension"]
+            )
 
             # Store embeddings with rich metadata from processor
             await self._store_embeddings_with_metadata(
@@ -156,7 +267,8 @@ class RAGService:
                     file_id,
                     len(chunk_texts),
                     collection_name,
-                    processed_doc
+                    processed_doc,
+                    embedding_config["model"]
                 )
 
             return {
@@ -300,7 +412,8 @@ class RAGService:
         file_id: str,
         chunk_count: int,
         collection_name: str,
-        processed_doc: Optional[ProcessedDocument] = None
+        processed_doc: Optional[ProcessedDocument] = None,
+        embedding_model: str = DEFAULT_EMBEDDING_MODEL
     ):
         """Update file record after successful embedding with enhanced metadata"""
         update_data = {
@@ -308,7 +421,7 @@ class RAGService:
             "chunk_count": chunk_count,
             "qdrant_collection_id": collection_name,
             "last_embedded_at": datetime.now(timezone.utc),
-            "embedding_model_used": "text-embedding-3-small"
+            "embedding_model_used": embedding_model
         }
 
         # Add enhanced metadata from document processor
@@ -324,6 +437,38 @@ class RAGService:
 
         await self.db.files.update_one({"_id": file_id}, {"$set": update_data})
 
+    async def query(
+        self,
+        query: str,
+        tutor_id: str,
+        document_ids: Optional[List[str]] = None,
+        top_k: int = 5
+    ) -> Dict[str, Any]:
+        """Query the vector store and return results with metadata."""
+        documents = await self.retrieve_context(query, tutor_id, document_ids, top_k=top_k)
+
+        file_name_map: Dict[str, str] = {}
+        if self.db and documents:
+            file_ids = list({doc.metadata.get("file_id") for doc in documents if doc.metadata.get("file_id")})
+            if file_ids:
+                cursor = self.db.files.find({"_id": {"$in": file_ids}}, {"filename": 1})
+                async for doc in cursor:
+                    file_name_map[str(doc["_id"])] = doc.get("filename", "")
+
+        results = []
+        for doc in documents:
+            file_id = doc.metadata.get("file_id")
+            results.append({
+                "content": doc.page_content,
+                "file_id": file_id,
+                "source": file_name_map.get(str(file_id), str(file_id) if file_id else "unknown"),
+                "page_number": doc.metadata.get("page_number"),
+                "score": doc.metadata.get("score", 0.0),
+                "metadata": doc.metadata,
+            })
+
+        return {"results": results, "count": len(results)}
+
     async def retrieve_context(
         self, query: str, tutor_id: str, document_ids: List[str] = None, top_k: int = 5
     ) -> List[Document]:
@@ -337,8 +482,13 @@ class RAGService:
             logger.warning("Qdrant client not available")
             return []
         try:
-            collection_name = f"tutor_{tutor_id.replace('-', '_')}"
-            query_embedding = (await self.get_embeddings([query]))[0]
+            collection_info = await self._resolve_collection_name(tutor_id, document_ids)
+            collection_name = collection_info["collection"]
+            query_embedding = (await self.get_embeddings(
+                [query],
+                provider=collection_info["provider"],
+                model=collection_info["model"]
+            ))[0]
 
             search_filter = None
             if document_ids:
@@ -381,7 +531,8 @@ class RAGService:
         if not self.qdrant_client:
             return
         try:
-            collection_name = f"tutor_{tutor_id.replace('-', '_')}"
+            collection_info = await self._resolve_collection_name(tutor_id, [file_id])
+            collection_name = collection_info["collection"]
             self.qdrant_client.delete(
                 collection_name=collection_name,
                 points_selector=Filter(must=[FieldCondition(key="file_id", match=MatchValue(value=file_id))])
@@ -394,10 +545,13 @@ class RAGService:
         """Delete all tutor data from Qdrant"""
         if not self.qdrant_client:
             return
-        collection_name = f"tutor_{tutor_id.replace('-', '_')}"
         try:
-            self.qdrant_client.delete_collection(collection_name)
-            logger.info(f"Deleted collection {collection_name}")
+            prefix = f"tutor_{tutor_id.replace('-', '_')}_"
+            collections = self.qdrant_client.get_collections()
+            for collection in collections.collections:
+                if collection.name.startswith(prefix):
+                    self.qdrant_client.delete_collection(collection.name)
+                    logger.info(f"Deleted collection {collection.name}")
         except Exception as e:
             logger.error(f"Failed to delete collection for tutor {tutor_id}: {e}")
 
@@ -406,7 +560,8 @@ class RAGService:
         if not self.qdrant_client:
             return {"points_count": 0, "segments_count": 0}
         try:
-            collection_name = f"tutor_{tutor_id.replace('-', '_')}"
+            collection_info = await self._resolve_collection_name(tutor_id)
+            collection_name = collection_info["collection"]
             info = self.qdrant_client.get_collection(collection_name)
             return {"points_count": info.points_count, "segments_count": info.segments_count, "status": info.status.value}
         except Exception as e:

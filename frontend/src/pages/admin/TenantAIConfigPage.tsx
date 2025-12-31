@@ -27,6 +27,24 @@ interface ProviderAvailability {
   error_message?: string
 }
 
+interface EmbeddingModelAvailability {
+  model_id: string
+  name: string
+  description: string
+  dimension: number
+  available: boolean
+}
+
+interface EmbeddingProviderAvailability {
+  provider_id: string
+  name: string
+  description: string
+  available: boolean
+  api_key_configured: boolean
+  models: EmbeddingModelAvailability[]
+  error_message?: string
+}
+
 interface ProviderConfig {
   provider_id: string
   enabled: boolean
@@ -41,6 +59,8 @@ interface TenantAIConfig {
   provider_configs: Record<string, ProviderConfig>
   default_provider: string
   default_model: string
+  embedding_provider: string
+  embedding_model: string
   max_questions_per_generation: number
   allow_custom_api_keys: boolean
   enable_rag: boolean
@@ -53,6 +73,7 @@ interface TenantAIConfig {
 interface TenantAIConfigResponse {
   config: TenantAIConfig
   providers: ProviderAvailability[]
+  embedding_providers: EmbeddingProviderAvailability[]
 }
 
 export function TenantAIConfigPage() {
@@ -93,8 +114,11 @@ export function TenantAIConfigPage() {
       setConfigData(data)
       setFormData({
         enabled_providers: data.config.enabled_providers,
+        provider_configs: data.config.provider_configs || {},
         default_provider: data.config.default_provider,
         default_model: data.config.default_model,
+        embedding_provider: data.config.embedding_provider,
+        embedding_model: data.config.embedding_model,
         max_questions_per_generation: data.config.max_questions_per_generation,
         enable_rag: data.config.enable_rag,
         enable_web_search: data.config.enable_web_search,
@@ -148,7 +172,20 @@ export function TenantAIConfigPage() {
     const updated = current.includes(providerId)
       ? current.filter(p => p !== providerId)
       : [...current, providerId]
-    setFormData({ ...formData, enabled_providers: updated })
+    let nextDefaultProvider = formData.default_provider || ''
+    let nextDefaultModel = formData.default_model || ''
+    if (nextDefaultProvider === providerId && !updated.includes(providerId)) {
+      nextDefaultProvider = updated[0] || ''
+      const nextProvider = configData?.providers.find(p => p.provider_id === nextDefaultProvider)
+      const nextModels = nextProvider ? getEnabledModels(nextDefaultProvider, nextProvider.models) : []
+      nextDefaultModel = nextModels[0] || nextProvider?.models[0]?.model_id || ''
+    }
+    setFormData({
+      ...formData,
+      enabled_providers: updated,
+      default_provider: nextDefaultProvider,
+      default_model: nextDefaultModel,
+    })
   }
 
   const toggleProviderExpand = (providerId: string) => {
@@ -161,6 +198,91 @@ export function TenantAIConfigPage() {
     setExpandedProviders(newExpanded)
   }
 
+  const getEnabledModels = (providerId: string, models: ModelAvailability[]) => {
+    const providerConfig = formData.provider_configs?.[providerId]
+    if (!providerConfig || providerConfig.enabled_models.length === 0) {
+      return models.map(m => m.model_id)
+    }
+    return providerConfig.enabled_models
+  }
+
+  const toggleModel = (providerId: string, modelId: string, models: ModelAvailability[]) => {
+    const currentConfigs = formData.provider_configs || {}
+    const existing = currentConfigs[providerId] || {
+      provider_id: providerId,
+      enabled: true,
+      enabled_models: [],
+      priority: 0,
+    }
+
+    let enabledModels = existing.enabled_models.length > 0
+      ? [...existing.enabled_models]
+      : models.map(m => m.model_id)
+
+    if (enabledModels.includes(modelId)) {
+      enabledModels = enabledModels.filter(id => id !== modelId)
+    } else {
+      enabledModels.push(modelId)
+    }
+
+    const updatedConfigs = {
+      ...currentConfigs,
+      [providerId]: { ...existing, enabled_models: enabledModels },
+    }
+
+    let updatedEnabledProviders = formData.enabled_providers || []
+    if (enabledModels.length === 0) {
+      updatedEnabledProviders = updatedEnabledProviders.filter(p => p !== providerId)
+    } else if (!updatedEnabledProviders.includes(providerId)) {
+      updatedEnabledProviders = [...updatedEnabledProviders, providerId]
+    }
+
+    let nextDefaultProvider = formData.default_provider || ''
+    let nextDefaultModel = formData.default_model || ''
+    if (nextDefaultProvider === providerId && enabledModels.length === 0) {
+      nextDefaultProvider = updatedEnabledProviders[0] || ''
+      const nextProvider = configData?.providers.find(p => p.provider_id === nextDefaultProvider)
+      const nextModels = nextProvider ? getEnabledModels(nextDefaultProvider, nextProvider.models) : []
+      nextDefaultModel = nextModels[0] || nextProvider?.models[0]?.model_id || ''
+    } else if (nextDefaultProvider === providerId && nextDefaultModel && !enabledModels.includes(nextDefaultModel)) {
+      nextDefaultModel = enabledModels[0] || models[0]?.model_id || ''
+    }
+
+    setFormData({
+      ...formData,
+      provider_configs: updatedConfigs,
+      enabled_providers: updatedEnabledProviders,
+      default_provider: nextDefaultProvider,
+      default_model: nextDefaultModel,
+    })
+  }
+
+  const handleDefaultProviderChange = (providerId: string) => {
+    const provider = configData?.providers.find(p => p.provider_id === providerId)
+    const enabledModels = getEnabledModels(providerId, provider?.models || [])
+    const defaultModel = enabledModels[0] || provider?.models[0]?.model_id || ''
+    const enabledProviders = formData.enabled_providers || []
+    const updatedEnabledProviders = enabledProviders.includes(providerId)
+      ? enabledProviders
+      : [...enabledProviders, providerId]
+    setFormData({
+      ...formData,
+      default_provider: providerId,
+      default_model: defaultModel,
+      enabled_providers: updatedEnabledProviders,
+    })
+  }
+
+  const handleEmbeddingProviderChange = (providerId: string) => {
+    const provider = configData?.embedding_providers.find(p => p.provider_id === providerId)
+    const defaultModel = provider?.models[0]?.model_id || ''
+    setFormData({
+      ...formData,
+      embedding_provider: providerId,
+      embedding_model: defaultModel,
+    })
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -168,6 +290,18 @@ export function TenantAIConfigPage() {
       </div>
     )
   }
+
+  const defaultProvider = configData?.providers.find(p => p.provider_id === formData.default_provider)
+  const defaultProviderModels = defaultProvider?.models || []
+  const enabledDefaultModels = defaultProvider
+    ? getEnabledModels(defaultProvider.provider_id, defaultProviderModels)
+    : []
+  const filteredDefaultModels = defaultProviderModels.filter(m => enabledDefaultModels.includes(m.model_id))
+
+  const embeddingProvider = configData?.embedding_providers.find(
+    p => p.provider_id === formData.embedding_provider
+  )
+  const embeddingModels = embeddingProvider?.models || []
 
   return (
     <div className="space-y-6">
@@ -233,7 +367,7 @@ export function TenantAIConfigPage() {
             <label className="block text-sm font-medium mb-1">Default Provider</label>
             <select
               value={formData.default_provider || ''}
-              onChange={(e) => setFormData({ ...formData, default_provider: e.target.value })}
+              onChange={(e) => handleDefaultProviderChange(e.target.value)}
               className="w-full px-3 py-2 border border-border rounded-lg bg-card"
             >
               {configData?.providers.map(p => (
@@ -241,6 +375,23 @@ export function TenantAIConfigPage() {
                   {p.name} {!p.available && '(unavailable)'}
                 </option>
               ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Default Model</label>
+            <select
+              value={formData.default_model || ''}
+              onChange={(e) => setFormData({ ...formData, default_model: e.target.value })}
+              className="w-full px-3 py-2 border border-border rounded-lg bg-card"
+            >
+              {filteredDefaultModels.map(model => (
+                <option key={model.model_id} value={model.model_id}>
+                  {model.name}
+                </option>
+              ))}
+              {!filteredDefaultModels.length && (
+                <option value="">No models available</option>
+              )}
             </select>
           </div>
           <div>
@@ -288,6 +439,44 @@ export function TenantAIConfigPage() {
         </div>
       </div>
 
+      {/* Embedding Settings */}
+      <div className="bg-card rounded-lg border border-border p-6">
+        <h2 className="text-lg font-semibold mb-4">Embedding Settings</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Embedding Provider</label>
+            <select
+              value={formData.embedding_provider || ''}
+              onChange={(e) => handleEmbeddingProviderChange(e.target.value)}
+              className="w-full px-3 py-2 border border-border rounded-lg bg-card"
+            >
+              {configData?.embedding_providers.map(provider => (
+                <option key={provider.provider_id} value={provider.provider_id} disabled={!provider.available}>
+                  {provider.name} {!provider.available && '(unavailable)'}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Embedding Model</label>
+            <select
+              value={formData.embedding_model || ''}
+              onChange={(e) => setFormData({ ...formData, embedding_model: e.target.value })}
+              className="w-full px-3 py-2 border border-border rounded-lg bg-card"
+            >
+              {embeddingModels.map(model => (
+                <option key={model.model_id} value={model.model_id}>
+                  {model.name} ({model.dimension} dims)
+                </option>
+              ))}
+              {!embeddingModels.length && (
+                <option value="">No models available</option>
+              )}
+            </select>
+          </div>
+        </div>
+      </div>
+
       {/* Providers */}
       <div className="bg-card rounded-lg border border-border p-6">
         <h2 className="text-lg font-semibold mb-4">AI Providers</h2>
@@ -330,24 +519,37 @@ export function TenantAIConfigPage() {
               {expandedProviders.has(provider.provider_id) && (
                 <div className="border-t border-border p-4 bg-muted/40">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {provider.models.map(model => (
-                      <div
-                        key={model.model_id}
-                        className="flex items-center gap-2 p-2 bg-card rounded border border-border"
-                      >
-                        <div className="flex-1">
-                          <div className="text-sm font-medium">{model.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {model.context_window ? `${(model.context_window / 1000).toFixed(0)}k context` : ''}
+                    {provider.models.map(model => {
+                      const enabledModels = getEnabledModels(provider.provider_id, provider.models)
+                      const isEnabled = enabledModels.includes(model.model_id)
+                      return (
+                        <div
+                          key={model.model_id}
+                          className="flex items-center gap-2 p-2 bg-card rounded border border-border"
+                        >
+                          <div className="flex-1">
+                            <div className="text-sm font-medium">{model.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {model.context_window ? `${(model.context_window / 1000).toFixed(0)}k context` : ''}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={isEnabled}
+                              onChange={() => toggleModel(provider.provider_id, model.model_id, provider.models)}
+                              className="w-4 h-4 rounded"
+                              disabled={!provider.available}
+                            />
+                            {model.available ? (
+                              <Check className="w-4 h-4 text-green-500" />
+                            ) : (
+                              <X className="w-4 h-4 text-muted-foreground" />
+                            )}
                           </div>
                         </div>
-                        {model.available ? (
-                          <Check className="w-4 h-4 text-green-500" />
-                        ) : (
-                          <X className="w-4 h-4 text-muted-foreground" />
-                        )}
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )}

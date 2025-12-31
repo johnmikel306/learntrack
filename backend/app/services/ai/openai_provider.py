@@ -13,40 +13,17 @@ from app.agents.prompts import get_prompt
 
 logger = structlog.get_logger()
 
-# Available OpenAI models (Updated December 2024)
-OPENAI_MODELS = {
-    # GPT-4o - Latest flagship
-    "gpt-4o": {"context_window": 128000, "description": "GPT-4o - Most capable multimodal"},
-    "gpt-4o-mini": {"context_window": 128000, "description": "GPT-4o Mini - Fast and affordable"},
-    # o3 Reasoning models - Newest
-    "o3-mini": {"context_window": 200000, "description": "o3 Mini - Latest reasoning model"},
-    # o1 Reasoning models
-    "o1": {"context_window": 200000, "description": "o1 - Advanced reasoning"},
-    "o1-mini": {"context_window": 128000, "description": "o1 Mini - Fast reasoning"},
-    # GPT-4 Turbo
-    "gpt-4-turbo": {"context_window": 128000, "description": "GPT-4 Turbo - High performance"},
-}
-
-
 class OpenAIProvider(BaseAIProvider):
     """OpenAI provider for question generation"""
 
-    def __init__(self, api_key: str, model: str = "gpt-4o"):
+    def __init__(self, api_key: str, model: str = "gpt-5.2"):
         super().__init__(api_key)
         self.client = AsyncOpenAI(api_key=api_key)
         self.model = model
 
-    @classmethod
-    def get_available_models(cls) -> Dict[str, Dict[str, Any]]:
-        """Get available OpenAI models"""
-        return OPENAI_MODELS
-
     def set_model(self, model: str):
         """Change the active model"""
-        if model in OPENAI_MODELS:
-            self.model = model
-        else:
-            raise ValueError(f"Model {model} not available. Choose from: {list(OPENAI_MODELS.keys())}")
+        self.model = model
     
     async def extract_text_from_content(self, content: str, file_type: str) -> str:
         """Extract and clean text from file content using OpenAI"""
@@ -183,8 +160,12 @@ class OpenAIProvider(BaseAIProvider):
     async def health_check(self) -> bool:
         """Check OpenAI API health"""
         try:
+            # Use a smaller, representative model from the updated list for health checks
+            # to avoid hardcoding models that might be removed.
+            health_check_model = "gpt-5.2-mini" # Use a model from the *new* OPENAI_MODELS
+
             response = await self.client.chat.completions.create(
-                model="gpt-3.5-turbo",  # Use cheaper model for health check
+                model=health_check_model,
                 messages=[{"role": "user", "content": "Hello"}],
                 max_tokens=5
             )

@@ -5,23 +5,28 @@ from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, Path, Query, HTTPException, BackgroundTasks, Request
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
+import time
+import uuid
 
 from app.core.database import get_database
 from app.core.enhanced_auth import require_tutor, ClerkUserContext
 from app.core.rate_limit import limiter, RATE_LIMITS
 from app.models.rag import (
     RAGQuestionGenerationRequest, RAGGenerationResponse, QuestionRegenerationRequest,
-    DocumentLibraryItem, DocumentProcessingStatus, TutorRAGSettings
+    DocumentLibraryItem, DocumentProcessingStatus
 )
-from app.models.question import QuestionCreate
+from app.models.question import QuestionCreate, QuestionDifficulty, QuestionType
+from app.agents.rag.graph import AgenticRAGAgent
+from app.agents.rag.state import RAGConfig
 from app.services.rag_service import RAGService
 from app.services.web_search_service import WebSearchService
-from app.services.ai.ai_manager import AIManager, ai_manager
+from app.services.ai.ai_manager import get_tenant_ai_manager
+from app.services.tenant_ai_config_service import TenantAIConfigService
 from app.services.question_service import QuestionService
+from app.utils.enums import normalize_question_type, normalize_difficulty
 
 logger = structlog.get_logger()
 router = APIRouter()
-
 
 @router.post("/generate", response_model=RAGGenerationResponse)
 @limiter.limit(RATE_LIMITS["ai_generation"])
@@ -34,76 +39,153 @@ async def generate_questions_with_rag(
 ):
     """Generate questions using RAG with optional web search"""
     try:
+        start_time = time.monotonic()
         rag_service = RAGService(database)
         web_search_service = WebSearchService(database)
         question_service = QuestionService(database)
+        config_service = TenantAIConfigService(database)
 
-        # Get RAG context from selected documents
+        tenant_config = await config_service.get_or_create_default(current_user.tutor_id)
+        if not tenant_config.enable_rag:
+            raise HTTPException(status_code=403, detail="RAG is disabled for this tenant")
+
+        use_web_search = body.use_web_search if body.use_web_search is not None else body.enable_web_search
+        if use_web_search and not tenant_config.enable_web_search:
+            raise HTTPException(status_code=403, detail="Web search is disabled for this tenant")
+
+        ai_provider = body.ai_provider or tenant_config.default_provider
+        model_name = body.model_name or tenant_config.default_model
+
+        if ai_provider not in tenant_config.enabled_providers:
+            raise HTTPException(status_code=400, detail=f"Provider {ai_provider} is not enabled for this tenant")
+
+        provider_config = tenant_config.provider_configs.get(ai_provider) if tenant_config.provider_configs else None
+        if provider_config and provider_config.enabled_models and model_name not in provider_config.enabled_models:
+            raise HTTPException(status_code=400, detail=f"Model {model_name} is not enabled for provider {ai_provider}")
+
+        # Resolve RAG context using AgenticRAGAgent
         rag_context = ""
         source_chunks = []
         if body.document_ids:
-            query = f"{body.subject} {body.topic}"
-            documents = await rag_service.retrieve_context(
-                query, current_user.clerk_id, body.document_ids, top_k=body.context_chunks
+            manager = await get_tenant_ai_manager(current_user.tutor_id, database)
+            rag_llm_provider = None
+            try:
+                rag_llm_provider = manager.get_provider(ai_provider)
+            except Exception:
+                rag_llm_provider = None
+
+            if not rag_llm_provider or not hasattr(rag_llm_provider, "llm"):
+                rag_llm_provider = next(
+                    (provider for provider in manager.providers.values() if hasattr(provider, "llm")),
+                    None
+                )
+
+            if not rag_llm_provider or not hasattr(rag_llm_provider, "llm"):
+                raise HTTPException(status_code=500, detail="No LangChain-compatible provider available for RAG")
+
+            rag_agent = AgenticRAGAgent(llm=rag_llm_provider.llm, rag_service=rag_service)
+            rag_config = RAGConfig(
+                top_k=body.context_chunks,
+                generate_answer=False,
+                document_ids=body.document_ids
             )
-            for doc in documents:
-                rag_context += doc.page_content + "\n\n"
+            rag_session = await rag_agent.query(
+                query=body.web_search_query or f"{body.subject} {body.topic}",
+                user_id=current_user.clerk_id,
+                tenant_id=current_user.tutor_id,
+                config=rag_config,
+                document_ids=body.document_ids,
+                generate_answer=False
+            )
+
+            for doc in rag_session.sources:
+                rag_context += doc.content + "\n\n"
                 source_chunks.append({
-                    "file_id": doc.metadata.get("file_id"),
-                    "chunk_index": doc.metadata.get("chunk_index"),
-                    "score": doc.metadata.get("score")
+                    "file_id": doc.source_file_id,
+                    "file_name": doc.source_file,
+                    "chunk_index": doc.chunk_index,
+                    "page_number": doc.page_number,
+                    "score": doc.relevance_score,
+                    "metadata": doc.metadata
                 })
 
         # Get web search context if enabled
         web_results = []
-        if body.use_web_search:
+        if use_web_search:
             web_context = await web_search_service.search_for_context(
                 body.topic, body.subject, current_user.clerk_id
             )
             if web_context:
                 rag_context += f"\n\nWEB SEARCH RESULTS:\n{web_context}"
                 results = await web_search_service.search(
-                    f"{body.subject} {body.topic}", current_user.clerk_id, max_results=3
+                    body.web_search_query or f"{body.subject} {body.topic}",
+                    current_user.clerk_id,
+                    max_results=3
                 )
                 web_results = [r.model_dump() for r in results]
 
         # Generate questions with RAG context
-        manager = AIManager()
-        if body.model:
-            manager.set_provider_model(body.provider, body.model)
+        manager = await get_tenant_ai_manager(current_user.tutor_id, database)
+        if model_name:
+            try:
+                manager.set_provider_model(ai_provider, model_name)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=str(e))
+
+        difficulty_value = body.difficulty or (body.difficulty_levels[0] if body.difficulty_levels else "medium")
+        difficulty = normalize_difficulty(difficulty_value)
+        question_types = body.question_types or ["multiple-choice"]
+        normalized_types = [normalize_question_type(qt) for qt in question_types]
+
+        additional_context = body.additional_context or body.text_content or ""
+        if body.custom_prompt:
+            additional_context = f"{body.custom_prompt}\n\n{additional_context}".strip()
 
         questions = await manager.generate_questions_with_rag(
-            text_content=body.additional_context or "",
+            text_content=additional_context,
             rag_context=rag_context,
             subject=body.subject,
             topic=body.topic,
             question_count=body.question_count,
-            difficulty=body.difficulty,
-            question_types=body.question_types,
-            provider_name=body.provider
+            difficulty=difficulty,
+            question_types=normalized_types,
+            provider_name=ai_provider
         )
 
-        # Store generated questions as pending
+        generation_id = str(uuid.uuid4())
         stored_questions = []
         for q in questions:
-            q_dict = q.model_dump()
-            q_dict["tutor_id"] = current_user.clerk_id
-            q_dict["status"] = "pending"
-            q_dict["rag_context_used"] = bool(rag_context)
-            q_dict["web_search_used"] = body.use_web_search
-            q_dict["source_chunks"] = source_chunks
-            q_dict["web_search_results"] = web_results
-            q_dict["generation_model"] = body.model or "default"
-            stored = await question_service.create_question(QuestionCreate(**q_dict), current_user.clerk_id)
+            extra_fields = {
+                "rag_context_used": rag_context or None,
+                "web_search_used": use_web_search,
+                "source_chunks": source_chunks,
+                "web_search_results": web_results,
+                "generation_model": model_name or "default",
+                "rag_generation_id": generation_id,
+                "source_documents": body.document_ids or []
+            }
+            stored = await question_service.create_question(
+                q,
+                current_user.clerk_id,
+                ai_generated=True,
+                generation_id=generation_id,
+                extra_fields=extra_fields
+            )
             stored_questions.append(stored)
 
+        processing_time = time.monotonic() - start_time
         return RAGGenerationResponse(
-            questions=stored_questions,
-            total_generated=len(stored_questions),
+            generation_id=generation_id,
+            questions=[q.model_dump() for q in stored_questions],
+            ai_provider=ai_provider,
+            model_used=model_name or "default",
             source_documents=body.document_ids or [],
-            web_search_used=body.use_web_search,
-            provider_used=body.provider,
-            model_used=body.model or "default"
+            context_chunks_used=len(source_chunks),
+            web_search_used=use_web_search,
+            web_search_results=web_results,
+            total_generated=len(stored_questions),
+            processing_time=processing_time,
+            status="completed"
         )
 
     except Exception as e:
@@ -121,15 +203,31 @@ async def regenerate_single_question(
 ):
     """Regenerate a single question with modifications"""
     try:
-        manager = AIManager()
-        prompt = f"""Regenerate this question with the following modifications:
-Original: {body.original_question}
-Modifications: {body.modification_prompt}
-Keep the same topic and difficulty level."""
+        manager = await get_tenant_ai_manager(current_user.tutor_id, database)
+        question_service = QuestionService(database)
+        original = await question_service.get_question_by_id(body.question_id, current_user.clerk_id)
+
+        prompt = body.regeneration_prompt or "Regenerate this question with improved clarity and accuracy."
+        if body.use_same_context and original.rag_context_used:
+            text_content = f"{original.rag_context_used}\n\n{prompt}"
+        else:
+            text_content = f"""Original Question:
+{original.question_text}
+
+Instructions:
+{prompt}
+"""
+
+        question_types = [original.question_type] if body.keep_type else [QuestionType.MULTIPLE_CHOICE]
+        difficulty = original.difficulty if body.keep_difficulty else QuestionDifficulty.MEDIUM
 
         questions = await manager.generate_questions(
-            text_content=prompt, subject="", topic="", question_count=1,
-            provider_name=body.provider
+            text_content=text_content,
+            subject=original.subject_id,
+            topic=original.topic,
+            question_count=1,
+            difficulty=difficulty,
+            question_types=question_types
         )
 
         if not questions:
@@ -287,4 +385,3 @@ async def get_available_providers(current_user: ClerkUserContext = Depends(requi
     """Get list of available AI providers"""
     manager = AIManager()
     return manager.get_available_providers()
-

@@ -16,7 +16,7 @@ SYSTEM_PROMPT = """You are a formatting specialist for educational content. Your
 
 {question_text}
 
-{options if MCQ/True-False}
+{options if multiple-choice/true-false}
 
 ---
 
@@ -52,7 +52,7 @@ $$
 
 ### Question Type Formatting
 
-**MCQ:**
+**Multiple-choice:**
 ```markdown
 A) First option
 B) Second option  
@@ -94,4 +94,3 @@ _Expected length: {word_count} words_
 ## Output
 Return the formatted question as a clean Markdown string, ready for streaming to the UI.
 """
-

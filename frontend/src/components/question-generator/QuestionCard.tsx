@@ -55,12 +55,19 @@ interface QuestionCardProps {
 }
 
 const difficultyColors: Record<string, string> = {
+  easy: 'bg-green-600/80 text-white',
+  medium: 'bg-amber-600/80 text-white',
+  hard: 'bg-red-600/80 text-white',
   EASY: 'bg-green-600/80 text-white',
   MEDIUM: 'bg-amber-600/80 text-white',
   HARD: 'bg-red-600/80 text-white',
 }
 
 const typeLabels: Record<string, string> = {
+  'multiple-choice': 'Multiple Choice',
+  'true-false': 'True/False',
+  'short-answer': 'Short Answer',
+  essay: 'Essay',
   MCQ: 'Multiple Choice',
   TRUE_FALSE: 'True/False',
   SHORT_ANSWER: 'Short Answer',
@@ -301,7 +308,7 @@ export function QuestionCard({
               exit={{ opacity: 0, height: 0 }}
               className="mt-4 space-y-2"
             >
-              {/* Options for MCQ */}
+              {/* Options for multiple-choice */}
               {question.options && question.options.length > 0 && (
                 <div className="space-y-1">
                   {question.options.map((option, i) => {
@@ -351,4 +358,3 @@ export function QuestionCard({
 }
 
 export default QuestionCard
-

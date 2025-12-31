@@ -108,9 +108,11 @@ class RetrieverNode(BaseRAGNode):
         
         try:
             # Use RAG service to retrieve
+            document_ids = state.get("document_ids") or state["config"].document_ids
             results = await self.rag_service.query(
                 query=state["current_query"],
                 tutor_id=state["tenant_id"],
+                document_ids=document_ids,
                 top_k=state["config"].top_k
             )
             
@@ -184,7 +186,10 @@ class RelevanceGraderNode(BaseRAGNode):
                     state["next_action"] = RAGAction.FAIL
                     state["error"] = "No relevant documents found after all attempts"
             else:
-                state["next_action"] = RAGAction.GENERATE
+                if state["config"].generate_answer:
+                    state["next_action"] = RAGAction.GENERATE
+                else:
+                    state["next_action"] = RAGAction.COMPLETE
                 await self.emit_thinking(state, "graded", f"Found {len(relevant_docs)} relevant documents")
 
         except Exception as e:
@@ -309,4 +314,3 @@ class HallucinationCheckerNode(BaseRAGNode):
             state["next_action"] = RAGAction.COMPLETE
 
         return state
-

@@ -32,6 +32,10 @@ class TenantAIConfigBase(BaseModel):
     provider_configs: Dict[str, ProviderConfig] = {}
     default_provider: str = "groq"
     default_model: str = "llama-3.3-70b-versatile"
+
+    # Embedding configuration
+    embedding_provider: str = "openai"
+    embedding_model: str = "text-embedding-3-small"
     
     # Restrictions
     max_questions_per_generation: int = 20
@@ -54,6 +58,8 @@ class TenantAIConfigUpdate(BaseModel):
     provider_configs: Optional[Dict[str, ProviderConfig]] = None
     default_provider: Optional[str] = None
     default_model: Optional[str] = None
+    embedding_provider: Optional[str] = None
+    embedding_model: Optional[str] = None
     max_questions_per_generation: Optional[int] = None
     allow_custom_api_keys: Optional[bool] = None
     enable_rag: Optional[bool] = None
@@ -101,10 +107,29 @@ class ProviderAvailability(BaseModel):
     error_message: Optional[str] = None
 
 
+class EmbeddingModelAvailability(BaseModel):
+    model_id: str
+    name: str
+    description: str
+    dimension: int
+    available: bool = True
+
+
+class EmbeddingProviderAvailability(BaseModel):
+    provider_id: str
+    name: str
+    description: str
+    available: bool = True
+    api_key_configured: bool = False
+    models: List[EmbeddingModelAvailability] = []
+    error_message: Optional[str] = None
+
+
 class TenantAIConfigResponse(BaseModel):
     """Full response with config and availability"""
     config: TenantAIConfig
     providers: List[ProviderAvailability] = []
+    embedding_providers: List[EmbeddingProviderAvailability] = []
 
 
 class BulkModelOperation(BaseModel):
@@ -122,4 +147,3 @@ class ConfigChangeAuditLog(BaseModel):
     action: str  # "create", "update", "bulk_operation"
     changes: Dict[str, Any] = {}
     previous_values: Optional[Dict[str, Any]] = None
-

@@ -1,12 +1,12 @@
 """
-LangGraph Agent Nodes - Open Canvas Architecture
+LangGraph Agent Nodes - Stateful Agent Architecture
 
 Individual nodes that form the question generation pipeline using
-the Open Canvas pattern with generatePath routing.
+a stateful agent pattern with conditional path routing.
 
 Architecture:
-  __start__ -> generatePath -> [artifact operations] -> generateFollowup -> reflect -> cleanState -> __end__
-                            -> respondToQuery -> cleanState -> __end__
+  __start__ -> router -> [artifact_operations] -> generate_followup -> reflect -> clean_state -> __end__
+                       -> respond_to_query -> clean_state -> __end__
 """
 
 from typing import Dict, Any, List, Optional
@@ -24,9 +24,9 @@ from app.agents.graph.state import (
 from app.agents.prompts import get_prompt
 from app.agents.streaming.sse_handler import SSEHandler
 from app.agents.tools.material_retriever import retrieve_materials
+from app.utils.enums import normalize_question_type, normalize_difficulty
 
 logger = structlog.get_logger()
-
 
 def sanitize_json_string(content: str) -> str:
     """
@@ -141,8 +141,8 @@ class PromptAnalyzerNode(BaseNode):
                 subject=analysis_data.get("subject", "General"),
                 topic=analysis_data.get("topic", ""),
                 question_count=analysis_data.get("question_count", state["config"].question_count),
-                question_types=[QuestionType(t) for t in analysis_data.get("question_types", ["MCQ"])],
-                difficulty=Difficulty(analysis_data.get("difficulty", "MEDIUM")),
+                question_types=[normalize_question_type(t) for t in analysis_data.get("question_types", ["multiple-choice"])],
+                difficulty=normalize_difficulty(analysis_data.get("difficulty", "medium")),
                 blooms_levels=analysis_data.get("blooms_levels", "AUTO"),
                 special_requirements=analysis_data.get("special_requirements", []),
                 needs_clarification=analysis_data.get("needs_clarification", False),
@@ -257,9 +257,9 @@ IMPORTANT: Your response must contain exactly {total} question objects in a sing
 Example format:
 ```json
 [
-  {{"question_id": "q1", "type": "MCQ", ...}},
-  {{"question_id": "q2", "type": "MCQ", ...}},
-  {{"question_id": "q3", "type": "MCQ", ...}}
+  {{"question_id": "q1", "type": "multiple-choice", ...}},
+  {{"question_id": "q2", "type": "multiple-choice", ...}},
+  {{"question_id": "q3", "type": "multiple-choice", ...}}
 ]
 ```
 """)
@@ -365,10 +365,12 @@ Enhanced Prompt: {state.get('enhanced_prompt', state['original_prompt'])}
                             continue
 
             for i, item in enumerate(items):
+                raw_type = item.get("type") or item.get("question_type") or "multiple-choice"
+                raw_difficulty = item.get("difficulty", "medium")
                 q = GeneratedQuestion(
                     question_id=item.get("question_id", f"q{i+1}"),
-                    type=QuestionType(item.get("type", "MCQ")),
-                    difficulty=Difficulty(item.get("difficulty", "MEDIUM")),
+                    type=normalize_question_type(raw_type),
+                    difficulty=normalize_difficulty(raw_difficulty),
                     blooms_level=BloomsLevel(item.get("blooms_level", "UNDERSTAND")),
                     question_text=item.get("question_text", ""),
                     options=item.get("options"),
@@ -492,8 +494,8 @@ Apply the edit and return the updated question as JSON.
 
             edited = GeneratedQuestion(
                 question_id=original.question_id,
-                type=QuestionType(edited_data.get("type", original.type.value)),
-                difficulty=Difficulty(edited_data.get("difficulty", original.difficulty.value)),
+                type=normalize_question_type(edited_data.get("type") or edited_data.get("question_type") or original.type.value),
+                difficulty=normalize_difficulty(edited_data.get("difficulty", original.difficulty.value)),
                 blooms_level=BloomsLevel(edited_data.get("blooms_level", original.blooms_level.value)),
                 question_text=edited_data.get("question_text", original.question_text),
                 options=edited_data.get("options", original.options),
@@ -514,14 +516,14 @@ Apply the edit and return the updated question as JSON.
 
 
 # =============================================================================
-# Open Canvas Architecture Nodes
+# Agentic Workflow Nodes
 # =============================================================================
 
 
 class GeneratePathNode(BaseNode):
     """
     Central routing node that determines which action path to take.
-    Based on Open Canvas generatePath pattern.
+    Based on a stateful, conditional routing pattern.
 
     Routes to:
     - generateArtifact: New question generation
@@ -823,10 +825,12 @@ Output as a single JSON object (not an array).
                     cleaned = re.sub(r'\\(?!["\\/bfnrtu])', r'\\\\', json_str)
                     item = json.loads(cleaned)
 
+            raw_type = item.get("type") or item.get("question_type") or "multiple-choice"
+            raw_difficulty = item.get("difficulty", "medium")
             question = GeneratedQuestion(
                 question_id=item.get("question_id", f"q{question_number}"),
-                type=QuestionType(item.get("type", "MCQ")),
-                difficulty=Difficulty(item.get("difficulty", "MEDIUM")),
+                type=normalize_question_type(raw_type),
+                difficulty=normalize_difficulty(raw_difficulty),
                 blooms_level=BloomsLevel(item.get("blooms_level", "UNDERSTAND")),
                 question_text=item.get("question_text", ""),
                 options=item.get("options"),
@@ -885,10 +889,12 @@ Output as a single JSON object (not an array).
                             continue
 
             for i, item in enumerate(items):
+                raw_type = item.get("type") or item.get("question_type") or "multiple-choice"
+                raw_difficulty = item.get("difficulty", "medium")
                 q = GeneratedQuestion(
                     question_id=item.get("question_id", f"q{i+1}"),
-                    type=QuestionType(item.get("type", "MCQ")),
-                    difficulty=Difficulty(item.get("difficulty", "MEDIUM")),
+                    type=normalize_question_type(raw_type),
+                    difficulty=normalize_difficulty(raw_difficulty),
                     blooms_level=BloomsLevel(item.get("blooms_level", "UNDERSTAND")),
                     question_text=item.get("question_text", ""),
                     options=item.get("options"),
@@ -1004,8 +1010,8 @@ Apply the edit and return the updated question as JSON.
 
             return GeneratedQuestion(
                 question_id=original.question_id,
-                type=QuestionType(edited_data.get("type", original.type.value)),
-                difficulty=Difficulty(edited_data.get("difficulty", original.difficulty.value)),
+                type=normalize_question_type(edited_data.get("type") or edited_data.get("question_type") or original.type.value),
+                difficulty=normalize_difficulty(edited_data.get("difficulty", original.difficulty.value)),
                 blooms_level=BloomsLevel(edited_data.get("blooms_level", original.blooms_level.value)),
                 question_text=edited_data.get("question_text", original.question_text),
                 options=edited_data.get("options", original.options),
@@ -1130,8 +1136,8 @@ Output a single question as JSON.
 
             return GeneratedQuestion(
                 question_id=original.question_id,  # Keep same ID
-                type=QuestionType(data.get("type", original.type.value)),
-                difficulty=Difficulty(data.get("difficulty", original.difficulty.value)),
+                type=normalize_question_type(data.get("type") or data.get("question_type") or original.type.value),
+                difficulty=normalize_difficulty(data.get("difficulty", original.difficulty.value)),
                 blooms_level=BloomsLevel(data.get("blooms_level", original.blooms_level.value)),
                 question_text=data.get("question_text", ""),
                 options=data.get("options"),
@@ -1260,10 +1266,12 @@ Output as JSON.
             if isinstance(data, list):
                 data = data[0]
 
+            raw_type = new_theme.get("type") or data.get("type") or data.get("question_type") or original.type.value
+            raw_difficulty = new_theme.get("difficulty") or data.get("difficulty", original.difficulty.value)
             return GeneratedQuestion(
                 question_id=original.question_id,
-                type=QuestionType(new_theme.get("type", data.get("type", original.type.value))),
-                difficulty=Difficulty(new_theme.get("difficulty", data.get("difficulty", original.difficulty.value))),
+                type=normalize_question_type(raw_type),
+                difficulty=normalize_difficulty(raw_difficulty),
                 blooms_level=BloomsLevel(new_theme.get("blooms_level", data.get("blooms_level", original.blooms_level.value))),
                 question_text=data.get("question_text", ""),
                 options=data.get("options"),
@@ -1304,36 +1312,36 @@ class GenerateFollowupNode(BaseNode):
 
             # Suggest different difficulty
             current_diff = config.difficulty.value
-            if current_diff != "HARD":
+            if current_diff != "hard":
                 suggestions.append(FollowupSuggestion(
                     suggestion_type="difficulty",
                     title=f"Increase Difficulty",
                     description=f"Generate harder questions on {topic}",
-                    action_params={"difficulty": "HARD"}
+                    action_params={"difficulty": "hard"}
                 ))
-            if current_diff != "EASY":
+            if current_diff != "easy":
                 suggestions.append(FollowupSuggestion(
                     suggestion_type="difficulty",
                     title=f"Simplify Questions",
                     description=f"Generate easier questions for beginners",
-                    action_params={"difficulty": "EASY"}
+                    action_params={"difficulty": "easy"}
                 ))
 
             # Suggest different types
             current_types = [t.value for t in config.question_types]
-            if "SHORT_ANSWER" not in current_types:
+            if "short-answer" not in current_types:
                 suggestions.append(FollowupSuggestion(
                     suggestion_type="type",
                     title="Add Short Answer",
                     description="Generate short answer questions",
-                    action_params={"types": ["SHORT_ANSWER"]}
+                    action_params={"types": ["short-answer"]}
                 ))
-            if "ESSAY" not in current_types:
+            if "essay" not in current_types:
                 suggestions.append(FollowupSuggestion(
                     suggestion_type="type",
                     title="Add Essay Questions",
                     description="Generate essay-type questions",
-                    action_params={"types": ["ESSAY"]}
+                    action_params={"types": ["essay"]}
                 ))
 
             # Suggest more questions

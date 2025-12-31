@@ -12,22 +12,6 @@ from app.agents.prompts import get_prompt
 
 logger = structlog.get_logger()
 
-# Available Groq models (Updated December 2024)
-GROQ_MODELS = {
-    # Llama 4 - Newest (multimodal)
-    "meta-llama/llama-4-maverick-17b-128e-instruct": {"context_window": 131072, "description": "Llama 4 Maverick 17B - Latest multimodal"},
-    "meta-llama/llama-4-scout-17b-16e-instruct": {"context_window": 131072, "description": "Llama 4 Scout 17B - Fast multimodal"},
-    # Llama 3.3
-    "llama-3.3-70b-versatile": {"context_window": 131072, "description": "Llama 3.3 70B - Most versatile"},
-    # Llama 3.1
-    "llama-3.1-8b-instant": {"context_window": 131072, "description": "Llama 3.1 8B - Fast responses"},
-    # Qwen 3
-    "qwen/qwen3-32b": {"context_window": 131072, "description": "Qwen3 32B - Balanced performance"},
-    # Kimi K2
-    "moonshotai/kimi-k2-instruct-0905": {"context_window": 262144, "description": "Kimi K2 - Advanced reasoning"},
-}
-
-
 class GroqProvider(BaseAIProvider):
     """Groq AI provider using LangChain"""
 
@@ -36,18 +20,10 @@ class GroqProvider(BaseAIProvider):
         self.model = model
         self.llm = ChatGroq(api_key=api_key, model_name=model, temperature=0.7)
 
-    @classmethod
-    def get_available_models(cls) -> Dict[str, Dict[str, Any]]:
-        """Get available Groq models"""
-        return GROQ_MODELS
-
     def set_model(self, model: str):
         """Change the active model"""
-        if model in GROQ_MODELS:
-            self.model = model
-            self.llm = ChatGroq(api_key=self.api_key, model_name=model, temperature=0.7)
-        else:
-            raise ValueError(f"Model {model} not available. Choose from: {list(GROQ_MODELS.keys())}")
+        self.model = model
+        self.llm = ChatGroq(api_key=self.api_key, model_name=model, temperature=0.7)
 
     async def extract_text_from_content(self, content: str, file_type: str) -> str:
         """Extract and clean text from file content"""

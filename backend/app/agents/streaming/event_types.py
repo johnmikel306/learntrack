@@ -39,12 +39,12 @@ class StreamEventType(str, Enum):
     SESSION_RESUMED = "session:resumed"
     SESSION_PAUSED = "session:paused"
 
-    # Open Canvas - Artifact operations
+    # Artifact (Generation Output) events
     ARTIFACT_CREATED = "artifact:created"
     ARTIFACT_UPDATED = "artifact:updated"
     ARTIFACT_REWRITTEN = "artifact:rewritten"
 
-    # Open Canvas - Follow-up & Reflection
+    # Agent Workflow events
     FOLLOWUP_SUGGESTIONS = "followup:suggestions"
     REFLECTION_RESULT = "reflection:result"
     QUERY_RESPONSE = "query:response"
@@ -102,20 +102,20 @@ class StreamEventData(BaseModel):
     # Complete question data (for question_complete event)
     question_data: Optional[Dict[str, Any]] = None
 
-    # Open Canvas - Artifact data
+    # Artifact data
     artifact_id: Optional[str] = None
     artifact_title: Optional[str] = None
     artifact_contents: Optional[List[Dict[str, Any]]] = None
 
-    # Open Canvas - Follow-up suggestions
+    # Follow-up suggestions
     followup_suggestions: Optional[List[Dict[str, Any]]] = None
 
-    # Open Canvas - Reflection
+    # Reflection data
     reflection_quality: Optional[float] = None
     reflection_strengths: Optional[List[str]] = None
     reflection_improvements: Optional[List[str]] = None
 
-    # Open Canvas - Query response
+    # Query response
     query_response: Optional[str] = None
 
     # Additional metadata
@@ -204,7 +204,7 @@ class StreamEvent:
         )
 
     # =========================================================================
-    # Open Canvas Events
+    # Agent Workflow Events
     # =========================================================================
 
     @staticmethod

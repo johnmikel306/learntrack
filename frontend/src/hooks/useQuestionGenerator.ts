@@ -46,8 +46,8 @@ export interface StreamEvent {
 
 export interface GeneratedQuestion {
   question_id: string
-  type: 'MCQ' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'ESSAY'
-  difficulty: 'EASY' | 'MEDIUM' | 'HARD'
+  type: 'multiple-choice' | 'true-false' | 'short-answer' | 'essay' | 'MCQ' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'ESSAY'
+  difficulty: 'easy' | 'medium' | 'hard' | 'EASY' | 'MEDIUM' | 'HARD'
   blooms_level: string
   question_text: string
   options?: string[]
@@ -252,4 +252,3 @@ export function useQuestionGenerator(): UseQuestionGeneratorResult {
     clearResults,
   }
 }
-

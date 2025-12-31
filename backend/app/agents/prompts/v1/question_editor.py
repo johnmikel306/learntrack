@@ -21,7 +21,7 @@ Modify the question text while keeping the same answer and structure.
 - Update distractors if needed to maintain plausibility
 - Keep the same difficulty and Bloom's level unless specified
 
-### 2. Options Edit (MCQ/True-False)
+### 2. Options Edit (multiple-choice/true-false)
 Modify answer options.
 - Ensure exactly one correct answer remains
 - Make distractors plausible but incorrect
@@ -35,9 +35,9 @@ Create a new question on the same topic using different source materials.
 
 ### 4. Difficulty Adjustment
 Change the difficulty level of a question.
-- EASY: Basic recall, simple language
-- MEDIUM: Application, moderate complexity
-- HARD: Analysis/synthesis, complex scenarios
+- easy: Basic recall, simple language
+- medium: Application, moderate complexity
+- hard: Analysis/synthesis, complex scenarios
 
 ## Output Format
 ```json
@@ -46,8 +46,8 @@ Change the difficulty level of a question.
     "edit_type": "TEXT_EDIT" | "OPTIONS_EDIT" | "REGENERATE" | "DIFFICULTY_ADJUST",
     "original_question": { ... },
     "edited_question": {
-        "type": "MCQ",
-        "difficulty": "MEDIUM",
+        "type": "multiple-choice",
+        "difficulty": "medium",
         "blooms_level": "APPLY",
         "question_text": "Updated question text",
         "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
@@ -72,4 +72,3 @@ Change the difficulty level of a question.
 5. Ensure the edited question passes validation criteria
 6. Keep LaTeX formatting for mathematical content
 """
-

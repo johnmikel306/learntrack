@@ -1,6 +1,6 @@
 /**
- * OpenCanvasGenerator - Main Question Generator component
- * Inspired by LangChain's Open Canvas with split-screen layout
+ * QuestionGenerator - Main component for the AI-powered question generator.
+ * Provides a split-screen layout for configuration and real-time generation results.
  */
 import React, { useState, useCallback, useEffect } from 'react'
 import { motion } from 'motion/react'
@@ -26,21 +26,32 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 // Mapping functions
 const mapQuestionType = (type: string): string => {
   const map: Record<string, string> = {
-    'multiple-choice': 'MCQ',
-    'true-false': 'TRUE_FALSE',
-    'short-answer': 'SHORT_ANSWER',
-    'essay': 'ESSAY',
+    mcq: 'multiple-choice',
+    'multiple-choice': 'multiple-choice',
+    'multiple choice': 'multiple-choice',
+    true_false: 'true-false',
+    'true-false': 'true-false',
+    'true false': 'true-false',
+    'short-answer': 'short-answer',
+    'short answer': 'short-answer',
+    short_answer: 'short-answer',
+    essay: 'essay',
   }
-  return map[type] || 'MCQ'
+  const key = type?.toLowerCase?.() || type
+  return map[key] || 'multiple-choice'
 }
 
 const mapDifficulty = (diff: string): string => {
   const map: Record<string, string> = {
-    beginner: 'EASY',
-    intermediate: 'MEDIUM',
-    advanced: 'HARD',
+    beginner: 'easy',
+    intermediate: 'medium',
+    advanced: 'hard',
+    easy: 'easy',
+    medium: 'medium',
+    hard: 'hard',
   }
-  return map[diff] || 'MEDIUM'
+  const key = diff?.toLowerCase?.() || diff
+  return map[key] || 'medium'
 }
 
 interface GeneratedQuestion {
@@ -96,7 +107,7 @@ export function OpenCanvasGenerator() {
   const [prompt, setPrompt] = useState('')
   const [questionCount, setQuestionCount] = useState(1)
   const [questionType, setQuestionType] = useState('multiple-choice')
-  const [difficulty, setDifficulty] = useState('intermediate')
+  const [difficulty, setDifficulty] = useState('medium')
   const [aiProvider, setAiProvider] = useState('')  // Will be loaded from settings
   const [selectedModel, setSelectedModel] = useState('')  // Will be loaded from settings
   const [bloomsLevels, setBloomsLevels] = useState<string[]>([])

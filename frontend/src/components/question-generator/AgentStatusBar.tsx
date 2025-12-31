@@ -1,6 +1,6 @@
 /**
- * AgentStatusBar - Animated status bar showing agent thinking process
- * Inspired by Open Canvas's real-time streaming visualization
+ * AgentStatusBar - Displays the real-time status of the question generation agent.
+ * Visualizes the agent's thinking steps and current action.
  */
 import React from 'react'
 import { motion, AnimatePresence } from 'motion/react'

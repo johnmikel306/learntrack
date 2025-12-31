@@ -7,6 +7,7 @@ from enum import Enum
 import structlog
 
 from app.models.question import QuestionCreate, QuestionDifficulty, QuestionType
+from app.utils.enums import normalize_question_type, normalize_difficulty
 
 logger = structlog.get_logger()
 
@@ -79,21 +80,25 @@ Requirements:
 4. Vary the cognitive levels (knowledge, comprehension, application, analysis)
 5. Ensure questions are appropriate for the {difficulty.value} difficulty level
 
-Format your response as a JSON array of questions with this structure:
+Format your response as a JSON object with a top-level "questions" array:
 {{
-    "question_text": "The question text",
-    "question_type": "multiple-choice|true-false|short-answer|essay",
-    "difficulty": "{difficulty.value}",
-    "points": 1,
-    "explanation": "Explanation of the correct answer",
-    "options": [
-        {{"text": "Option A", "is_correct": false}},
-        {{"text": "Option B", "is_correct": true}},
-        {{"text": "Option C", "is_correct": false}},
-        {{"text": "Option D", "is_correct": false}}
-    ],
-    "correct_answer": "For non-multiple choice questions",
-    "tags": ["relevant", "tags"]
+    "questions": [
+        {{
+            "question_text": "The question text",
+            "question_type": "multiple-choice|true-false|short-answer|essay",
+            "difficulty": "{difficulty.value}",
+            "points": 1,
+            "explanation": "Explanation of the correct answer",
+            "options": [
+                {{"text": "Option A", "is_correct": false}},
+                {{"text": "Option B", "is_correct": true}},
+                {{"text": "Option C", "is_correct": false}},
+                {{"text": "Option D", "is_correct": false}}
+            ],
+            "correct_answer": "For non-multiple choice questions",
+            "tags": ["relevant", "tags"]
+        }}
+    ]
 }}
 
 Generate exactly {question_count} questions.
@@ -113,17 +118,28 @@ Generate exactly {question_count} questions.
             else:
                 json_text = response_text.strip()
             
-            questions_data = json.loads(json_text)
+            payload = json.loads(json_text)
+            if isinstance(payload, dict):
+                questions_data = payload.get("questions", [])
+            else:
+                questions_data = payload
+
+            if isinstance(questions_data, dict):
+                questions_data = [questions_data]
+            if not isinstance(questions_data, list):
+                questions_data = []
             
             questions = []
             for q_data in questions_data:
                 try:
                     question = QuestionCreate(
                         question_text=q_data["question_text"],
-                        question_type=QuestionType(q_data["question_type"]),
+                        question_type=normalize_question_type(
+                            q_data.get("question_type") or q_data.get("type")
+                        ),
                         subject_id=subject_id,
                         topic=topic,
-                        difficulty=QuestionDifficulty(q_data.get("difficulty", "medium")),
+                        difficulty=normalize_difficulty(q_data.get("difficulty")),
                         points=q_data.get("points", 1),
                         explanation=q_data.get("explanation"),
                         tags=q_data.get("tags", []),

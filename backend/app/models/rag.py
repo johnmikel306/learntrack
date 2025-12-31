@@ -61,15 +61,18 @@ class RAGQuestionGenerationRequest(BaseModel):
     topic: str = Field(..., description="Specific topic")
     question_count: int = Field(default=10, ge=1, le=50, description="Number of questions")
     question_types: List[str] = Field(default=["multiple-choice"])
+    difficulty: Optional[str] = Field(default=None, description="Single difficulty override")
     difficulty_levels: List[str] = Field(default=["medium"])
     
     # AI settings
     ai_provider: str = Field(default="groq", description="AI provider to use")
     model_name: Optional[str] = Field(None, description="Specific model to use")
     custom_prompt: Optional[str] = Field(None, description="Custom generation prompt")
+    additional_context: Optional[str] = Field(None, description="Additional context to include")
     
     # RAG settings
     enable_web_search: bool = Field(default=False, description="Include web search results")
+    use_web_search: Optional[bool] = Field(default=None, description="Alias for enable_web_search")
     web_search_query: Optional[str] = Field(None, description="Custom web search query")
     context_chunks: int = Field(default=5, ge=1, le=20, description="Number of context chunks")
     
@@ -153,4 +156,3 @@ class WebSearchResult(BaseModel):
     snippet: str
     score: float
     raw_content: Optional[str] = None
-

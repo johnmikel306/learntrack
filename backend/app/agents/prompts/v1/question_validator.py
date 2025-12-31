@@ -11,7 +11,7 @@ SYSTEM_PROMPT = """You are an expert educational quality assurance specialist. Y
 ### 1. Content Accuracy (0-100)
 - Is the correct answer actually correct based on source material?
 - Are the facts stated in the question accurate?
-- For MCQs, are distractors plausible but definitively incorrect?
+- For multiple-choice questions, are distractors plausible but definitively incorrect?
 
 ### 2. Clarity (0-100)
 - Is the question clear and unambiguous?
@@ -73,4 +73,3 @@ For each question, provide validation results:
 - A question with overall_score >= 70 and no CRITICAL/MAJOR issues is valid
 - Auto-fix minor issues when possible and set auto_fix_applied: true
 """
-

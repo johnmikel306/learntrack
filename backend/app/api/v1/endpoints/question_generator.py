@@ -17,13 +17,14 @@ from app.core.enhanced_auth import require_tutor, ClerkUserContext
 from app.agents.graph.state import GenerationConfig, QuestionType, Difficulty, BloomsLevel, GenerationSession
 from app.agents.graph.question_generator_graph import QuestionGeneratorAgent
 from app.agents.streaming.sse_handler import SSEHandler
-from app.services.ai.ai_manager import AIManager
+from app.services.ai.ai_manager import get_tenant_ai_manager
+from app.services.tenant_ai_config_service import TenantAIConfigService
 from app.services.generation_session_service import GenerationSessionService
 from app.models.generation_session import SessionStatus, QuestionStatus, StoredQuestion
+from app.utils.enums import normalize_question_type, normalize_difficulty
 
 logger = structlog.get_logger()
 router = APIRouter()
-
 
 async def get_session_service(db = Depends(get_database)):
     """Dependency for session service"""
@@ -34,8 +35,8 @@ class GenerateRequest(BaseModel):
     """Request body for question generation"""
     prompt: str = Field(..., description="User's generation prompt")
     question_count: int = Field(default=1, ge=1, le=20, description="Number of questions")
-    question_types: List[str] = Field(default=["MCQ"], description="Question types to generate")
-    difficulty: str = Field(default="MEDIUM", description="Difficulty level")
+    question_types: List[str] = Field(default=["multiple-choice"], description="Question types to generate")
+    difficulty: str = Field(default="medium", description="Difficulty level")
     material_ids: Optional[List[str]] = Field(default=None, description="Material IDs to use")
     grade_level: Optional[str] = Field(default=None, description="Target grade level")
     subject: Optional[str] = Field(default=None, description="Subject area")
@@ -65,7 +66,8 @@ async def generate_questions(
     request: GenerateRequest,
     current_user: ClerkUserContext = Depends(require_tutor),
     rag_service = Depends(get_rag_service),
-    session_service: GenerationSessionService = Depends(get_session_service)
+    session_service: GenerationSessionService = Depends(get_session_service),
+    database: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """
     Generate questions with streaming SSE output.
@@ -85,10 +87,11 @@ async def generate_questions(
         if request.blooms_levels and len(request.blooms_levels) > 0:
             blooms = [BloomsLevel(level) for level in request.blooms_levels]
 
+        question_types = request.question_types or ["multiple-choice"]
         config = GenerationConfig(
             question_count=request.question_count,
-            question_types=[QuestionType(t) for t in request.question_types],
-            difficulty=Difficulty(request.difficulty),
+            question_types=[normalize_question_type(t) for t in question_types],
+            difficulty=normalize_difficulty(request.difficulty),
             blooms_levels=blooms,
             subject=request.subject,
             topic=request.topic,
@@ -104,15 +107,28 @@ async def generate_questions(
             material_ids=request.material_ids
         )
 
-        # Get LLM
-        ai_manager = AIManager()
-        provider = ai_manager.get_provider(request.ai_provider)
+        # Get LLM with tenant-aware configuration
+        config_service = TenantAIConfigService(database)
+        tenant_config = await config_service.get_or_create_default(current_user.tutor_id)
+
+        ai_provider = request.ai_provider or tenant_config.default_provider
+        model_name = request.model_name or tenant_config.default_model
+
+        if ai_provider not in tenant_config.enabled_providers:
+            raise HTTPException(status_code=400, detail=f"Provider {ai_provider} is not enabled for this tenant")
+
+        provider_config = tenant_config.provider_configs.get(ai_provider) if tenant_config.provider_configs else None
+        if provider_config and provider_config.enabled_models and model_name not in provider_config.enabled_models:
+            raise HTTPException(status_code=400, detail=f"Model {model_name} is not enabled for provider {ai_provider}")
+
+        ai_manager = await get_tenant_ai_manager(current_user.tutor_id, database)
+        provider = ai_manager.get_provider(ai_provider)
 
         # Set specific model if provided
-        if request.model_name and hasattr(provider, 'set_model'):
+        if model_name and hasattr(provider, 'set_model'):
             try:
-                provider.set_model(request.model_name)
-                logger.info("Model set", model=request.model_name, provider=request.ai_provider)
+                provider.set_model(model_name)
+                logger.info("Model set", model=model_name, provider=ai_provider)
             except ValueError as e:
                 logger.warning("Failed to set model, using default", error=str(e))
 
@@ -124,14 +140,18 @@ async def generate_questions(
         # Track saved questions count
         saved_questions_count = 0
 
-        # Helper to extract enum value if needed
-        def get_enum_value(val, default: str) -> str:
-            """Extract string value from enum or return as-is"""
+        # Helpers to normalize enum/string values
+        def normalize_question_type_value(val: Optional[str], default: str = "multiple-choice") -> str:
             if val is None:
                 return default
-            if hasattr(val, 'value'):
-                return val.value
-            return str(val)
+            raw = val.value if hasattr(val, "value") else str(val)
+            return normalize_question_type(raw).value
+
+        def normalize_difficulty_value(val: Optional[str], default: str = "medium") -> str:
+            if val is None:
+                return default
+            raw = val.value if hasattr(val, "value") else str(val)
+            return normalize_difficulty(raw).value
 
         # Callback to save questions as they're generated
         async def save_question_callback(question_data: dict) -> bool:
@@ -139,9 +159,13 @@ async def generate_questions(
             nonlocal saved_questions_count
             try:
                 # Handle both enum objects and string values
-                q_type = get_enum_value(question_data.get("type"), "MCQ")
-                q_difficulty = get_enum_value(question_data.get("difficulty"), "MEDIUM")
-                q_blooms = get_enum_value(question_data.get("blooms_level"), "UNDERSTAND")
+                q_type = normalize_question_type_value(question_data.get("type"), "multiple-choice")
+                q_difficulty = normalize_difficulty_value(question_data.get("difficulty"), "medium")
+                q_blooms = question_data.get("blooms_level")
+                if hasattr(q_blooms, "value"):
+                    q_blooms = q_blooms.value
+                if not q_blooms:
+                    q_blooms = "UNDERSTAND"
 
                 # Handle source_citations - may be SourceCitation objects or dicts
                 raw_citations = question_data.get("source_citations", [])
@@ -299,14 +323,15 @@ async def edit_question(
     session_id: str = Query(..., description="Generation session ID"),
     current_user: ClerkUserContext = Depends(require_tutor),
     rag_service = Depends(get_rag_service),
-    session_service: GenerationSessionService = Depends(get_session_service)
+    session_service: GenerationSessionService = Depends(get_session_service),
+    database: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """
     Edit a single question from a generation session.
 
     Allows editing:
     - Question text
-    - Options (for MCQ)
+    - Options (for multiple-choice)
     - Regenerate with different sources
     """
     try:
@@ -328,7 +353,7 @@ async def edit_question(
             raise HTTPException(status_code=404, detail="Question not found in session")
 
         # Initialize AI for editing
-        ai_manager = AIManager()
+        ai_manager = await get_tenant_ai_manager(current_user.tutor_id, database)
         provider = ai_manager.get_provider()
         llm = provider.llm
 
@@ -348,7 +373,7 @@ Please provide the edited question in the same format. Keep the question type th
 
 Respond with a JSON object containing:
 - question_text: The edited question text
-- options: Array of options (for MCQ) or null
+- options: Array of options (for multiple-choice) or null
 - correct_answer: The correct answer
 - explanation: Updated explanation
 """

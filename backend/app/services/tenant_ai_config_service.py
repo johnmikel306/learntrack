@@ -10,7 +10,8 @@ import structlog
 from app.models.tenant_ai_config import (
     TenantAIConfig, TenantAIConfigCreate, TenantAIConfigUpdate,
     ProviderConfig, ProviderAvailability, ModelAvailability,
-    ConfigChangeAuditLog, TenantAIConfigInDB
+    ConfigChangeAuditLog, TenantAIConfigInDB,
+    EmbeddingProviderAvailability, EmbeddingModelAvailability
 )
 from app.services.ai.models_fetcher import fetch_all_provider_models
 from app.core.config import settings
@@ -21,6 +22,28 @@ logger = structlog.get_logger()
 # In-memory cache for tenant configurations
 _config_cache: Dict[str, Dict[str, Any]] = {}
 CACHE_TTL_MINUTES = 10
+
+EMBEDDING_MODEL_CATALOG: Dict[str, Dict[str, Dict[str, Any]]] = {
+    "openai": {
+        "text-embedding-3-small": {
+            "name": "Text Embedding 3 Small",
+            "description": "OpenAI text embedding model (1536 dims)",
+            "dimension": 1536,
+        },
+        "text-embedding-3-large": {
+            "name": "Text Embedding 3 Large",
+            "description": "OpenAI large embedding model (3072 dims)",
+            "dimension": 3072,
+        },
+    },
+    "gemini": {
+        "text-embedding-004": {
+            "name": "Text Embedding 004",
+            "description": "Gemini embedding model (768 dims)",
+            "dimension": 768,
+        },
+    },
+}
 
 
 class TenantAIConfigService:
@@ -91,7 +114,9 @@ class TenantAIConfigService:
             tenant_id=tenant_id,
             enabled_providers=["groq", "openai", "gemini", "anthropic"],
             default_provider="groq",
-            default_model="llama-3.3-70b-versatile"
+            default_model="llama-3.3-70b-versatile",
+            embedding_provider="openai",
+            embedding_model="text-embedding-3-small"
         )
         return await self.create_config(default_config)
     
@@ -152,6 +177,12 @@ class TenantAIConfigService:
                 update_dict.get("default_model", existing.default_model),
                 update_dict.get("enabled_providers", existing.enabled_providers)
             )
+
+        if "embedding_provider" in update_dict or "embedding_model" in update_dict:
+            await self._validate_embedding_selection(
+                update_dict.get("embedding_provider", existing.embedding_provider),
+                update_dict.get("embedding_model", existing.embedding_model)
+            )
         
         await self.collection.update_one(
             {"tenant_id": tenant_id},
@@ -187,6 +218,20 @@ class TenantAIConfigService:
             raise ValidationError(
                 f"Model {model_id} is not available for provider {provider_id}"
             )
+
+    async def _validate_embedding_selection(self, provider_id: str, model_id: str) -> None:
+        """Validate embedding provider/model selection."""
+        if provider_id not in EMBEDDING_MODEL_CATALOG:
+            raise ValidationError(f"Embedding provider {provider_id} is not supported")
+
+        models = EMBEDDING_MODEL_CATALOG.get(provider_id, {})
+        if model_id not in models:
+            raise ValidationError(
+                f"Embedding model {model_id} is not available for provider {provider_id}"
+            )
+
+        if not self._check_api_key(provider_id):
+            raise ValidationError(f"API key not configured for embedding provider {provider_id}")
 
     async def get_available_providers(self, tenant_id: str) -> List[ProviderAvailability]:
         """Get all available providers with their models for a tenant"""
@@ -229,6 +274,40 @@ class TenantAIConfigService:
                 available=api_key_configured and provider_id in config.enabled_providers,
                 api_key_configured=api_key_configured,
                 models=models,
+                error_message=None if api_key_configured else "API key not configured"
+            ))
+
+        return providers
+
+    async def get_embedding_providers(self) -> List[EmbeddingProviderAvailability]:
+        """Get available embedding providers and models."""
+        provider_info = {
+            "openai": ("OpenAI", "OpenAI embedding models"),
+            "gemini": ("Google Gemini", "Gemini embedding models"),
+        }
+
+        providers: List[EmbeddingProviderAvailability] = []
+        for provider_id, models in EMBEDDING_MODEL_CATALOG.items():
+            name, description = provider_info.get(provider_id, (provider_id.title(), "Embedding provider"))
+            api_key_configured = self._check_api_key(provider_id)
+
+            model_list = []
+            for model_id, meta in models.items():
+                model_list.append(EmbeddingModelAvailability(
+                    model_id=model_id,
+                    name=meta.get("name", model_id),
+                    description=meta.get("description", ""),
+                    dimension=meta.get("dimension", 0),
+                    available=api_key_configured
+                ))
+
+            providers.append(EmbeddingProviderAvailability(
+                provider_id=provider_id,
+                name=name,
+                description=description,
+                available=api_key_configured,
+                api_key_configured=api_key_configured,
+                models=model_list,
                 error_message=None if api_key_configured else "API key not configured"
             ))
 
@@ -353,4 +432,3 @@ class TenantAIConfigService:
         logs = await cursor.to_list(length=per_page)
 
         return logs, total
-

@@ -27,10 +27,19 @@ class QuestionService:
         self.db = database
         self.collection = database.questions
     
-    async def create_question(self, question_data: QuestionCreate, tutor_id: str, ai_generated: bool = False, generation_id: Optional[str] = None) -> Question:
+    async def create_question(
+        self,
+        question_data: QuestionCreate,
+        tutor_id: str,
+        ai_generated: bool = False,
+        generation_id: Optional[str] = None,
+        extra_fields: Optional[Dict[str, Any]] = None
+    ) -> Question:
         """Create a new question"""
         try:
             question_dict = question_data.dict()
+            if extra_fields:
+                question_dict.update(extra_fields)
             question_dict["tutor_id"] = tutor_id
             question_dict["created_at"] = datetime.now(timezone.utc)
             question_dict["updated_at"] = datetime.now(timezone.utc)

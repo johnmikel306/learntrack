@@ -64,7 +64,12 @@ async def get_tenant_config(
     """Get AI configuration for a specific tenant"""
     config = await service.get_or_create_default(tenant_id)
     providers = await service.get_available_providers(tenant_id)
-    return TenantAIConfigResponse(config=config, providers=providers)
+    embedding_providers = await service.get_embedding_providers()
+    return TenantAIConfigResponse(
+        config=config,
+        providers=providers,
+        embedding_providers=embedding_providers
+    )
 
 
 @router.post("/", response_model=TenantAIConfig, status_code=status.HTTP_201_CREATED)
@@ -158,4 +163,3 @@ async def get_audit_logs(
         "page": page,
         "per_page": per_page
     }
-

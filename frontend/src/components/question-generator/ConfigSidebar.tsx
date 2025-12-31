@@ -1,6 +1,6 @@
 /**
- * ConfigSidebar - Compact configuration panel for question generation
- * Inspired by Open Canvas's assistant sidebar
+ * ConfigSidebar - Sidebar for configuring question generation parameters.
+ * Allows users to control the AI agent's behavior.
  */
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
@@ -101,9 +101,9 @@ const questionTypes = [
 ]
 
 const difficulties = [
-  { value: 'beginner', label: 'Easy', dotColor: 'bg-green-500' },
-  { value: 'intermediate', label: 'Medium', dotColor: 'bg-yellow-500' },
-  { value: 'advanced', label: 'Hard', dotColor: 'bg-red-500' },
+  { value: 'easy', label: 'Easy', dotColor: 'bg-green-500' },
+  { value: 'medium', label: 'Medium', dotColor: 'bg-yellow-500' },
+  { value: 'hard', label: 'Hard', dotColor: 'bg-red-500' },
 ]
 
 const bloomsOptions = [
@@ -495,4 +495,3 @@ export function ConfigSidebar({
 }
 
 export default ConfigSidebar
-

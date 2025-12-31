@@ -11,7 +11,7 @@ Implements the CRAG (Corrective RAG) pattern with:
 - Hallucination checking
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import uuid
 from datetime import datetime, timezone
 import structlog
@@ -110,7 +110,7 @@ class AgenticRAGAgent:
         graph.add_conditional_edges(
             "grade",
             route_after_grading,
-            {"generate": "generate", "rewrite": "rewrite", "fail": "fail"}
+            {"generate": "generate", "rewrite": "rewrite", "complete": "complete", "fail": "fail"}
         )
         
         graph.add_conditional_edges(
@@ -157,6 +157,8 @@ class AgenticRAGAgent:
         user_id: str,
         tenant_id: str,
         config: Optional[RAGConfig] = None,
+        document_ids: Optional[List[str]] = None,
+        generate_answer: Optional[bool] = True,
         sse_handler: Optional[SSEHandler] = None,
     ) -> RAGSession:
         """
@@ -174,6 +176,10 @@ class AgenticRAGAgent:
         """
         session_id = str(uuid.uuid4())
         config = config or RAGConfig()
+        if document_ids is not None:
+            config.document_ids = document_ids
+        if generate_answer is not None:
+            config.generate_answer = generate_answer
 
         logger.info(
             "Starting Agentic RAG query",
@@ -192,6 +198,8 @@ class AgenticRAGAgent:
             "original_query": query,
             "current_query": query,
             "query_analysis": None,
+
+            "document_ids": config.document_ids,
 
             "retrieved_documents": [],
             "relevant_documents": [],
@@ -282,4 +290,3 @@ class AgenticRAGAgent:
                 started_at=datetime.now(timezone.utc),
                 completed_at=datetime.now(timezone.utc),
             )
-

@@ -1,12 +1,12 @@
 """
-Question Generator Graph - Open Canvas Architecture
+Question Generator Graph - Stateful Agent Architecture
 
 Main graph definition that orchestrates the question generation pipeline.
-Uses Open Canvas pattern with generatePath routing.
+Uses a stateful agent pattern with conditional path routing.
 
 Architecture:
-  __start__ -> generatePath -> [artifact operations] -> generateFollowup -> reflect -> cleanState -> __end__
-                            -> respondToQuery -> cleanState -> __end__
+  __start__ -> router -> [artifact_operations] -> generate_followup -> reflect -> clean_state -> __end__
+                       -> respond_to_query -> clean_state -> __end__
 """
 
 from typing import Optional, Dict, Any, AsyncGenerator
@@ -23,7 +23,7 @@ from app.agents.graph.state import (
 from app.agents.graph.nodes import (
     PromptAnalyzerNode, MaterialRetrieverNode,
     QuestionGeneratorNode, QuestionValidatorNode, QuestionEditorNode,
-    # Open Canvas nodes
+    # Agentic Workflow nodes
     GeneratePathNode, GenerateArtifactNode, UpdateArtifactNode,
     RewriteArtifactNode, RewriteArtifactThemeNode,
     GenerateFollowupNode, ReflectNode, RespondToQueryNode, CleanStateNode
@@ -40,7 +40,7 @@ logger = structlog.get_logger()
 
 class QuestionGeneratorAgent:
     """
-    LangGraph-based Question Generator Agent - Open Canvas Architecture.
+    LangGraph-based Question Generator Agent - Stateful Agent Architecture.
 
     Orchestrates the question generation pipeline with:
     - generatePath: Central routing node
@@ -68,9 +68,9 @@ class QuestionGeneratorAgent:
         self._graph = None
 
     def _build_graph(self, sse_handler: Optional[SSEHandler] = None) -> StateGraph:
-        """Build the Open Canvas LangGraph state graph"""
+        """Build the LangGraph state graph for the agent."""
 
-        # Initialize Open Canvas nodes
+        # Initialize agent workflow nodes
         generate_path = GeneratePathNode(self.llm, sse_handler)
         generate_artifact = GenerateArtifactNode(self.llm, self.rag_service, sse_handler)
         update_artifact = UpdateArtifactNode(self.llm, self.rag_service, sse_handler)
@@ -167,13 +167,13 @@ class QuestionGeneratorAgent:
         tenant_id: str,
         material_ids: Optional[list] = None,
         sse_handler: Optional[SSEHandler] = None,
-        # Open Canvas action parameters
+        # Agent action parameters
         target_question_id: Optional[str] = None,
         user_query: Optional[str] = None,
         new_theme: Optional[Dict[str, Any]] = None,
     ) -> GenerationSession:
         """
-        Generate questions based on prompt and config using Open Canvas architecture.
+        Generate questions based on prompt and config using the agentic workflow.
 
         Args:
             prompt: User's generation prompt
@@ -192,13 +192,13 @@ class QuestionGeneratorAgent:
         session_id = str(uuid.uuid4())
 
         logger.info(
-            "Starting Open Canvas generation",
+            "Starting agentic generation",
             session_id=session_id,
             user_id=user_id,
             question_count=config.question_count
         )
 
-        # Initialize state with Open Canvas fields
+        # Initialize state for the agent workflow
         initial_state: AgentState = {
             # Core identifiers
             "session_id": session_id,
@@ -231,13 +231,13 @@ class QuestionGeneratorAgent:
             "iteration_count": 0,
             "max_iterations": config.max_iterations,
 
-            # Open Canvas routing
+            # Agent workflow routing
             "next_action": None,
             "target_question_id": target_question_id,
             "user_query": user_query,
             "new_theme": new_theme,
 
-            # Open Canvas outputs
+            # Agent workflow outputs
             "artifact": None,
             "followup_suggestions": [],
             "reflection_result": None,

@@ -1,8 +1,8 @@
 """
 LangGraph State Schema for Question Generator Agent
 
-Defines the state that flows through the agent graph using the
-Open Canvas architecture pattern with generatePath routing.
+Defines the state that flows through the agent graph using a
+stateful agent architecture with conditional path routing.
 """
 
 from typing import TypedDict, List, Optional, Dict, Any, Literal, Annotated
@@ -13,17 +13,17 @@ from langgraph.graph.message import add_messages
 
 
 class QuestionType(str, Enum):
-    MCQ = "MCQ"
-    TRUE_FALSE = "TRUE_FALSE"
-    SHORT_ANSWER = "SHORT_ANSWER"
-    ESSAY = "ESSAY"
+    MULTIPLE_CHOICE = "multiple-choice"
+    TRUE_FALSE = "true-false"
+    SHORT_ANSWER = "short-answer"
+    ESSAY = "essay"
 
 
 class Difficulty(str, Enum):
-    EASY = "EASY"
-    MEDIUM = "MEDIUM"
-    HARD = "HARD"
-    MIXED = "MIXED"
+    EASY = "easy"
+    MEDIUM = "medium"
+    HARD = "hard"
+    MIXED = "mixed"
 
 
 class BloomsLevel(str, Enum):
@@ -36,13 +36,13 @@ class BloomsLevel(str, Enum):
 
 
 # ============================================================================
-# Open Canvas Architecture - Action Types
+# Agentic Workflow - Action Types
 # ============================================================================
 
 class ActionType(str, Enum):
     """
     The action type determines which path the agent takes.
-    Based on Open Canvas generatePath routing.
+    Based on conditional path routing.
     """
     # Generate new artifact (questions)
     GENERATE_ARTIFACT = "generateArtifact"
@@ -69,7 +69,7 @@ class ArtifactType(str, Enum):
 class ArtifactContent(BaseModel):
     """
     The artifact content - in our case, generated questions.
-    Based on Open Canvas artifact pattern.
+    This represents the output of the generation process.
     """
     artifact_id: str
     artifact_type: ArtifactType = ArtifactType.QUESTION_SET
@@ -129,7 +129,7 @@ class GeneratedQuestion(BaseModel):
     difficulty: Difficulty
     blooms_level: BloomsLevel
     question_text: str
-    options: Optional[List[str]] = None  # For MCQ/True-False
+    options: Optional[List[str]] = None  # For multiple-choice/true-false
     correct_answer: str
     explanation: str
     source_citations: List[SourceCitation] = []
@@ -144,7 +144,7 @@ class PromptAnalysis(BaseModel):
     subject: str
     topic: str
     question_count: int = 5
-    question_types: List[QuestionType] = [QuestionType.MCQ]
+    question_types: List[QuestionType] = [QuestionType.MULTIPLE_CHOICE]
     difficulty: Difficulty = Difficulty.MEDIUM
     blooms_levels: List[BloomsLevel] | Literal["AUTO"] = "AUTO"
     special_requirements: List[str] = []
@@ -156,7 +156,7 @@ class PromptAnalysis(BaseModel):
 class GenerationConfig(BaseModel):
     """Configuration for question generation"""
     question_count: int = 1
-    question_types: List[QuestionType] = [QuestionType.MCQ]
+    question_types: List[QuestionType] = [QuestionType.MULTIPLE_CHOICE]
     difficulty: Difficulty = Difficulty.MEDIUM
     blooms_levels: List[BloomsLevel] | Literal["AUTO"] = "AUTO"
     subject: Optional[str] = None
@@ -189,7 +189,6 @@ class AgentState(TypedDict):
     """
     The state that flows through the LangGraph agent.
 
-    Based on Open Canvas architecture with generatePath routing.
     This state is passed between nodes and accumulates information
     as the agent processes the generation request.
     """
@@ -201,9 +200,9 @@ class AgentState(TypedDict):
     tenant_id: str
 
     # =========================================================================
-    # Open Canvas - Routing & Action
+    # Agent Workflow - Routing & Action
     # =========================================================================
-    # The current action type (set by generatePath router)
+    # The current action type (set by the router node)
     next_action: Optional[ActionType]
 
     # User's message/query (for respondToQuery)
@@ -216,7 +215,7 @@ class AgentState(TypedDict):
     new_theme: Optional[Dict[str, Any]]
 
     # =========================================================================
-    # Open Canvas - Artifact (Generated Questions)
+    # Generation Artifact (Generated Questions)
     # =========================================================================
     artifact: Optional[ArtifactContent]
 
@@ -245,7 +244,7 @@ class AgentState(TypedDict):
     current_question_index: int
 
     # =========================================================================
-    # Open Canvas - Follow-up & Reflection
+    # Agent Workflow - Follow-up & Reflection
     # =========================================================================
     followup_suggestions: List[FollowupSuggestion]
     reflection_result: Optional[ReflectionResult]
@@ -269,4 +268,3 @@ class AgentState(TypedDict):
     # =========================================================================
     iteration_count: int  # Current iteration number (starts at 0)
     max_iterations: int  # Maximum iterations before forcing completion (default: 3)
-

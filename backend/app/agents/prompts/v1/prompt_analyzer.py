@@ -12,8 +12,8 @@ Analyze the user's prompt and extract:
 1. **Subject**: The academic subject (e.g., Mathematics, Biology, History)
 2. **Topic**: The specific topic within the subject
 3. **Question Count**: How many questions they want (default: 5 if not specified)
-4. **Question Types**: Types of questions requested (MCQ, True/False, Short Answer, Essay)
-5. **Difficulty**: Target difficulty level (Easy, Medium, Hard)
+4. **Question Types**: Types of questions requested (multiple-choice, true-false, short-answer, essay)
+5. **Difficulty**: Target difficulty level (easy, medium, hard)
 6. **Bloom's Level**: Cognitive level if specified, otherwise suggest auto-distribution
 7. **Special Requirements**: Any specific requirements mentioned
 
@@ -24,8 +24,8 @@ Respond in JSON format:
     "subject": "string",
     "topic": "string", 
     "question_count": number,
-    "question_types": ["MCQ", "TRUE_FALSE", "SHORT_ANSWER", "ESSAY"],
-    "difficulty": "EASY" | "MEDIUM" | "HARD" | "MIXED",
+    "question_types": ["multiple-choice", "true-false", "short-answer", "essay"],
+    "difficulty": "easy" | "medium" | "hard" | "mixed",
     "blooms_levels": ["REMEMBER", "UNDERSTAND", "APPLY", "ANALYZE", "EVALUATE", "CREATE"] | "AUTO",
     "special_requirements": ["string"],
     "needs_clarification": boolean,
@@ -50,14 +50,13 @@ Your analysis:
     "subject": "Biology",
     "topic": "Photosynthesis",
     "question_count": 5,
-    "question_types": ["MCQ", "SHORT_ANSWER"],
-    "difficulty": "MEDIUM",
+    "question_types": ["multiple-choice", "short-answer"],
+    "difficulty": "medium",
     "blooms_levels": "AUTO",
     "special_requirements": ["10th grade level"],
     "needs_clarification": false,
     "clarification_questions": [],
-    "enhanced_prompt": "Generate 5 questions about photosynthesis for 10th grade Biology students, including MCQs and short answer questions at medium difficulty, covering the light-dependent and light-independent reactions."
+    "enhanced_prompt": "Generate 5 questions about photosynthesis for 10th grade Biology students, including multiple-choice and short answer questions at medium difficulty, covering the light-dependent and light-independent reactions."
 }
 ```
 """
-

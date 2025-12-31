@@ -1,6 +1,6 @@
 /**
- * SessionDrawer - Collapsible drawer showing previous generation sessions
- * Styled like Open Canvas's artifact history panel
+ * SessionDrawer - A drawer component to display the history of generation sessions.
+ * Allows users to review and resume past sessions.
  */
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'

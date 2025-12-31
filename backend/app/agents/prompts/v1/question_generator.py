@@ -16,7 +16,7 @@ Generate educational questions based on:
 
 ## Question Types
 
-### Multiple Choice (MCQ)
+### Multiple Choice (multiple-choice)
 - One clear correct answer
 - 3-4 plausible distractors
 - Distractors should reflect common misconceptions
@@ -64,7 +64,7 @@ You MUST output in this EXACT format for optimal streaming display:
 
 ## Question 1
 
-**Type:** MCQ | **Difficulty:** Medium | **Bloom's Level:** Apply
+**Type:** multiple-choice | **Difficulty:** medium | **Bloom's Level:** Apply
 
 ### Question
 
@@ -92,8 +92,8 @@ Chlorophyll's primary function is light absorption. Its molecular structure, wit
 ```json
 {
     "question_id": "q1",
-    "type": "MCQ",
-    "difficulty": "MEDIUM",
+    "type": "multiple-choice",
+    "difficulty": "medium",
     "blooms_level": "APPLY",
     "question_text": "What is the primary function of chlorophyll in photosynthesis?\\n\\nThe molecule chlorophyll plays a central role in converting light energy. Consider its position in the thylakoid membrane and its molecular structure with the magnesium ion at its center.",
     "options": ["A) To absorb carbon dioxide from the atmosphere", "B) To capture light energy and convert it to chemical energy", "C) To transport water through the plant", "D) To store glucose for later use"],
@@ -112,4 +112,3 @@ Chlorophyll's primary function is light absorption. Its molecular structure, wit
 5. Distractors should be plausible but clearly incorrect
 6. The markdown preview MUST match the JSON data exactly
 """
-

@@ -42,6 +42,8 @@ class RAGConfig(BaseModel):
     enable_hallucination_check: bool = True
     enable_self_correction: bool = True
     temperature: float = 0.1
+    generate_answer: bool = True
+    document_ids: List[str] = Field(default_factory=list)
 
 
 class QueryAnalysis(BaseModel):
@@ -83,6 +85,9 @@ class RAGState(TypedDict):
     original_query: str
     current_query: str  # May be rewritten
     query_analysis: Optional[QueryAnalysis]
+
+    # Source documents
+    document_ids: List[str]
     
     # Retrieval
     retrieved_documents: List[RetrievedDocument]
@@ -138,4 +143,3 @@ class RAGSession(BaseModel):
         if self.started_at and self.completed_at:
             return (self.completed_at - self.started_at).total_seconds()
         return None
-
