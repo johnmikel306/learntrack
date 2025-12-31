@@ -229,6 +229,42 @@ export default function StudentDetailsPage() {
     }
   }
 
+  const fetchAvailableParents = async () => {
+    try {
+      setLoadingParents(true)
+      const res = await client.get('/parents')
+      if (res.error) throw new Error(res.error)
+
+      const parents = res.data?.parents || res.data || []
+      const mappedParents = parents.map((p: any) => ({
+        id: p.clerk_id || p._id,
+        name: p.name,
+        email: p.email
+      }))
+      setAvailableParents(mappedParents)
+    } catch (error) {
+      console.error('Failed to load parents list:', error)
+      setAvailableParents([])
+    } finally {
+      setLoadingParents(false)
+    }
+  }
+
+  const handleParentSelection = (value: string) => {
+    setParentSelection(value)
+    if (value === 'new') {
+      setParentName('')
+      setParentEmail('')
+      return
+    }
+
+    const selectedParent = availableParents.find((parent) => parent.id === value)
+    if (selectedParent) {
+      setParentName(selectedParent.name)
+      setParentEmail(selectedParent.email)
+    }
+  }
+
   const handleLinkParent = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!parentEmail.trim() || !parentName.trim() || !student) return
