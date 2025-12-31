@@ -74,7 +74,7 @@ export function AdminDashboardPage() {
         <button
           onClick={fetchMetrics}
           disabled={isLoading}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
           <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           Refresh
@@ -82,14 +82,14 @@ export function AdminDashboardPage() {
       </div>
 
       {/* Quick Stats Banner */}
-      <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-6 text-white">
+      <div className="bg-primary rounded-xl p-6 text-white">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-white/20 rounded-lg">
             <Activity className="w-8 h-8" />
           </div>
           <div>
             <h2 className="text-xl font-semibold">System Status: Healthy</h2>
-            <p className="text-purple-100">All services are running normally</p>
+            <p className="text-white/80">All services are running normally</p>
           </div>
         </div>
       </div>

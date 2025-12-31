@@ -426,7 +426,7 @@ export default function StudentDashboard({ onBack }: StudentDashboardProps) {
                     </div>
                   ) : (
                     progressAnalytics.subject_performance.map((subject, index) => {
-                      const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-pink-500']
+                      const colors = ['bg-blue-500', 'bg-green-500', 'bg-primary', 'bg-orange-500', 'bg-pink-500']
                       const color = colors[index % colors.length]
                       const grade = subject.score >= 90 ? 'A' : subject.score >= 85 ? 'A-' : subject.score >= 80 ? 'B+' : subject.score >= 75 ? 'B' : 'C'
 
@@ -483,7 +483,7 @@ export default function StudentDashboard({ onBack }: StudentDashboardProps) {
                 {analyticsLoading ? (
                   <div className="space-y-3">
                     {Array.from({ length: 3 }).map((_, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-lg">
+                      <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                         <div className="space-y-1">
                           <Skeleton className="h-4 w-24" />
                           <Skeleton className="h-3 w-16" />

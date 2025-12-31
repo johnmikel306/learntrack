@@ -8,6 +8,7 @@ from enum import Enum
 
 class AIProvider(str, Enum):
     """Available AI providers"""
+    GROQ = "groq"
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     GOOGLE = "google"
@@ -27,7 +28,7 @@ class AIProviderConfig(BaseModel):
 class AISettings(BaseModel):
     """AI configuration settings"""
     providers: Dict[str, AIProviderConfig] = {}
-    default_provider: AIProvider = AIProvider.OPENAI
+    default_provider: AIProvider = AIProvider.GROQ
     
     def get_provider_config(self, provider: AIProvider) -> Optional[AIProviderConfig]:
         """Get configuration for a specific provider"""

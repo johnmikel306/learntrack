@@ -117,7 +117,7 @@ export function AdminSettingsPage() {
             <p className="text-gray-500 dark:text-gray-400">Configure system-wide settings and feature flags</p>
           </div>
         </div>
-        <button onClick={handleSaveSettings} disabled={isSaving} className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50">
+        <button onClick={handleSaveSettings} disabled={isSaving} className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50">
           <Save className="w-4 h-4" /> {isSaving ? 'Saving...' : 'Save Changes'}
         </button>
       </div>
@@ -152,6 +152,7 @@ export function AdminSettingsPage() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Default AI Provider</label>
               <select value={settings.default_ai_provider} onChange={(e) => setSettings({ ...settings, default_ai_provider: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700">
+                <option value="groq">Groq</option>
                 <option value="openai">OpenAI</option>
                 <option value="anthropic">Anthropic</option>
                 <option value="google">Google</option>

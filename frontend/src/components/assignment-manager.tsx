@@ -195,7 +195,7 @@ export default function AssignmentManager() {
       </div>
 
       {/* Filters and Search */}
-      <Card className="shadow-lg border-0 bg-white dark:bg-slate-900">
+      <Card className="shadow-lg">
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
@@ -236,10 +236,10 @@ export default function AssignmentManager() {
       </Card>
 
       {/* Assignments List */}
-      <Card className="shadow-lg border-0 bg-white dark:bg-slate-900">
+      <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center">
-            <BookOpen className="w-5 h-5 mr-2 text-purple-600" />
+            <BookOpen className="w-5 h-5 mr-2 text-primary" />
             Assignments ({filteredAssignments.length})
           </CardTitle>
         </CardHeader>
@@ -248,11 +248,11 @@ export default function AssignmentManager() {
             // Loading skeleton
             <div className="space-y-4">
               {Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="p-4 bg-gray-50 dark:bg-slate-800 rounded-lg animate-pulse">
+                <div key={index} className="p-4 bg-muted rounded-lg animate-pulse">
                   <div className="space-y-3">
-                    <div className="h-4 bg-gray-300 dark:bg-slate-700 rounded w-1/3"></div>
-                    <div className="h-3 bg-gray-300 dark:bg-slate-700 rounded w-1/2"></div>
-                    <div className="h-3 bg-gray-300 dark:bg-slate-700 rounded w-3/4"></div>
+                    <div className="h-4 bg-muted-foreground/20 rounded w-1/3"></div>
+                    <div className="h-3 bg-muted-foreground/20 rounded w-1/2"></div>
+                    <div className="h-3 bg-muted-foreground/20 rounded w-3/4"></div>
                   </div>
                 </div>
               ))}

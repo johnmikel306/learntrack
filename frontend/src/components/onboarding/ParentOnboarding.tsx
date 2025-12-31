@@ -81,11 +81,11 @@ export default function ParentOnboarding() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl shadow-xl">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-16 h-16 bg-pink-600 rounded-full flex items-center justify-center">
-            <Heart className="w-8 h-8 text-white" />
+          <div className="mx-auto mb-4 w-16 h-16 bg-primary rounded-full flex items-center justify-center">
+            <Heart className="w-8 h-8 text-primary-foreground" />
           </div>
           <CardTitle className="text-3xl font-bold">Welcome to LearnTrack!</CardTitle>
           <CardDescription className="text-lg">
@@ -93,7 +93,7 @@ export default function ParentOnboarding() {
           </CardDescription>
           <div className="mt-4">
             <Progress value={progress} className="h-2" />
-            <p className="text-sm text-gray-600 dark:text-slate-400 mt-2">
+            <p className="text-sm text-muted-foreground mt-2">
               Step {step} of {totalSteps}
             </p>
           </div>

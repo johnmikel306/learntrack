@@ -1,38 +1,68 @@
-import React, { useState } from 'react'
-import { Link, useLocation, Outlet } from 'react-router-dom'
-import { 
-  LayoutDashboard, 
-  Users, 
-  Building2, 
-  Settings, 
+// AdminLayout.tsx - Admin dashboard layout using SidebarProvider
+import React from 'react'
+import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom'
+import {
+  LayoutDashboard,
+  Users,
+  Building2,
+  Settings,
   Shield,
-  ChevronLeft,
-  ChevronRight,
   LogOut,
-  Bell
+  Moon,
+  Sun,
+  ArrowLeft,
+  Bell,
 } from 'lucide-react'
 import { useUserContext } from '../../contexts/UserContext'
 import { useClerk } from '@clerk/clerk-react'
+import { useTheme } from '@/contexts/ThemeContext'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarInset,
+  SidebarTrigger,
+} from "@/components/ui/sidebar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Separator } from "@/components/ui/separator"
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
+import { Button } from "@/components/ui/button"
 
 interface NavItem {
   name: string
   path: string
-  icon: React.ReactNode
+  icon: React.ElementType
   permission?: string
 }
 
 const navItems: NavItem[] = [
-  { name: 'Dashboard', path: '/admin', icon: <LayoutDashboard className="w-5 h-5" /> },
-  { name: 'Tenants', path: '/admin/tenants', icon: <Building2 className="w-5 h-5" />, permission: 'view_all_tenants' },
-  { name: 'Users', path: '/admin/users', icon: <Users className="w-5 h-5" />, permission: 'view_all_users' },
-  { name: 'Settings', path: '/admin/settings', icon: <Settings className="w-5 h-5" />, permission: 'manage_system_settings' },
+  { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
+  { name: 'Tenants', path: '/admin/tenants', icon: Building2, permission: 'view_all_tenants' },
+  { name: 'Users', path: '/admin/users', icon: Users, permission: 'view_all_users' },
+  { name: 'Settings', path: '/admin/settings', icon: Settings, permission: 'manage_system_settings' },
 ]
 
-export function AdminLayout() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+function AdminSidebar() {
   const location = useLocation()
+  const navigate = useNavigate()
   const { clerkUser, hasAdminPermission, hasFullAdminAccess } = useUserContext()
   const { signOut } = useClerk()
+  const { theme, toggleTheme } = useTheme()
 
   const filteredNavItems = navItems.filter(item => {
     if (!item.permission) return true
@@ -40,114 +70,172 @@ export function AdminLayout() {
   })
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Sidebar with LearnTrack branding */}
-      <aside
-        className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-gradient-to-b from-purple-900 via-purple-800 to-purple-900 text-white transition-all duration-300 flex flex-col shadow-xl`}
-      >
-        {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-purple-700/50">
-          {!sidebarCollapsed && (
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
-                <Shield className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <span className="font-bold text-lg bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">LearnTrack</span>
-                <span className="block text-xs text-purple-300">Admin Panel</span>
-              </div>
+    <Sidebar collapsible="icon" variant="inset">
+      <SidebarContent>
+        <SidebarGroup>
+          {/* Logo Header */}
+          <div className="px-4 py-6 flex items-center gap-2 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-4 group-data-[collapsible=icon]:justify-center">
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
+              <Shield className="w-5 h-5 text-primary-foreground" />
             </div>
-          )}
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-1.5 rounded-lg hover:bg-purple-700/50 transition-colors"
-          >
-            {sidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-          </button>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 py-4 overflow-y-auto">
-          <ul className="space-y-1 px-2">
-            {filteredNavItems.map((item) => {
-              const isActive = location.pathname === item.path ||
-                (item.path !== '/admin' && location.pathname.startsWith(item.path))
-
-              return (
-                <li key={item.path}>
-                  <Link
-                    to={item.path}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200
-                      ${isActive
-                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/25'
-                        : 'text-purple-200 hover:bg-purple-700/50 hover:text-white'
-                      }
-                    `}
-                    title={sidebarCollapsed ? item.name : undefined}
-                  >
-                    {item.icon}
-                    {!sidebarCollapsed && <span className="font-medium">{item.name}</span>}
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        </nav>
-
-        {/* User section */}
-        <div className="border-t border-purple-700/50 p-4">
-          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 flex items-center justify-center text-sm font-medium shadow-lg">
-              {clerkUser?.firstName?.[0] || 'A'}
+            <div className="group-data-[collapsible=icon]:hidden">
+              <h1 className="text-xl font-bold tracking-tight text-primary font-lufga">LearnTrack</h1>
+              <p className="text-xs text-muted-foreground">Admin Panel</p>
             </div>
-            {!sidebarCollapsed && (
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate text-white">{clerkUser?.fullName || 'Admin'}</p>
-                <p className="text-xs text-purple-300 truncate">{clerkUser?.primaryEmailAddress?.emailAddress}</p>
-              </div>
-            )}
           </div>
-          {!sidebarCollapsed && (
-            <button
-              onClick={() => signOut()}
-              className="mt-3 w-full flex items-center gap-2 px-3 py-2 text-sm text-purple-200 hover:text-white hover:bg-purple-700/50 rounded-lg transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-              Sign Out
-            </button>
-          )}
-        </div>
-      </aside>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top bar with gradient accent */}
-        <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6 relative">
-          {/* Gradient accent line */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-600 to-pink-600"></div>
-          <h1 className="text-xl font-semibold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-            Super Admin Dashboard
-          </h1>
-          <div className="flex items-center gap-4">
-            <button className="p-2 text-gray-500 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 relative transition-colors">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"></span>
-            </button>
-            <Link
-              to="/dashboard"
-              className="text-sm px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 transition-all shadow-md hover:shadow-lg"
-            >
-              Back to App
-            </Link>
-          </div>
+          {/* Navigation Menu */}
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {filteredNavItems.map((item) => {
+                const Icon = item.icon
+                const isActive = location.pathname === item.path ||
+                  (item.path !== '/admin' && location.pathname.startsWith(item.path))
+
+                return (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={item.name}
+                    >
+                      <Link to={item.path}>
+                        <Icon className="w-4 h-4" />
+                        <span>{item.name}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      {/* Footer with User Menu */}
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton
+                  size="lg"
+                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                >
+                  <Avatar className="h-8 w-8 rounded-lg">
+                    <AvatarImage src={clerkUser?.imageUrl} alt={clerkUser?.fullName || 'Admin'} />
+                    <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">
+                      {clerkUser?.firstName?.[0] || 'A'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-semibold">{clerkUser?.fullName || "Admin"}</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {clerkUser?.primaryEmailAddress?.emailAddress}
+                    </span>
+                  </div>
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+                side="bottom"
+                align="end"
+                sideOffset={4}
+              >
+                <DropdownMenuLabel className="p-0 font-normal">
+                  <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+                    <Avatar className="h-8 w-8 rounded-lg">
+                      <AvatarImage src={clerkUser?.imageUrl} alt={clerkUser?.fullName || 'Admin'} />
+                      <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">
+                        {clerkUser?.firstName?.[0] || 'A'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="grid flex-1 text-left text-sm leading-tight">
+                      <span className="truncate font-semibold">{clerkUser?.fullName || "Admin"}</span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {clerkUser?.primaryEmailAddress?.emailAddress}
+                      </span>
+                    </div>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem onClick={toggleTheme}>
+                    {theme === "dark" ? (
+                      <>
+                        <Sun className="mr-2 h-4 w-4" />
+                        Light Mode
+                      </>
+                    ) : (
+                      <>
+                        <Moon className="mr-2 h-4 w-4" />
+                        Dark Mode
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to App
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => signOut()}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
+  )
+}
+
+export function AdminLayout() {
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  // Get current page title for breadcrumb
+  const getCurrentPageTitle = () => {
+    const currentItem = navItems.find(item => item.path === location.pathname)
+    return currentItem?.name || 'Admin'
+  }
+
+  return (
+    <SidebarProvider>
+      <AdminSidebar />
+      <SidebarInset className="bg-background">
+        {/* Header with breadcrumb */}
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-card px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem className="hidden md:block">
+                <BreadcrumbLink href="#" onClick={() => navigate('/admin')}>
+                  Admin
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              {location.pathname !== '/admin' && (
+                <>
+                  <BreadcrumbSeparator className="hidden md:block" />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{getCurrentPageTitle()}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </>
+              )}
+            </BreadcrumbList>
+          </Breadcrumb>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-6 bg-gray-50 dark:bg-gray-900">
+        <main className="flex-1 overflow-y-auto p-6">
           <Outlet />
         </main>
-      </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }
+
 

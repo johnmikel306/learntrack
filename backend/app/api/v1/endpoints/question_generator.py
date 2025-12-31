@@ -712,8 +712,33 @@ async def get_available_models(
     except Exception as e:
         logger.warning("Failed to load tenant AI config", error=str(e))
 
-    # Fetch models from all providers (with caching)
-    fetched_models = await fetch_all_provider_models(limit=3)
+    # Fallback static models in case API fetching fails
+    fallback_models = {
+        "groq": [
+            {"id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B", "description": "Most versatile", "context_window": 131072},
+            {"id": "llama-3.1-8b-instant", "name": "Llama 3.1 8B", "description": "Fast responses", "context_window": 131072},
+            {"id": "meta-llama/llama-4-maverick-17b-128e-instruct", "name": "Llama 4 Maverick 17B", "description": "Latest multimodal", "context_window": 131072},
+        ],
+        "openai": [
+            {"id": "gpt-4o", "name": "GPT-4o", "description": "Most capable multimodal", "context_window": 128000},
+            {"id": "gpt-4o-mini", "name": "GPT-4o Mini", "description": "Fast and affordable", "context_window": 128000},
+        ],
+        "gemini": [
+            {"id": "gemini-2.0-flash-exp", "name": "Gemini 2.0 Flash", "description": "Latest experimental", "context_window": 1000000},
+        ],
+        "anthropic": [
+            {"id": "claude-3-5-sonnet-20241022", "name": "Claude 3.5 Sonnet", "description": "Most capable", "context_window": 200000},
+        ]
+    }
+
+    # Fetch models from all providers (with caching and error handling)
+    fetched_models = {}
+    try:
+        fetched_models = await fetch_all_provider_models(limit=3)
+        logger.info("Successfully fetched models from providers", count=len(fetched_models))
+    except Exception as e:
+        logger.warning("Failed to fetch models from providers, using fallback", error=str(e))
+        fetched_models = {}
 
     providers = []
 
@@ -729,8 +754,11 @@ async def get_available_models(
         is_enabled = enabled_providers is None or provider_id in enabled_providers
         is_available = bool(api_key) and is_enabled
 
-        # Get models, filtering by tenant config if applicable
+        # Get models from fetched data, or use fallback if empty
         models = fetched_models.get(provider_id, [])
+        if not models and provider_id in fallback_models:
+            models = fallback_models[provider_id]
+            logger.info(f"Using fallback models for {provider_id}")
 
         # If tenant has specific model restrictions, filter models
         if tenant_config and tenant_config.provider_configs:

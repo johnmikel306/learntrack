@@ -25,14 +25,14 @@ export function LoadingState({ count = 3, type = 'card' }: LoadingStateProps) {
         {Array.from({ length: count }).map((_, index) => (
           <div
             key={index}
-            className="p-4 bg-gray-50 dark:bg-slate-800 rounded-lg animate-pulse"
+            className="p-4 bg-muted rounded-lg animate-pulse"
           >
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-gray-300 dark:bg-slate-700 rounded-full" />
+              <div className="w-12 h-12 bg-muted-foreground/20 rounded-full" />
               <div className="flex-1 space-y-3">
-                <div className="h-4 bg-gray-300 dark:bg-slate-700 rounded w-1/4" />
-                <div className="h-3 bg-gray-300 dark:bg-slate-700 rounded w-1/2" />
-                <div className="h-3 bg-gray-300 dark:bg-slate-700 rounded w-3/4" />
+                <div className="h-4 bg-muted-foreground/20 rounded w-1/4" />
+                <div className="h-3 bg-muted-foreground/20 rounded w-1/2" />
+                <div className="h-3 bg-muted-foreground/20 rounded w-3/4" />
               </div>
             </div>
           </div>
@@ -47,7 +47,7 @@ export function LoadingState({ count = 3, type = 'card' }: LoadingStateProps) {
         {Array.from({ length: count }).map((_, index) => (
           <div
             key={index}
-            className="h-12 bg-gray-50 dark:bg-slate-800 rounded animate-pulse"
+            className="h-12 bg-muted rounded animate-pulse"
           />
         ))}
       </div>
@@ -59,12 +59,12 @@ export function LoadingState({ count = 3, type = 'card' }: LoadingStateProps) {
       {Array.from({ length: count }).map((_, index) => (
         <div
           key={index}
-          className="p-4 bg-gray-50 dark:bg-slate-800 rounded-lg animate-pulse"
+          className="p-4 bg-muted rounded-lg animate-pulse"
         >
           <div className="space-y-3">
-            <div className="h-4 bg-gray-300 dark:bg-slate-700 rounded w-1/3" />
-            <div className="h-3 bg-gray-300 dark:bg-slate-700 rounded w-1/2" />
-            <div className="h-3 bg-gray-300 dark:bg-slate-700 rounded w-3/4" />
+            <div className="h-4 bg-muted-foreground/20 rounded w-1/3" />
+            <div className="h-3 bg-muted-foreground/20 rounded w-1/2" />
+            <div className="h-3 bg-muted-foreground/20 rounded w-3/4" />
           </div>
         </div>
       ))}

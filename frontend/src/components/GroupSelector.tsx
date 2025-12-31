@@ -86,15 +86,15 @@ export default function GroupSelector({ selectedGroups, onChange, onStudentCount
   if (loading) {
     return (
       <div className="text-center py-4">
-        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-        <p className="mt-2 text-sm text-gray-600 dark:text-slate-400">Loading groups...</p>
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <p className="mt-2 text-sm text-muted-foreground">Loading groups...</p>
       </div>
     )
   }
 
   if (groups.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500 dark:text-slate-400">
+      <div className="text-center py-8 text-muted-foreground">
         <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
         <p>No student groups found</p>
         <p className="text-sm mt-1">Create groups in the Groups section</p>
@@ -104,7 +104,7 @@ export default function GroupSelector({ selectedGroups, onChange, onStudentCount
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-medium text-gray-700 dark:text-slate-300">
+      <p className="text-sm font-medium text-foreground">
         Select Student Groups
       </p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -113,7 +113,7 @@ export default function GroupSelector({ selectedGroups, onChange, onStudentCount
             key={group._id}
             className={`cursor-pointer transition-all duration-200 ${
               selectedGroups.includes(group._id)
-                ? 'ring-2 ring-purple-600 bg-purple-50 dark:bg-purple-900/10'
+                ? 'ring-2 ring-primary bg-primary/5'
                 : 'hover:shadow-md'
             }`}
             onClick={() => toggleGroup(group._id)}

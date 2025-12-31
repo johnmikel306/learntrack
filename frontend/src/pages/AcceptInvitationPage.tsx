@@ -133,11 +133,11 @@ export default function AcceptInvitationPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-        <Card className="w-full max-w-md shadow-xl border-0 bg-white dark:bg-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="w-full max-w-md shadow-xl">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="w-12 h-12 animate-spin text-purple-600 mb-4" />
-            <p className="text-slate-600 dark:text-slate-400">Verifying invitation...</p>
+            <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
+            <p className="text-muted-foreground">Verifying invitation...</p>
           </CardContent>
         </Card>
       </div>
@@ -221,11 +221,11 @@ export default function AcceptInvitationPage() {
 
   if (accepting) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-        <Card className="w-full max-w-md shadow-xl border-0 bg-white dark:bg-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="w-full max-w-md shadow-xl">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="w-12 h-12 animate-spin text-purple-600 mb-4" />
-            <p className="text-slate-600 dark:text-slate-400">Creating your account...</p>
+            <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
+            <p className="text-muted-foreground">Creating your account...</p>
           </CardContent>
         </Card>
       </div>
@@ -233,14 +233,14 @@ export default function AcceptInvitationPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-4">
-      <Card className="w-full max-w-md shadow-xl border-0 bg-white dark:bg-slate-900">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md shadow-xl">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
+          <CardTitle className="flex items-center gap-2">
             <CheckCircle className="w-6 h-6 text-green-600" />
             Invitation Accepted!
           </CardTitle>
-          <CardDescription className="text-slate-600 dark:text-slate-400">
+          <CardDescription>
             Your account has been created successfully
           </CardDescription>
         </CardHeader>

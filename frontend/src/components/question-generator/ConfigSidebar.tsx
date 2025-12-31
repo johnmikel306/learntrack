@@ -44,6 +44,8 @@ import {
 import { cn } from '@/lib/utils'
 import { useAuth } from '@clerk/clerk-react'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+
 interface Material {
   _id: string
   title: string
@@ -140,6 +142,21 @@ export function ConfigSidebar({
   const [isLoadingProviders, setIsLoadingProviders] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  // Fallback static models in case API fails
+  const fallbackProviders = [
+    {
+      id: 'groq',
+      name: 'Groq',
+      description: 'Ultra-fast inference with open models',
+      available: true,
+      models: [
+        { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', description: 'Most versatile', available: true },
+        { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B', description: 'Fast responses', available: true },
+        { id: 'meta-llama/llama-4-maverick-17b-128e-instruct', name: 'Llama 4 Maverick 17B', description: 'Latest multimodal', available: true },
+      ]
+    }
+  ]
+
   // Fetch available providers and models
   useEffect(() => {
     const fetchProviders = async () => {
@@ -147,15 +164,21 @@ export function ConfigSidebar({
       try {
         const token = await getToken()
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/question-generator/available-models`,
+          `${API_BASE_URL}/question-generator/available-models`,
           { headers: { Authorization: `Bearer ${token}` } }
         )
         if (response.ok) {
           const data = await response.json()
-          setProviders(data.providers || [])
+          // Use API data if available, otherwise fallback
+          setProviders(data.providers && data.providers.length > 0 ? data.providers : fallbackProviders)
+        } else {
+          // Use fallback on error
+          setProviders(fallbackProviders)
         }
       } catch (error) {
-        console.error('Failed to fetch providers:', error)
+        console.error('Failed to fetch providers, using fallback:', error)
+        // Use fallback on error
+        setProviders(fallbackProviders)
       } finally {
         setIsLoadingProviders(false)
       }

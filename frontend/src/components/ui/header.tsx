@@ -47,21 +47,21 @@ export function Header({ showNavigation = true }: HeaderProps) {
           {/* Navigation */}
           {showNavigation && (
             <nav className="hidden md:flex space-x-8">
-              <a href="#" className="relative text-muted-foreground hover:text-purple-500 dark:hover:text-purple-400 transition-all duration-300 motion-reduce:transition-none hover:scale-105 motion-reduce:hover:scale-100 group">
+              <a href="#" className="relative text-muted-foreground hover:text-primary transition-all duration-300 motion-reduce:transition-none hover:scale-105 motion-reduce:hover:scale-100 group">
                 <span className="relative z-10">Features</span>
-                <span className="absolute inset-x-0 bottom-0 h-0.5 bg-purple-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 motion-reduce:transition-none origin-left"></span>
+                <span className="absolute inset-x-0 bottom-0 h-0.5 bg-primary transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 motion-reduce:transition-none origin-left"></span>
               </a>
-              <a href="#" className="relative text-muted-foreground hover:text-purple-500 dark:hover:text-purple-400 transition-all duration-300 motion-reduce:transition-none hover:scale-105 motion-reduce:hover:scale-100 group">
+              <a href="#" className="relative text-muted-foreground hover:text-primary transition-all duration-300 motion-reduce:transition-none hover:scale-105 motion-reduce:hover:scale-100 group">
                 <span className="relative z-10">Solutions</span>
-                <span className="absolute inset-x-0 bottom-0 h-0.5 bg-purple-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 motion-reduce:transition-none origin-left"></span>
+                <span className="absolute inset-x-0 bottom-0 h-0.5 bg-primary transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 motion-reduce:transition-none origin-left"></span>
               </a>
-              <a href="#" className="relative text-muted-foreground hover:text-purple-500 dark:hover:text-purple-400 transition-all duration-300 motion-reduce:transition-none hover:scale-105 motion-reduce:hover:scale-100 group">
+              <a href="#" className="relative text-muted-foreground hover:text-primary transition-all duration-300 motion-reduce:transition-none hover:scale-105 motion-reduce:hover:scale-100 group">
                 <span className="relative z-10">Pricing</span>
-                <span className="absolute inset-x-0 bottom-0 h-0.5 bg-purple-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 motion-reduce:transition-none origin-left"></span>
+                <span className="absolute inset-x-0 bottom-0 h-0.5 bg-primary transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 motion-reduce:transition-none origin-left"></span>
               </a>
-              <a href="#" className="relative text-muted-foreground hover:text-purple-500 dark:hover:text-purple-400 transition-all duration-300 motion-reduce:transition-none hover:scale-105 motion-reduce:hover:scale-100 group">
+              <a href="#" className="relative text-muted-foreground hover:text-primary transition-all duration-300 motion-reduce:transition-none hover:scale-105 motion-reduce:hover:scale-100 group">
                 <span className="relative z-10">About</span>
-                <span className="absolute inset-x-0 bottom-0 h-0.5 bg-purple-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 motion-reduce:transition-none origin-left"></span>
+                <span className="absolute inset-x-0 bottom-0 h-0.5 bg-primary transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 motion-reduce:transition-none origin-left"></span>
               </a>
             </nav>
           )}
@@ -87,13 +87,13 @@ export function Header({ showNavigation = true }: HeaderProps) {
               <>
                 <button
                   onClick={handleSignIn}
-                  className="text-muted-foreground hover:text-purple-500 dark:hover:text-purple-400 transition-all duration-300 motion-reduce:transition-none hover:scale-105 motion-reduce:hover:scale-100 px-3 py-2 rounded-lg hover:bg-purple-50 dark:hover:bg-white/5"
+                  className="text-muted-foreground hover:text-primary transition-all duration-300 motion-reduce:transition-none hover:scale-105 motion-reduce:hover:scale-100 px-3 py-2 rounded-lg hover:bg-primary/5"
                 >
                   Sign In
                 </button>
                 <button
                   onClick={handleGetStarted}
-                  className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all duration-300 hover:scale-105 hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:scale-100 transform hover:-translate-y-0.5 motion-reduce:hover:translate-y-0"
+                  className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-all duration-300 hover:scale-105 hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:scale-100 transform hover:-translate-y-0.5 motion-reduce:hover:translate-y-0"
                 >
                   Get Started
                 </button>
