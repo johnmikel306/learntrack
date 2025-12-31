@@ -107,8 +107,8 @@ async def fetch_openai_models(api_key: str, limit: int = 3) -> List[Dict[str, An
     if cached:
         return cached  # No limit - return all selected models
 
-    # Model prefixes to include: 4o, 4.1, o1, o3, o4-mini
-    include_prefixes = ["gpt-4o", "gpt-4.1", "o1", "o3", "o4-mini"]
+    # Model prefixes to include: 5.2, 4o, 4.1, o1, o3, o4-mini
+    include_prefixes = ["gpt-5.2", "gpt-4o", "gpt-4.1", "o1", "o3", "o4-mini"]
     # Exclude patterns
     exclude_patterns = ["realtime", "audio", "transcribe", "tts", "search"]
 
@@ -133,9 +133,11 @@ async def fetch_openai_models(api_key: str, limit: int = 3) -> List[Dict[str, An
                 if not any(model_id.startswith(prefix) for prefix in include_prefixes):
                     continue
 
-                # Set priority order: gpt-4o first, then gpt-4.1, then o-series
-                if model_id.startswith("gpt-4o"):
-                    priority = 0 if model_id == "gpt-4o" else 1
+                # Set priority order: gpt-5.2 first, then gpt-4o, then others
+                if model_id.startswith("gpt-5.2"):
+                    priority = 0 if model_id == "gpt-5.2" else 1
+                elif model_id.startswith("gpt-4o"):
+                    priority = 5 if model_id == "gpt-4o" else 6
                 elif model_id.startswith("gpt-4.1"):
                     priority = 10
                 elif model_id.startswith("o4-mini"):

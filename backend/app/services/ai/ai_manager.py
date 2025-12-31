@@ -251,7 +251,9 @@ class AIManager:
             return {}
         elif provider_name == AIProvider.OPENAI or provider_name == "openai":
             return {
-                "gpt-4o": {"context_window": 128000, "description": "GPT-4o - Most capable"},
+                "gpt-5.2": {"context_window": 128000, "description": "GPT-5.2 - Most capable"},
+                "gpt-5.2-mini": {"context_window": 128000, "description": "GPT-5.2 Mini - Fast and affordable"},
+                "gpt-4o": {"context_window": 128000, "description": "GPT-4o - Versatile model"},
                 "gpt-4o-mini": {"context_window": 128000, "description": "GPT-4o Mini - Fast and affordable"},
                 "gpt-4-turbo": {"context_window": 128000, "description": "GPT-4 Turbo - High performance"},
             }
