@@ -53,7 +53,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
 
       // Determine WebSocket URL based on environment
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const host = import.meta.env.VITE_API_URL?.replace(/^https?:\/\//, '') || 'localhost:8000'
+      const rawBase = import.meta.env.VITE_WS_URL
+        || import.meta.env.VITE_API_BASE_URL
+        || 'http://localhost:8000/api/v1'
+      const host = rawBase
+        .replace(/^https?:\/\//, '')
+        .replace(/^wss?:\/\//, '')
+        .replace(/\/api\/v\d+$/, '')
       const wsUrl = `${protocol}//${host}/api/v1/ws?token=${token}`
 
       console.log('Connecting to WebSocket:', wsUrl.replace(token, '***'))
