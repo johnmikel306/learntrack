@@ -111,10 +111,10 @@ export function AdminSettingsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg"><Settings className="w-6 h-6 text-gray-600 dark:text-gray-400" /></div>
+          <div className="p-2 bg-muted rounded-lg"><Settings className="w-6 h-6 text-muted-foreground" /></div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">System Settings</h1>
-            <p className="text-gray-500 dark:text-gray-400">Configure system-wide settings and feature flags</p>
+            <h1 className="text-2xl font-bold text-foreground">System Settings</h1>
+            <p className="text-muted-foreground">Configure system-wide settings and feature flags</p>
           </div>
         </div>
         <button onClick={handleSaveSettings} disabled={isSaving} className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50">
@@ -126,16 +126,16 @@ export function AdminSettingsPage() {
       {successMessage && <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-green-600 dark:text-green-400">{successMessage}</div>}
 
       {/* Feature Flags */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Feature Flags</h2>
+      <div className="bg-card rounded-xl shadow-sm border border-border p-6">
+        <h2 className="text-lg font-semibold text-foreground mb-4">Feature Flags</h2>
         <div className="space-y-4">
           {featureFlags.map((flag) => (
-            <div key={flag.name} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+            <div key={flag.name} className="flex items-center justify-between p-4 bg-muted/40 rounded-lg">
               <div>
-                <p className="font-medium text-gray-900 dark:text-white">{flag.name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
-                {flag.description && <p className="text-sm text-gray-500 dark:text-gray-400">{flag.description}</p>}
+                <p className="font-medium text-foreground">{flag.name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
+                {flag.description && <p className="text-sm text-muted-foreground">{flag.description}</p>}
               </div>
-              <button onClick={() => handleToggleFlag(flag.name, flag.enabled)} className={`p-1 rounded-lg transition-colors ${flag.enabled ? 'text-green-600' : 'text-gray-400'}`}>
+              <button onClick={() => handleToggleFlag(flag.name, flag.enabled)} className={`p-1 rounded-lg transition-colors ${flag.enabled ? 'text-green-600' : 'text-muted-foreground'}`}>
                 {flag.enabled ? <ToggleRight className="w-8 h-8" /> : <ToggleLeft className="w-8 h-8" />}
               </button>
             </div>
@@ -145,13 +145,13 @@ export function AdminSettingsPage() {
 
       {/* System Settings */}
       {settings && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">General Settings</h2>
+        <div className="bg-card rounded-xl shadow-sm border border-border p-6">
+          <h2 className="text-lg font-semibold text-foreground mb-4">General Settings</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Default AI Provider</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Default AI Provider</label>
               <select value={settings.default_ai_provider} onChange={(e) => setSettings({ ...settings, default_ai_provider: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700">
+                className="w-full px-4 py-2 border border-border rounded-lg bg-card">
                 <option value="groq">Groq</option>
                 <option value="openai">OpenAI</option>
                 <option value="anthropic">Anthropic</option>
@@ -159,13 +159,13 @@ export function AdminSettingsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Max Questions per Generation</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Max Questions per Generation</label>
               <input type="number" value={settings.max_questions_per_generation} onChange={(e) => setSettings({ ...settings, max_questions_per_generation: parseInt(e.target.value) })}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700" />
+                className="w-full px-4 py-2 border border-border rounded-lg bg-card" />
             </div>
             <div className="flex items-center gap-3">
               <input type="checkbox" id="maintenance" checked={settings.maintenance_mode} onChange={(e) => setSettings({ ...settings, maintenance_mode: e.target.checked })} className="w-4 h-4 rounded" />
-              <label htmlFor="maintenance" className="text-sm font-medium text-gray-700 dark:text-gray-300">Maintenance Mode</label>
+              <label htmlFor="maintenance" className="text-sm font-medium text-foreground">Maintenance Mode</label>
             </div>
           </div>
         </div>

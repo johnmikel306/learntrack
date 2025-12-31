@@ -104,7 +104,7 @@ export function BatchOperationsPanel({
             {/* Clear Selection */}
             <button
               onClick={onClearSelection}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-foreground bg-muted rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >
               <Square className="w-4 h-4" />
               Clear
@@ -116,24 +116,24 @@ export function BatchOperationsPanel({
       {/* Confirmation Modal */}
       {showConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
+          <div className="bg-card rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-full">
                 <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              <h3 className="text-lg font-semibold text-foreground">
                 Confirm {operationLabels[showConfirm]}
               </h3>
             </div>
 
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
+            <p className="text-muted-foreground mb-4">
               Are you sure you want to {showConfirm} {selectedIds.length} {entityType}?
               {showConfirm === 'delete' && ' This action cannot be undone.'}
             </p>
 
             {(showConfirm === 'suspend' || showConfirm === 'deactivate') && (
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Reason (optional)
                 </label>
                 <input
@@ -141,7 +141,7 @@ export function BatchOperationsPanel({
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   placeholder="Enter reason for this action..."
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-card text-foreground focus:ring-2 focus:ring-primary/40"
                 />
               </div>
             )}
@@ -149,7 +149,7 @@ export function BatchOperationsPanel({
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => { setShowConfirm(null); setReason('') }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
+                className="px-4 py-2 text-sm font-medium text-foreground bg-muted rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
               >
                 Cancel
               </button>
@@ -184,7 +184,7 @@ export function SelectCheckbox({ checked, onChange, disabled }: SelectCheckboxPr
       className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
         checked
           ? 'bg-purple-600 border-purple-600 text-white'
-          : 'border-gray-300 dark:border-gray-600 hover:border-purple-400'
+          : 'border-border hover:border-purple-400'
       } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
       {checked && (

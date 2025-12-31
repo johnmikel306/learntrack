@@ -158,8 +158,8 @@ export function UsersPage() {
           <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">User Management</h1>
-          <p className="text-gray-500 dark:text-gray-400">Manage all users across tenants</p>
+          <h1 className="text-2xl font-bold text-foreground">User Management</h1>
+          <p className="text-muted-foreground">Manage all users across tenants</p>
         </div>
       </div>
 
@@ -174,18 +174,18 @@ export function UsersPage() {
         entityType="users"
       />
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+      <div className="bg-card rounded-xl shadow-sm border border-border">
+        <div className="p-6 border-b border-border">
           <div className="flex flex-col sm:flex-row gap-4 justify-between">
             <form onSubmit={handleSearch} className="flex-1 max-w-md">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input type="text" placeholder="Search users..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500" />
+                  className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-card text-foreground focus:ring-2 focus:ring-primary/40" />
               </div>
             </form>
             <select value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(1) }}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+              className="px-4 py-2 border border-border rounded-lg bg-card text-foreground">
               <option value="">All Roles</option>
               <option value="tutor">Tutors</option>
               <option value="student">Students</option>
@@ -196,30 +196,30 @@ export function UsersPage() {
 
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-700/50">
+            <thead className="bg-muted/40">
               <tr>
                 <th className="w-12 px-4 py-3"></th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">User</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Role</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Created</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">User</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Role</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Created</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {isLoading ? [...Array(5)].map((_, i) => (
                 <tr key={i} className="animate-pulse">
-                  <td className="px-4 py-4"><div className="h-5 w-5 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
-                  <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32"></div></td>
-                  <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16"></div></td>
-                  <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16"></div></td>
-                  <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24"></div></td>
-                  <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-8 ml-auto"></div></td>
+                  <td className="px-4 py-4"><div className="h-5 w-5 bg-muted rounded"></div></td>
+                  <td className="px-6 py-4"><div className="h-4 bg-muted rounded w-32"></div></td>
+                  <td className="px-6 py-4"><div className="h-4 bg-muted rounded w-16"></div></td>
+                  <td className="px-6 py-4"><div className="h-4 bg-muted rounded w-16"></div></td>
+                  <td className="px-6 py-4"><div className="h-4 bg-muted rounded w-24"></div></td>
+                  <td className="px-6 py-4"><div className="h-4 bg-muted rounded w-8 ml-auto"></div></td>
                 </tr>
               )) : users.length === 0 ? (
                 <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500"><Users className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>No users found</p></td></tr>
               ) : users.map((user) => (
-                <tr key={user.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 ${selectedIds.includes(user.clerk_id) ? 'bg-purple-50 dark:bg-purple-900/10' : ''}`}>
+                <tr key={user.id} className={`hover:bg-muted/50 ${selectedIds.includes(user.clerk_id) ? 'bg-primary/10' : ''}`}>
                   <td className="px-4 py-4">
                     <SelectCheckbox
                       checked={selectedIds.includes(user.clerk_id)}
@@ -229,10 +229,10 @@ export function UsersPage() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-medium">{user.name?.[0] || 'U'}</div>
+                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium">{user.name?.[0] || 'U'}</div>
                       <div>
-                        <p className="font-medium text-gray-900 dark:text-white flex items-center gap-2">{user.name}{user.is_super_admin && <Shield className="w-4 h-4 text-red-500" />}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
+                        <p className="font-medium text-foreground flex items-center gap-2">{user.name}{user.is_super_admin && <Shield className="w-4 h-4 text-red-500" />}</p>
+                        <p className="text-sm text-muted-foreground">{user.email}</p>
                       </div>
                     </div>
                   </td>
@@ -240,11 +240,11 @@ export function UsersPage() {
                   <td className="px-6 py-4"><span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{user.is_active ? 'Active' : 'Inactive'}</span></td>
                   <td className="px-6 py-4 text-sm text-gray-500">{new Date(user.created_at).toLocaleDateString()}</td>
                   <td className="px-6 py-4 text-right relative">
-                    <button onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"><MoreVertical className="w-5 h-5 text-gray-500" /></button>
+                    <button onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)} className="p-1 hover:bg-muted rounded"><MoreVertical className="w-5 h-5 text-gray-500" /></button>
                     {openMenuId === user.id && (
-                      <div className="absolute right-6 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
-                        <button onClick={() => setOpenMenuId(null)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-t-lg"><Eye className="w-4 h-4" /> View</button>
-                        <button onClick={() => setOpenMenuId(null)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"><Edit className="w-4 h-4" /> Edit</button>
+                      <div className="absolute right-6 top-full mt-1 w-48 bg-card rounded-lg shadow-lg border border-border z-10">
+                        <button onClick={() => setOpenMenuId(null)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted rounded-t-lg"><Eye className="w-4 h-4" /> View</button>
+                        <button onClick={() => setOpenMenuId(null)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted"><Edit className="w-4 h-4" /> Edit</button>
                         {!user.is_super_admin && (
                           <button
                             onClick={() => handleImpersonate(user)}
@@ -265,7 +265,7 @@ export function UsersPage() {
         </div>
 
         {totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <div className="px-6 py-4 border-t border-border flex items-center justify-between">
             <p className="text-sm text-gray-500">Showing {(page - 1) * perPage + 1} to {Math.min(page * perPage, total)} of {total}</p>
             <div className="flex items-center gap-2">
               <button onClick={() => setPage(p => p - 1)} disabled={page === 1} className="p-2 rounded-lg border disabled:opacity-50"><ChevronLeft className="w-5 h-5" /></button>

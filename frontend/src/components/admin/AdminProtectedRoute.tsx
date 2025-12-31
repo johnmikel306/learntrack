@@ -21,7 +21,7 @@ export function AdminProtectedRoute({ children, requiredPermission }: AdminProte
       <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-purple-600 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Verifying admin access...</p>
+          <p className="text-muted-foreground">Verifying admin access...</p>
         </div>
       </div>
     )

@@ -66,8 +66,8 @@ export function AdminDashboardPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard Overview</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
+          <h1 className="text-2xl font-bold text-foreground">Dashboard Overview</h1>
+          <p className="text-muted-foreground mt-1">
             System-wide metrics and statistics
           </p>
         </div>
@@ -98,9 +98,9 @@ export function AdminDashboardPage() {
       <AdminMetrics metrics={metrics} isLoading={isLoading} error={error} />
 
       {/* Recent Activity Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Admin Activity</h3>
-        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+      <div className="bg-card rounded-xl p-6 shadow-sm border border-border">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Recent Admin Activity</h3>
+        <div className="text-center py-8 text-muted-foreground">
           <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <p>Activity log will be displayed here</p>
           <p className="text-sm">View the Audit Logs section for detailed activity</p>

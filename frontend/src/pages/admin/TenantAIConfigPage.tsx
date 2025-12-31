@@ -184,10 +184,10 @@ export function TenantAIConfigPage() {
             <Cpu className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-foreground">
               AI Configuration
             </h1>
-            <p className="text-gray-500 dark:text-gray-400">
+            <p className="text-muted-foreground">
               Tenant: {tenantId}
             </p>
           </div>
@@ -226,7 +226,7 @@ export function TenantAIConfigPage() {
       )}
 
       {/* Default Settings */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+      <div className="bg-card rounded-lg border border-border p-6">
         <h2 className="text-lg font-semibold mb-4">Default Settings</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -289,13 +289,13 @@ export function TenantAIConfigPage() {
       </div>
 
       {/* Providers */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+      <div className="bg-card rounded-lg border border-border p-6">
         <h2 className="text-lg font-semibold mb-4">AI Providers</h2>
         <div className="space-y-3">
           {configData?.providers.map(provider => (
             <div key={provider.provider_id} className="border rounded-lg dark:border-gray-700">
               <div
-                className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50"
                 onClick={() => toggleProviderExpand(provider.provider_id)}
               >
                 <div className="flex items-center gap-3">
@@ -333,7 +333,7 @@ export function TenantAIConfigPage() {
                     {provider.models.map(model => (
                       <div
                         key={model.model_id}
-                        className="flex items-center gap-2 p-2 bg-white dark:bg-gray-800 rounded border dark:border-gray-700"
+                        className="flex items-center gap-2 p-2 bg-card rounded border dark:border-gray-700"
                       >
                         <div className="flex-1">
                           <div className="text-sm font-medium">{model.name}</div>
@@ -344,7 +344,7 @@ export function TenantAIConfigPage() {
                         {model.available ? (
                           <Check className="w-4 h-4 text-green-500" />
                         ) : (
-                          <X className="w-4 h-4 text-gray-400" />
+                          <X className="w-4 h-4 text-muted-foreground" />
                         )}
                       </div>
                     ))}

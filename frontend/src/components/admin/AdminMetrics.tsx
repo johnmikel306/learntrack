@@ -49,13 +49,13 @@ function MetricCard({ title, value, icon, subtitle, trend, color = 'purple' }: M
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+    <div className="bg-card rounded-xl p-6 shadow-sm border border-border hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
-          <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{value}</p>
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <p className="mt-2 text-3xl font-bold text-foreground">{value}</p>
           {subtitle && (
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{subtitle}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
           )}
           {trend && (
             <p className={`mt-1 text-sm ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
@@ -82,9 +82,9 @@ export function AdminMetrics({ metrics, isLoading, error }: AdminMetricsProps) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[...Array(8)].map((_, i) => (
-          <div key={i} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm animate-pulse">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-4"></div>
-            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+          <div key={i} className="bg-card rounded-xl p-6 shadow-sm animate-pulse">
+            <div className="h-4 bg-muted rounded w-1/2 mb-4"></div>
+            <div className="h-8 bg-muted rounded w-3/4"></div>
           </div>
         ))}
       </div>
@@ -105,7 +105,7 @@ export function AdminMetrics({ metrics, isLoading, error }: AdminMetricsProps) {
     <div className="space-y-6">
       {/* User Metrics */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">User Statistics</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-4">User Statistics</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <MetricCard title="Total Users" value={metrics.total_users} icon={<Users className="w-6 h-6" />} color="purple" />
           <MetricCard title="Tutors" value={metrics.total_tutors} subtitle={`${metrics.active_tutors} active`} icon={<GraduationCap className="w-6 h-6" />} color="blue" />
@@ -116,7 +116,7 @@ export function AdminMetrics({ metrics, isLoading, error }: AdminMetricsProps) {
 
       {/* Content Metrics */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Content Statistics</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-4">Content Statistics</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <MetricCard title="Questions" value={metrics.total_questions} subtitle={`${metrics.questions_generated_today} today`} icon={<FileQuestion className="w-6 h-6" />} color="purple" />
           <MetricCard title="Assignments" value={metrics.total_assignments} subtitle={`${metrics.assignments_created_today} today`} icon={<ClipboardList className="w-6 h-6" />} color="blue" />
@@ -127,7 +127,7 @@ export function AdminMetrics({ metrics, isLoading, error }: AdminMetricsProps) {
 
       {/* System Metrics */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">System Health</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-4">System Health</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <MetricCard title="Database Size" value={`${metrics.database_size_mb} MB`} icon={<Database className="w-6 h-6" />} color="purple" />
           <MetricCard title="Storage Used" value={`${metrics.storage_used_mb} MB`} icon={<Activity className="w-6 h-6" />} color="blue" />
@@ -135,7 +135,7 @@ export function AdminMetrics({ metrics, isLoading, error }: AdminMetricsProps) {
         </div>
       </div>
 
-      <p className="text-xs text-gray-500 dark:text-gray-400">
+      <p className="text-xs text-muted-foreground">
         Last updated: {new Date(metrics.metrics_updated_at).toLocaleString()}
       </p>
     </div>

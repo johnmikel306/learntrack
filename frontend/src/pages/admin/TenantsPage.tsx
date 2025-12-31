@@ -178,12 +178,12 @@ export function TenantsPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+          <div className="p-2 bg-primary/10 rounded-lg">
             <Building2 className="w-6 h-6 text-purple-600 dark:text-purple-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tenant Management</h1>
-            <p className="text-gray-500 dark:text-gray-400">Manage all tutors and their accounts</p>
+            <h1 className="text-2xl font-bold text-foreground">Tenant Management</h1>
+            <p className="text-muted-foreground">Manage all tutors and their accounts</p>
           </div>
         </div>
       </div>
