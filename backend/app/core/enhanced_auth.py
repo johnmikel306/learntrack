@@ -67,8 +67,7 @@ class EnhancedClerkJWTBearer:
         self.issuer = settings.CLERK_JWT_ISSUER or self._construct_issuer()
         self._jwks_cache: Optional[Dict] = None
         self._cache_expiry: Optional[datetime] = None
-        
-    def _construct_issuer(self) -> Optional[str]:
+def _construct_issuer(self) -> Optional[str]:
     """Return None and warn if CLERK_JWT_ISSUER is not configured."""
     if self.clerk_publishable_key:
         logger.warning("CLERK_JWT_ISSUER is not set; set it to your Clerk instance URL")
