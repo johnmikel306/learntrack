@@ -8,8 +8,8 @@ import structlog
 from app.core.config import settings
 from app.services.ai.base import BaseAIProvider, AIProvider
 from app.services.ai.openai_provider import OpenAIProvider
-from app.services.ai.groq_provider import GroqProvider, GROQ_MODELS
-from app.services.ai.gemini_provider import GeminiProvider, GEMINI_MODELS
+from app.services.ai.groq_provider import GroqProvider
+from app.services.ai.gemini_provider import GeminiProvider
 from app.models.question import QuestionCreate, QuestionDifficulty, QuestionType
 from app.core.exceptions import AIProviderError
 
@@ -246,9 +246,9 @@ class AIManager:
     def get_available_models(self, provider_name: str) -> Dict[str, Dict[str, Any]]:
         """Get available models for a specific provider"""
         if provider_name == AIProvider.GROQ or provider_name == "groq":
-            return GROQ_MODELS
+            return {}
         elif provider_name == AIProvider.GEMINI or provider_name == "gemini":
-            return GEMINI_MODELS
+            return {}
         elif provider_name == AIProvider.OPENAI or provider_name == "openai":
             return {
                 "gpt-4o": {"context_window": 128000, "description": "GPT-4o - Most capable"},
