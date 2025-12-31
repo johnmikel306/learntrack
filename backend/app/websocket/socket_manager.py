@@ -12,11 +12,7 @@ logger = structlog.get_logger()
 # Create Socket.IO server with CORS configuration
 sio = socketio.AsyncServer(
     async_mode='asgi',
-    cors_allowed_origins=[
-        "http://localhost:5173",  # Frontend dev server
-        "http://localhost:3000",  # Alternative frontend port
-        settings.FRONTEND_URL if hasattr(settings, 'FRONTEND_URL') else "http://localhost:5173"
-    ],
+    cors_allowed_origins=settings.BACKEND_CORS_ORIGINS,
     logger=False,  # Disable socket.io logger to use structlog
     engineio_logger=False
 )

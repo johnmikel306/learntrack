@@ -3,7 +3,9 @@
  */
 import { io, Socket } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const RAW_API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+const RAW_SOCKET_BASE = import.meta.env.VITE_WS_URL || RAW_API_URL
+const SOCKET_URL = RAW_SOCKET_BASE.replace(/\/api\/v\d+$/, '').replace(/\/+$/, '')
 
 class SocketClient {
   private socket: Socket | null = null;

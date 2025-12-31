@@ -68,8 +68,11 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     """User update model"""
+    email: Optional[EmailStr] = None
     name: Optional[str] = None
+    role: Optional[UserRole] = None
     is_active: Optional[bool] = None
+    updated_at: Optional[datetime] = None
 
 
 class UserInDB(UserBase):

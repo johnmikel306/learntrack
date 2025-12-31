@@ -79,6 +79,10 @@ class EnhancedClerkJWTBearer:
         """Get JSON Web Key Set from Clerk with caching"""
         current_time = datetime.now(timezone.utc)
 
+        if not self.issuer:
+            logger.error("CLERK_JWT_ISSUER is not set")
+            return {}
+
         # Check cache validity (refresh every hour)
         if (self._jwks_cache and self._cache_expiry and
             current_time < self._cache_expiry):
