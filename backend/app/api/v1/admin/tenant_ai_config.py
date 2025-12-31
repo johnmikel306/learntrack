@@ -18,7 +18,7 @@ from app.core.exceptions import NotFoundError, ValidationError
 
 logger = structlog.get_logger()
 
-router = APIRouter(prefix="/tenant-ai-config", tags=["Admin - Tenant AI Config"])
+router = APIRouter()
 
 
 async def get_service(db: AsyncIOMotorDatabase = Depends(get_database)) -> TenantAIConfigService:
