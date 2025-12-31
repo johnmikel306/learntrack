@@ -53,16 +53,16 @@ export function BatchOperationsPanel({
   return (
     <>
       {/* Batch Actions Bar */}
-      <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 mb-4">
+      <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mb-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <CheckSquare className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-            <span className="font-medium text-purple-900 dark:text-purple-100">
+            <CheckSquare className="w-5 h-5 text-primary" />
+            <span className="font-medium text-primary">
               {selectedIds.length} of {totalItems} selected
             </span>
             <button
               onClick={selectedIds.length === totalItems ? onClearSelection : onSelectAll}
-              className="text-sm text-purple-600 dark:text-purple-400 hover:underline"
+              className="text-sm text-primary hover:underline"
             >
               {selectedIds.length === totalItems ? 'Clear selection' : 'Select all'}
             </button>
@@ -104,7 +104,7 @@ export function BatchOperationsPanel({
             {/* Clear Selection */}
             <button
               onClick={onClearSelection}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-foreground bg-muted rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-foreground bg-muted rounded-lg hover:bg-muted/80 transition-colors"
             >
               <Square className="w-4 h-4" />
               Clear
@@ -149,7 +149,7 @@ export function BatchOperationsPanel({
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => { setShowConfirm(null); setReason('') }}
-                className="px-4 py-2 text-sm font-medium text-foreground bg-muted rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
+                className="px-4 py-2 text-sm font-medium text-foreground bg-muted rounded-lg hover:bg-muted/80"
               >
                 Cancel
               </button>
@@ -183,8 +183,8 @@ export function SelectCheckbox({ checked, onChange, disabled }: SelectCheckboxPr
       disabled={disabled}
       className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
         checked
-          ? 'bg-purple-600 border-purple-600 text-white'
-          : 'border-border hover:border-purple-400'
+          ? 'bg-primary border-primary text-white'
+          : 'border-border hover:border-primary/50'
       } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
       {checked && (

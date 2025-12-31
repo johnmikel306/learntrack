@@ -40,13 +40,14 @@ interface MetricCardProps {
 }
 
 function MetricCard({ title, value, icon, subtitle, trend, color = 'purple' }: MetricCardProps) {
-  const colorClasses = {
-    purple: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
-    blue: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
-    green: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
-    orange: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
-    pink: 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400',
-  }
+  
+const colorClasses = {
+  purple: 'bg-primary/10 text-primary',
+  blue: 'bg-primary/10 text-primary',
+  green: 'bg-primary/10 text-primary',
+  orange: 'bg-primary/10 text-primary',
+  pink: 'bg-primary/10 text-primary',
+}
 
   return (
     <div className="bg-card rounded-xl p-6 shadow-sm border border-border hover:shadow-md transition-shadow">

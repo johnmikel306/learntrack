@@ -54,7 +54,7 @@ const statusColors = {
   suspended: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
   pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
   trial: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  expired: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-muted-foreground',
+  expired: 'bg-muted text-muted-foreground',
 }
 
 export function TenantList({
@@ -123,7 +123,7 @@ export function TenantList({
               <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody className="divide-y divide-border">
             {isLoading ? (
               [...Array(5)].map((_, i) => (
                 <tr key={i} className="animate-pulse">
@@ -157,7 +157,7 @@ export function TenantList({
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Building2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                        <Building2 className="w-5 h-5 text-primary" />
                       </div>
                       <div>
                         <p className="font-medium text-foreground">{tenant.name}</p>
@@ -171,13 +171,13 @@ export function TenantList({
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
                       <Users className="w-4 h-4" />
                       <span>{tenant.students_count + tenant.parents_count}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
                       <FileQuestion className="w-4 h-4" />
                       <span>{tenant.questions_count}</span>
                     </div>
@@ -187,14 +187,14 @@ export function TenantList({
                   </td>
                   <td className="px-6 py-4 text-right relative">
                     <button onClick={() => setOpenMenuId(openMenuId === tenant._id ? null : tenant._id)} className="p-1 hover:bg-muted rounded">
-                      <MoreVertical className="w-5 h-5 text-gray-500" />
+                      <MoreVertical className="w-5 h-5 text-muted-foreground" />
                     </button>
                     {openMenuId === tenant._id && (
                       <div className="absolute right-6 top-full mt-1 w-48 bg-card rounded-lg shadow-lg border border-border z-10">
                         <button onClick={() => { onViewTenant(tenant.clerk_id); setOpenMenuId(null) }} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted">
                           <Eye className="w-4 h-4" /> View Details
                         </button>
-                        <button onClick={() => { navigate(`/admin/tenants/${tenant.clerk_id}/ai-config`); setOpenMenuId(null) }} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                        <button onClick={() => { navigate(`/admin/tenants/${tenant.clerk_id}/ai-config`); setOpenMenuId(null) }} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-primary hover:bg-primary/10">
                           <Cpu className="w-4 h-4" /> AI Config
                         </button>
                         {tenant.status === 'active' ? (

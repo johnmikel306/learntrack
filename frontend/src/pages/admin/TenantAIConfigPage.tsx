@@ -164,7 +164,7 @@ export function TenantAIConfigPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -176,12 +176,12 @@ export function TenantAIConfigPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/admin/tenants')}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+            className="p-2 hover:bg-muted rounded-lg"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-            <Cpu className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <Cpu className="w-6 h-6 text-primary" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">
@@ -195,7 +195,7 @@ export function TenantAIConfigPage() {
         <div className="flex gap-2">
           <button
             onClick={fetchConfig}
-            className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+            className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted/50"
           >
             <RefreshCw className="w-4 h-4" />
             Refresh
@@ -203,7 +203,7 @@ export function TenantAIConfigPage() {
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50"
           >
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Save Changes
@@ -234,7 +234,7 @@ export function TenantAIConfigPage() {
             <select
               value={formData.default_provider || ''}
               onChange={(e) => setFormData({ ...formData, default_provider: e.target.value })}
-              className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
+              className="w-full px-3 py-2 border border-border rounded-lg bg-card"
             >
               {configData?.providers.map(p => (
                 <option key={p.provider_id} value={p.provider_id} disabled={!p.available}>
@@ -251,7 +251,7 @@ export function TenantAIConfigPage() {
               max={50}
               value={formData.max_questions_per_generation || 20}
               onChange={(e) => setFormData({ ...formData, max_questions_per_generation: parseInt(e.target.value) })}
-              className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
+              className="w-full px-3 py-2 border border-border rounded-lg bg-card"
             />
           </div>
         </div>
@@ -293,7 +293,7 @@ export function TenantAIConfigPage() {
         <h2 className="text-lg font-semibold mb-4">AI Providers</h2>
         <div className="space-y-3">
           {configData?.providers.map(provider => (
-            <div key={provider.provider_id} className="border rounded-lg dark:border-gray-700">
+            <div key={provider.provider_id} className="border border-border rounded-lg">
               <div
                 className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50"
                 onClick={() => toggleProviderExpand(provider.provider_id)}
@@ -314,11 +314,11 @@ export function TenantAIConfigPage() {
                         <span className="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded-full">Unavailable</span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-500">{provider.description}</p>
+                    <p className="text-sm text-muted-foreground">{provider.description}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">{provider.models.length} models</span>
+                  <span className="text-sm text-muted-foreground">{provider.models.length} models</span>
                   {expandedProviders.has(provider.provider_id) ? (
                     <ChevronUp className="w-5 h-5" />
                   ) : (
@@ -328,16 +328,16 @@ export function TenantAIConfigPage() {
               </div>
 
               {expandedProviders.has(provider.provider_id) && (
-                <div className="border-t dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900/50">
+                <div className="border-t border-border p-4 bg-muted/40">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                     {provider.models.map(model => (
                       <div
                         key={model.model_id}
-                        className="flex items-center gap-2 p-2 bg-card rounded border dark:border-gray-700"
+                        className="flex items-center gap-2 p-2 bg-card rounded border border-border"
                       >
                         <div className="flex-1">
                           <div className="text-sm font-medium">{model.name}</div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-muted-foreground">
                             {model.context_window ? `${(model.context_window / 1000).toFixed(0)}k context` : ''}
                           </div>
                         </div>

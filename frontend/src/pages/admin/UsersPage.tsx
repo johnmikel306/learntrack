@@ -154,8 +154,8 @@ export function UsersPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-          <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+        <div className="p-2 bg-primary/10 rounded-lg">
+          <Users className="w-6 h-6 text-primary" />
         </div>
         <div>
           <h1 className="text-2xl font-bold text-foreground">User Management</h1>
@@ -206,7 +206,7 @@ export function UsersPage() {
                 <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="divide-y divide-border">
               {isLoading ? [...Array(5)].map((_, i) => (
                 <tr key={i} className="animate-pulse">
                   <td className="px-4 py-4"><div className="h-5 w-5 bg-muted rounded"></div></td>
@@ -217,7 +217,7 @@ export function UsersPage() {
                   <td className="px-6 py-4"><div className="h-4 bg-muted rounded w-8 ml-auto"></div></td>
                 </tr>
               )) : users.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500"><Users className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>No users found</p></td></tr>
+                <tr><td colSpan={6} className="px-6 py-12 text-center text-muted-foreground"><Users className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>No users found</p></td></tr>
               ) : users.map((user) => (
                 <tr key={user.id} className={`hover:bg-muted/50 ${selectedIds.includes(user.clerk_id) ? 'bg-primary/10' : ''}`}>
                   <td className="px-4 py-4">
@@ -238,9 +238,9 @@ export function UsersPage() {
                   </td>
                   <td className="px-6 py-4"><span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${roleColors[user.role] || roleColors.tutor}`}>{user.role}</span></td>
                   <td className="px-6 py-4"><span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{user.is_active ? 'Active' : 'Inactive'}</span></td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{new Date(user.created_at).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{new Date(user.created_at).toLocaleDateString()}</td>
                   <td className="px-6 py-4 text-right relative">
-                    <button onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)} className="p-1 hover:bg-muted rounded"><MoreVertical className="w-5 h-5 text-gray-500" /></button>
+                    <button onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)} className="p-1 hover:bg-muted rounded"><MoreVertical className="w-5 h-5 text-muted-foreground" /></button>
                     {openMenuId === user.id && (
                       <div className="absolute right-6 top-full mt-1 w-48 bg-card rounded-lg shadow-lg border border-border z-10">
                         <button onClick={() => setOpenMenuId(null)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted rounded-t-lg"><Eye className="w-4 h-4" /> View</button>
@@ -266,11 +266,11 @@ export function UsersPage() {
 
         {totalPages > 1 && (
           <div className="px-6 py-4 border-t border-border flex items-center justify-between">
-            <p className="text-sm text-gray-500">Showing {(page - 1) * perPage + 1} to {Math.min(page * perPage, total)} of {total}</p>
+            <p className="text-sm text-muted-foreground">Showing {(page - 1) * perPage + 1} to {Math.min(page * perPage, total)} of {total}</p>
             <div className="flex items-center gap-2">
-              <button onClick={() => setPage(p => p - 1)} disabled={page === 1} className="p-2 rounded-lg border disabled:opacity-50"><ChevronLeft className="w-5 h-5" /></button>
+              <button onClick={() => setPage(p => p - 1)} disabled={page === 1} className="p-2 rounded-lg border border-border disabled:opacity-50"><ChevronLeft className="w-5 h-5" /></button>
               <span className="text-sm">Page {page} of {totalPages}</span>
-              <button onClick={() => setPage(p => p + 1)} disabled={page === totalPages} className="p-2 rounded-lg border disabled:opacity-50"><ChevronRight className="w-5 h-5" /></button>
+              <button onClick={() => setPage(p => p + 1)} disabled={page === totalPages} className="p-2 rounded-lg border border-border disabled:opacity-50"><ChevronRight className="w-5 h-5" /></button>
             </div>
           </div>
         )}
