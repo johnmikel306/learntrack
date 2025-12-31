@@ -293,9 +293,13 @@ export default function StudentDetailsPage() {
         setLinkedParents(mappedParents)
       }
 
+      queryClient.invalidateQueries({ queryKey: ['students'] })
+      fetchAvailableParents()
+
       // Reset form and close modal
       setParentEmail('')
       setParentName('')
+      setParentSelection('new')
       setLinkParentModalOpen(false)
     } catch (error: any) {
       console.error('Failed to link parent:', error)
