@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { useUser, useAuth } from '@clerk/clerk-react'
 import { setTokenGetter } from '@/lib/api'
+import { API_BASE_URL } from '@/lib/config'
 
 // User role types matching backend
 export type UserRole = 'tutor' | 'student' | 'parent' | 'super_admin'
@@ -71,8 +72,6 @@ interface UserContextType {
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined)
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const { user: clerkUser, isLoaded, isSignedIn } = useUser()

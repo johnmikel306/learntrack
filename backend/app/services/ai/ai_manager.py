@@ -136,15 +136,22 @@ class AIManager:
         """Get AI provider by name or default"""
         if provider_name is None:
             provider_name = self.default_provider
-        
-        if provider_name not in self.providers:
-            available = list(self.providers.keys())
-            raise AIProviderError(
-                f"Provider '{provider_name}' not available. Available providers: {available}",
-                provider_name
-            )
-        
-        return self.providers[provider_name]
+
+        # Normalize provider_name to string for comparison
+        provider_str = provider_name.value if isinstance(provider_name, AIProvider) else str(provider_name).lower()
+
+        # Try to find the provider (handles both enum and string keys)
+        for key, provider in self.providers.items():
+            key_str = key.value if isinstance(key, AIProvider) else str(key).lower()
+            if key_str == provider_str:
+                return provider
+
+        # Provider not found
+        available = [k.value if isinstance(k, AIProvider) else str(k) for k in self.providers.keys()]
+        raise AIProviderError(
+            f"Provider '{provider_name}' not available. Available providers: {available}",
+            str(provider_name)
+        )
     
     def get_available_providers(self) -> List[str]:
         """Get list of available providers"""
@@ -317,7 +324,7 @@ async def get_tenant_ai_manager(
 
     tenant_config = None
 
-    if db:
+    if db is not None:
         try:
             service = TenantAIConfigService(db)
             config = await service.get_or_create_default(tenant_id)

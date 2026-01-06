@@ -10,16 +10,18 @@ from app.services.ai.base import BaseAIProvider
 from app.models.question import QuestionCreate, QuestionDifficulty, QuestionType
 from app.core.exceptions import AIProviderError
 from app.agents.prompts import get_prompt
+from app.core.ai_models_config import get_default_model
 
 logger = structlog.get_logger()
 
 class OpenAIProvider(BaseAIProvider):
     """OpenAI provider for question generation"""
 
-    def __init__(self, api_key: str, model: str = "gpt-5.2"):
+    def __init__(self, api_key: str, model: str = None):
         super().__init__(api_key)
         self.client = AsyncOpenAI(api_key=api_key)
-        self.model = model
+        # Use centralized config for default model
+        self.model = model or get_default_model("openai") or "gpt-4o"
 
     def set_model(self, model: str):
         """Change the active model"""

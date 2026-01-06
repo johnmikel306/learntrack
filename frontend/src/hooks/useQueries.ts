@@ -19,23 +19,34 @@ export interface PaginatedResponse<T> {
   meta: PaginationMeta
 }
 
+// Student interface
+export interface Student {
+  _id: string
+  clerk_id: string
+  name: string
+  email: string
+  slug?: string
+  tutor_id: string
+  group_ids?: string[]
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 /**
  * Hook to fetch all students with pagination
  */
 export function useStudents(page: number = 1, perPage: number = 10) {
   const client = useApiClient()
 
-  return useQuery<PaginatedResponse<any>>({
+  return useQuery<PaginatedResponse<Student>>({
     queryKey: ['students', page, perPage],
     queryFn: async () => {
-      console.log('Fetching students:', { page, perPage })
       const response = await client.get(`/students?page=${page}&per_page=${perPage}`)
-      console.log('Students response:', response)
       if (response.error) {
-        console.error('Students fetch error:', response.error)
         throw new Error(response.error)
       }
-      return response.data as PaginatedResponse<any>
+      return response.data as PaginatedResponse<Student>
     },
   })
 }

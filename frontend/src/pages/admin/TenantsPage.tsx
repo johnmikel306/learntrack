@@ -4,8 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { TenantList } from '../../components/admin/TenantList'
 import { Building2 } from 'lucide-react'
 import { BatchOperationsPanel, BatchOperationType } from '../../components/admin/BatchOperationsPanel'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+import { API_BASE_URL } from '@/lib/config'
 
 interface TenantInfo {
   _id: string

@@ -20,7 +20,7 @@ router = APIRouter()
 
 class SystemSettings(BaseModel):
     """System-wide settings"""
-    ai_providers_enabled: List[str] = ["groq", "openai", "anthropic", "google"]
+    ai_providers_enabled: List[str] = ["groq", "openai", "anthropic", "gemini"]
     default_ai_provider: str = "groq"
     max_questions_per_generation: int = 20
     max_file_size_mb: int = 50

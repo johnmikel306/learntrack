@@ -1,12 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@clerk/clerk-react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { 
-  Cpu, ArrowLeft, Save, RefreshCw, Check, X, 
-  ChevronDown, ChevronUp, AlertCircle, Loader2 
+import {
+  Cpu, ArrowLeft, Save, RefreshCw, Check, X,
+  ChevronDown, ChevronUp, AlertCircle, Loader2
 } from 'lucide-react'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+import { API_BASE_URL } from '@/lib/config'
 
 interface ModelAvailability {
   model_id: string

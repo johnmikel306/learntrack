@@ -7,6 +7,19 @@ enums like QuestionType and Difficulty to avoid duplication across the codebase.
 from typing import Optional, Any
 from app.models.question import QuestionType, QuestionDifficulty
 
+# Provider name aliases - normalizes variations to canonical names
+# The backend uses "gemini" but some legacy code/settings use "google"
+PROVIDER_ALIASES = {
+    "google": "gemini",
+    "google-gemini": "gemini",
+    "gemini": "gemini",
+    "openai": "openai",
+    "gpt": "openai",
+    "groq": "groq",
+    "anthropic": "anthropic",
+    "claude": "anthropic",
+}
+
 QUESTION_TYPE_ALIASES = {
     "mcq": "multiple-choice",
     "multiple_choice": "multiple-choice",
@@ -64,3 +77,17 @@ def normalize_difficulty(value: Optional[str]) -> QuestionDifficulty:
         return QuestionDifficulty(alias)
     except ValueError:
         return QuestionDifficulty.MEDIUM
+
+
+def normalize_provider(value: Optional[str]) -> str:
+    """
+    Normalize AI provider names to canonical form.
+
+    Handles legacy naming (e.g., 'google' -> 'gemini') and common aliases.
+    Returns the original value if no alias is found.
+    """
+    if not value:
+        return "groq"  # Default provider
+
+    raw = str(value).strip().lower()
+    return PROVIDER_ALIASES.get(raw, raw)

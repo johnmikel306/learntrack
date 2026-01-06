@@ -4,8 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Users, Search, ChevronLeft, ChevronRight, MoreVertical, Eye, Edit, Shield, UserCheck } from 'lucide-react'
 import { useImpersonation } from '../../contexts/ImpersonationContext'
 import { BatchOperationsPanel, SelectCheckbox, BatchOperationType } from '../../components/admin/BatchOperationsPanel'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+import { API_BASE_URL } from '@/lib/config'
 
 interface AdminUserInfo {
   id: string

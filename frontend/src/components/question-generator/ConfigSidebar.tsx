@@ -43,8 +43,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@clerk/clerk-react'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+import { API_BASE_URL } from '@/lib/config'
 
 interface Material {
   _id: string

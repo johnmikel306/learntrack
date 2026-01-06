@@ -1,6 +1,7 @@
 """
 User service for database operations
 """
+import asyncio
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -105,14 +106,21 @@ class UserService:
             raise DatabaseException(f"Failed to create user: {str(e)}")
     
     async def get_user_by_id(self, user_id: str) -> User:
-        """Get user by ID - searches across all role collections"""
+        """Get user by ID - searches across all role collections in parallel"""
         try:
             oid = to_object_id(user_id)
-            # Try each collection
-            for collection in [self.tutors_collection, self.students_collection, self.parents_collection]:
-                user = await collection.find_one({"_id": oid})
-                if user:
-                    return User(**user)
+            # Query all collections in parallel
+            results = await asyncio.gather(
+                self.tutors_collection.find_one({"_id": oid}),
+                self.students_collection.find_one({"_id": oid}),
+                self.parents_collection.find_one({"_id": oid}),
+                return_exceptions=True
+            )
+
+            # Return the first non-None result
+            for result in results:
+                if result is not None and not isinstance(result, Exception):
+                    return User(**result)
             raise NotFoundError("User", user_id)
         except NotFoundError:
             raise
@@ -121,26 +129,40 @@ class UserService:
             raise DatabaseException(f"Failed to get user: {str(e)}")
 
     async def get_user_by_clerk_id(self, clerk_id: str) -> Optional[User]:
-        """Get user by Clerk ID - searches across all role collections"""
+        """Get user by Clerk ID - searches across all role collections in parallel"""
         try:
-            # Try each collection
-            for collection in [self.tutors_collection, self.students_collection, self.parents_collection]:
-                user = await collection.find_one({"clerk_id": clerk_id})
-                if user:
-                    return User(**user)
+            # Query all collections in parallel for better performance
+            results = await asyncio.gather(
+                self.tutors_collection.find_one({"clerk_id": clerk_id}),
+                self.students_collection.find_one({"clerk_id": clerk_id}),
+                self.parents_collection.find_one({"clerk_id": clerk_id}),
+                return_exceptions=True
+            )
+
+            # Return the first non-None result
+            for result in results:
+                if result is not None and not isinstance(result, Exception):
+                    return User(**result)
             return None
         except Exception as e:
             logger.error("Failed to get user by Clerk ID", clerk_id=clerk_id, error=str(e))
             raise DatabaseException(f"Failed to get user: {str(e)}")
 
     async def get_user_by_slug(self, slug: str) -> Optional[User]:
-        """Get user by slug - searches across all role collections"""
+        """Get user by slug - searches across all role collections in parallel"""
         try:
-            # Try each collection
-            for collection in [self.tutors_collection, self.students_collection, self.parents_collection]:
-                user = await collection.find_one({"slug": slug})
-                if user:
-                    return User(**user)
+            # Query all collections in parallel
+            results = await asyncio.gather(
+                self.tutors_collection.find_one({"slug": slug}),
+                self.students_collection.find_one({"slug": slug}),
+                self.parents_collection.find_one({"slug": slug}),
+                return_exceptions=True
+            )
+
+            # Return the first non-None result
+            for result in results:
+                if result is not None and not isinstance(result, Exception):
+                    return User(**result)
             return None
         except Exception as e:
             logger.error("Failed to get user by slug", slug=slug, error=str(e))

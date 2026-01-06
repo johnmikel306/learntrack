@@ -11,6 +11,7 @@ from app.models.settings import (
     GeneralSettings, UploadSettings, SettingsUpdateRequest
 )
 from app.core.config import settings as app_config
+from app.core.ai_models_config import get_model_ids, get_default_model
 
 logger = structlog.get_logger()
 
@@ -42,37 +43,38 @@ class SettingsService:
     
     async def _get_default_settings(self) -> AppSettings:
         """Get default settings from environment and config"""
-        # Initialize AI providers based on environment
+        # Initialize AI providers based on environment using centralized config
         ai_providers = {}
-        
+
         # OpenAI
         if app_config.OPENAI_API_KEY:
             ai_providers["openai"] = AIProviderConfig(
                 provider=AIProvider.OPENAI,
                 api_key=app_config.OPENAI_API_KEY,
                 enabled=True,
-                models=["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
-                default_model="gpt-4o-mini"
+                models=get_model_ids("openai"),
+                default_model=get_default_model("openai")
             )
-        
+
         # Anthropic
         if app_config.ANTHROPIC_API_KEY:
             ai_providers["anthropic"] = AIProviderConfig(
                 provider=AIProvider.ANTHROPIC,
                 api_key=app_config.ANTHROPIC_API_KEY,
                 enabled=True,
-                models=["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307"],
-                default_model="claude-3-5-sonnet-20241022"
+                models=get_model_ids("anthropic"),
+                default_model=get_default_model("anthropic")
             )
-        
-        # Google
-        if app_config.GOOGLE_API_KEY:
-            ai_providers["google"] = AIProviderConfig(
-                provider=AIProvider.GOOGLE,
-                api_key=app_config.GOOGLE_API_KEY,
+
+        # Gemini (Google)
+        gemini_key = app_config.GEMINI_API_KEY or app_config.GOOGLE_API_KEY
+        if gemini_key:
+            ai_providers["gemini"] = AIProviderConfig(
+                provider=AIProvider.GEMINI,
+                api_key=gemini_key,
                 enabled=True,
-                models=["gemini-pro", "gemini-pro-vision"],
-                default_model="gemini-pro"
+                models=get_model_ids("gemini"),
+                default_model=get_default_model("gemini")
             )
         
         ai_settings = AISettings(
@@ -152,15 +154,10 @@ class SettingsService:
             provider_config.enabled = enabled
         if default_model is not None:
             provider_config.default_model = default_model
-        
-        # Update models list based on provider
-        if provider == AIProvider.OPENAI:
-            provider_config.models = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
-        elif provider == AIProvider.ANTHROPIC:
-            provider_config.models = ["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307"]
-        elif provider == AIProvider.GOOGLE:
-            provider_config.models = ["gemini-pro", "gemini-pro-vision"]
-        
+
+        # Update models list from centralized config
+        provider_config.models = get_model_ids(provider.value)
+
         # Save updated settings
         return await self.update_settings(SettingsUpdateRequest(ai=settings.ai))
     

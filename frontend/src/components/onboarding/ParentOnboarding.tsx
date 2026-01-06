@@ -8,8 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { toast } from '@/contexts/ToastContext'
 import { Heart, User, CheckCircle } from 'lucide-react'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+import { API_BASE_URL } from '@/lib/config'
 
 export default function ParentOnboarding() {
   const { getToken } = useAuth()

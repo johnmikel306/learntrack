@@ -9,8 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Progress } from '@/components/ui/progress'
 import { toast } from '@/contexts/ToastContext'
 import { GraduationCap, Clock, User, CheckCircle } from 'lucide-react'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+import { API_BASE_URL } from '@/lib/config'
 
 const TIMEZONES = [
   { value: 'America/New_York', label: 'Eastern Time (ET)' },

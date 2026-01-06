@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import structlog
 
 from app.core.config import settings
+from app.core.ai_models_config import get_model_prefixes
 
 logger = structlog.get_logger()
 
@@ -48,8 +49,8 @@ async def fetch_groq_models(api_key: str, limit: int = 3) -> List[Dict[str, Any]
     if cached:
         return cached  # No limit for Groq - return all selected models
 
-    # Models to always include: GPT-OSS and Llama 3.3
-    must_include_prefixes = ["openai/gpt-oss", "llama-3.3"]
+    # Models to include from centralized config
+    must_include_prefixes = get_model_prefixes("groq")
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -107,8 +108,8 @@ async def fetch_openai_models(api_key: str, limit: int = 3) -> List[Dict[str, An
     if cached:
         return cached  # No limit - return all selected models
 
-    # Model prefixes to include: 5.2, 4o, 4.1, o1, o3, o4-mini
-    include_prefixes = ["gpt-5.2", "gpt-4o", "gpt-4.1", "o1", "o3", "o4-mini"]
+    # Model prefixes to include from centralized config
+    include_prefixes = get_model_prefixes("openai")
     # Exclude patterns
     exclude_patterns = ["realtime", "audio", "transcribe", "tts", "search"]
 
@@ -174,8 +175,8 @@ async def fetch_gemini_models(api_key: str, limit: int = 3) -> List[Dict[str, An
     if cached:
         return cached  # No limit - return all 2.5 and 3.0 text models
 
-    # Only include Gemini 2.5 and 3.0 text models
-    include_prefixes = ["gemini-3", "gemini-2.5"]
+    # Model prefixes to include from centralized config
+    include_prefixes = get_model_prefixes("gemini")
     # Exclude non-text models
     exclude_patterns = ["embed", "aqa", "vision", "image", "video", "audio", "live"]
 

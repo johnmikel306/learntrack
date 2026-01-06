@@ -470,13 +470,15 @@ class RAGService:
         return {"results": results, "count": len(results)}
 
     async def retrieve_context(
-        self, query: str, tutor_id: str, document_ids: List[str] = None, top_k: int = 5
+        self, query: str, tutor_id: str, document_ids: List[str] = None, top_k: int = 5,
+        token_budget: int = settings.MAX_RAG_TOKEN_BUDGET
     ) -> List[Document]:
         """
-        Retrieve relevant context from tutor's documents.
+        Retrieve relevant context from tutor's documents with token budgeting.
 
         Returns documents with rich metadata including page numbers, headings,
         and sections from Docling/Unstructured processing.
+        Stop adding documents when the token budget is reached.
         """
         if not self.qdrant_client:
             logger.warning("Qdrant client not available")
@@ -496,6 +498,7 @@ class RAGService:
                     should=[FieldCondition(key="file_id", match=MatchValue(value=doc_id)) for doc_id in document_ids]
                 )
 
+            # Fetch slightly more than top_k to account for filtering/budgeting
             results = self.qdrant_client.search(
                 collection_name=collection_name,
                 query_vector=query_embedding,
@@ -504,8 +507,22 @@ class RAGService:
             )
 
             documents = []
+            current_tokens = 0
+            
             for result in results:
                 payload = result.payload
+                
+                # Estimate tokens: prefer metadata, fallback to char count / 4
+                token_estimate = payload.get("token_estimate")
+                if not token_estimate:
+                    content_len = len(payload.get("content", ""))
+                    token_estimate = int(content_len / 4)
+                
+                # Check budget
+                if current_tokens + token_estimate > token_budget:
+                    logger.info("RAG token budget reached", current=current_tokens, budget=token_budget)
+                    break
+                
                 doc = Document(
                     page_content=payload.get("content", ""),
                     metadata={
@@ -516,11 +533,13 @@ class RAGService:
                         "page_number": payload.get("page_number"),
                         "heading": payload.get("heading"),
                         "section": payload.get("section"),
-                        "token_estimate": payload.get("token_estimate"),
+                        "token_estimate": token_estimate,
                         "bounding_box": payload.get("bounding_box"),
                     }
                 )
                 documents.append(doc)
+                current_tokens += token_estimate
+                
             return documents
         except Exception as e:
             logger.error(f"Context retrieval failed: {e}")

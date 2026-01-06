@@ -32,23 +32,30 @@ import {
   Trash2,
 } from "lucide-react"
 
+import { 
+  DIFFICULTIES, 
+  DIFFICULTY_LABELS, 
+  QUESTION_TYPES, 
+  QUESTION_TYPE_LABELS 
+} from "@/lib/constants"
+
 interface Question {
   id: string
   text: string
   subject: string
   type: string
-  difficulty: 'Easy' | 'Medium' | 'Hard'
+  difficulty: string
   lastModified: string
 }
 
 // Helper function to get difficulty badge color
 const getDifficultyColor = (difficulty: string) => {
   switch (difficulty.toLowerCase()) {
-    case 'easy':
+    case DIFFICULTIES.EASY:
       return 'bg-emerald-500/20 text-emerald-400 border-0 font-medium px-3 py-1'
-    case 'medium':
+    case DIFFICULTIES.MEDIUM:
       return 'bg-amber-500/20 text-amber-400 border-0 font-medium px-3 py-1'
-    case 'hard':
+    case DIFFICULTIES.HARD:
       return 'bg-red-500/20 text-red-400 border-0 font-medium px-3 py-1'
     default:
       return 'bg-muted text-muted-foreground border-0 px-3 py-1'
@@ -58,6 +65,7 @@ const getDifficultyColor = (difficulty: string) => {
 export default function QuestionBankManager() {
   const client = useApiClient()
   const [searchTerm, setSearchTerm] = useState("")
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("")
   const [subjectFilter, setSubjectFilter] = useState("all")
   const [topicFilter, setTopicFilter] = useState("all")
   const [difficultyFilter, setDifficultyFilter] = useState("all")
@@ -65,14 +73,42 @@ export default function QuestionBankManager() {
   const [currentPage, setCurrentPage] = useState(1)
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
-  const itemsPerPage = 10
+  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const itemsPerPage = 20
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm)
+      setCurrentPage(1) // Reset to first page on search
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
+  // Reset page on filter change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [subjectFilter, topicFilter, difficultyFilter, typeFilter])
 
   // Fetch questions from API
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
         setLoading(true)
-        const response = await client.get('/questions')
+        
+        // Build query parameters
+        const params = new URLSearchParams()
+        params.append('page', currentPage.toString())
+        params.append('per_page', itemsPerPage.toString())
+        
+        if (subjectFilter !== 'all') params.append('subject_id', subjectFilter)
+        if (topicFilter !== 'all') params.append('topic', topicFilter)
+        if (difficultyFilter !== 'all') params.append('difficulty', difficultyFilter)
+        if (typeFilter !== 'all') params.append('question_type', typeFilter)
+        if (debouncedSearchTerm) params.append('search', debouncedSearchTerm)
+
+        const response = await client.get(`/questions?${params.toString()}`)
 
         if (response.error) {
           console.error('Failed to fetch questions:', response.error)
@@ -82,17 +118,19 @@ export default function QuestionBankManager() {
         }
 
         if (response.data) {
-          // Handle paginated response: { items: [...], total, page, per_page }
-          const questionsArray = response.data?.items || (Array.isArray(response.data) ? response.data : [])
+          // Handle paginated response: { items: [...], total, page, per_page, total_pages }
+          const questionsArray = response.data?.items || []
           const mappedQuestions = questionsArray.map((q: any) => ({
             id: q._id,
-            text: q.text,
+            text: q.question_text || q.text, // Handle both field names
             subject: q.subject_id?.name || q.subject_id || 'Unknown',
-            type: q.type,
+            type: q.question_type || q.type,
             difficulty: q.difficulty,
             lastModified: q.updated_at || q.created_at
           }))
           setQuestions(mappedQuestions)
+          setTotalItems(response.data.total || 0)
+          setTotalPages(response.data.total_pages || 0)
         }
       } catch (err) {
         console.error('Failed to fetch questions:', err)
@@ -104,26 +142,10 @@ export default function QuestionBankManager() {
     }
 
     fetchQuestions()
-  }, [])
+  }, [currentPage, debouncedSearchTerm, subjectFilter, topicFilter, difficultyFilter, typeFilter])
 
-  // Filter questions
-  const filteredQuestions = questions.filter(question => {
-    const matchesSearch = question.text.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesSubject = subjectFilter === "all" || question.subject === subjectFilter
-    const matchesTopic = topicFilter === "all" // Add topic logic when available
-    const matchesDifficulty = difficultyFilter === "all" || question.difficulty === difficultyFilter
-    const matchesType = typeFilter === "all" || question.type === typeFilter
-
-    return matchesSearch && matchesSubject && matchesTopic && matchesDifficulty && matchesType
-  })
-
-  // Pagination
-  const totalPages = Math.ceil(filteredQuestions.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const currentQuestions = filteredQuestions.slice(startIndex, endIndex)
-
-  // Get unique subjects for filter
+  // Get unique subjects for filter - this is still client-side from the current page's questions
+  // In a real app, this should come from a separate subjects API
   const subjects = Array.from(new Set(questions.map(q => q.subject)))
 
   // Handle delete
@@ -143,6 +165,9 @@ export default function QuestionBankManager() {
     console.log('View question:', id)
     // Implement view logic
   }
+
+  // Current questions are just the questions state since it's already paginated by the server
+  const currentQuestions = questions
 
   // Generate page numbers
   const getPageNumbers = () => {
@@ -226,9 +251,9 @@ export default function QuestionBankManager() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Levels</SelectItem>
-                <SelectItem value="Easy">Easy</SelectItem>
-                <SelectItem value="Medium">Medium</SelectItem>
-                <SelectItem value="Hard">Hard</SelectItem>
+                {Object.values(DIFFICULTIES).map(diff => (
+                  <SelectItem key={diff} value={diff}>{DIFFICULTY_LABELS[diff]}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -237,10 +262,9 @@ export default function QuestionBankManager() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="Multiple Choice">Multiple Choice</SelectItem>
-                <SelectItem value="Short Answer">Short Answer</SelectItem>
-                <SelectItem value="True/False">True/False</SelectItem>
-                <SelectItem value="Calculation">Calculation</SelectItem>
+                {Object.values(QUESTION_TYPES).map(type => (
+                  <SelectItem key={type} value={type}>{QUESTION_TYPE_LABELS[type]}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

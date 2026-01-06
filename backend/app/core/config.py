@@ -23,7 +23,20 @@ class Settings(BaseSettings):
     # Environment
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
-    SECRET_KEY: str = "your-secret-key-change-in-production"
+    SECRET_KEY: str = ""  # Must be set via environment variable
+
+    @field_validator("SECRET_KEY")
+    @classmethod
+    def validate_secret_key(cls, v, info):
+        """Ensure SECRET_KEY is set and not a placeholder in production"""
+        env = info.data.get("ENVIRONMENT", "development")
+        if env == "production":
+            if not v or len(v) < 32:
+                raise ValueError("SECRET_KEY must be at least 32 characters in production")
+            placeholders = ["your-secret", "change-in-production", "placeholder", "secret-key"]
+            if any(p in v.lower() for p in placeholders):
+                raise ValueError("SECRET_KEY appears to be a placeholder. Set a secure random key.")
+        return v
     
     # Database
     MONGODB_URL: str = "mongodb://localhost:27017"
@@ -53,10 +66,16 @@ class Settings(BaseSettings):
     GROQ_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
 
+    # AI Model Configuration
+    # NOTE: Model lists are now centralized in app/core/ai_models_config.py
+    # These prefixes are kept for backwards compatibility but prefer using
+    # get_model_prefixes() from ai_models_config.py instead
+
     # RAG Configuration
     QDRANT_URL: Optional[str] = None
     QDRANT_API_KEY: Optional[str] = None
     TAVILY_API_KEY: Optional[str] = None
+    MAX_RAG_TOKEN_BUDGET: int = 3000  # Default max tokens for RAG context
 
     # UploadThing Configuration
     UPLOADTHING_SECRET: Optional[str] = None

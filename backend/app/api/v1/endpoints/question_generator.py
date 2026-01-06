@@ -14,6 +14,7 @@ import structlog
 
 from app.core.dependencies import get_rag_service, get_database
 from app.core.enhanced_auth import require_tutor, ClerkUserContext
+from app.core.ai_models_config import get_all_active_models_for_dropdown
 from app.agents.graph.state import GenerationConfig, QuestionType, Difficulty, BloomsLevel, GenerationSession
 from app.agents.graph.question_generator_graph import QuestionGeneratorAgent
 from app.agents.streaming.sse_handler import SSEHandler
@@ -21,7 +22,7 @@ from app.services.ai.ai_manager import get_tenant_ai_manager
 from app.services.tenant_ai_config_service import TenantAIConfigService
 from app.services.generation_session_service import GenerationSessionService
 from app.models.generation_session import SessionStatus, QuestionStatus, StoredQuestion
-from app.utils.enums import normalize_question_type, normalize_difficulty
+from app.utils.enums import normalize_question_type, normalize_difficulty, normalize_provider
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -111,7 +112,8 @@ async def generate_questions(
         config_service = TenantAIConfigService(database)
         tenant_config = await config_service.get_or_create_default(current_user.tutor_id)
 
-        ai_provider = request.ai_provider or tenant_config.default_provider
+        # Normalize provider name (handles legacy 'google' -> 'gemini' mapping)
+        ai_provider = normalize_provider(request.ai_provider) if request.ai_provider else tenant_config.default_provider
         model_name = request.model_name or tenant_config.default_model
 
         if ai_provider not in tenant_config.enabled_providers:
@@ -737,24 +739,8 @@ async def get_available_models(
     except Exception as e:
         logger.warning("Failed to load tenant AI config", error=str(e))
 
-    # Fallback static models in case API fetching fails
-    fallback_models = {
-        "groq": [
-            {"id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B", "description": "Most versatile", "context_window": 131072},
-            {"id": "llama-3.1-8b-instant", "name": "Llama 3.1 8B", "description": "Fast responses", "context_window": 131072},
-            {"id": "meta-llama/llama-4-maverick-17b-128e-instruct", "name": "Llama 4 Maverick 17B", "description": "Latest multimodal", "context_window": 131072},
-        ],
-        "openai": [
-            {"id": "gpt-4o", "name": "GPT-4o", "description": "Most capable multimodal", "context_window": 128000},
-            {"id": "gpt-4o-mini", "name": "GPT-4o Mini", "description": "Fast and affordable", "context_window": 128000},
-        ],
-        "gemini": [
-            {"id": "gemini-2.0-flash-exp", "name": "Gemini 2.0 Flash", "description": "Latest experimental", "context_window": 1000000},
-        ],
-        "anthropic": [
-            {"id": "claude-3-5-sonnet-20241022", "name": "Claude 3.5 Sonnet", "description": "Most capable", "context_window": 200000},
-        ]
-    }
+    # Fallback static models from centralized config in case API fetching fails
+    fallback_models = get_all_active_models_for_dropdown()
 
     # Fetch models from all providers (with caching and error handling)
     fetched_models = {}

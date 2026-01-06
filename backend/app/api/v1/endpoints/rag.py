@@ -23,7 +23,7 @@ from app.services.web_search_service import WebSearchService
 from app.services.ai.ai_manager import get_tenant_ai_manager
 from app.services.tenant_ai_config_service import TenantAIConfigService
 from app.services.question_service import QuestionService
-from app.utils.enums import normalize_question_type, normalize_difficulty
+from app.utils.enums import normalize_question_type, normalize_difficulty, normalize_provider
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -53,7 +53,8 @@ async def generate_questions_with_rag(
         if use_web_search and not tenant_config.enable_web_search:
             raise HTTPException(status_code=403, detail="Web search is disabled for this tenant")
 
-        ai_provider = body.ai_provider or tenant_config.default_provider
+        # Normalize provider name (handles legacy 'google' -> 'gemini' mapping)
+        ai_provider = normalize_provider(body.ai_provider) if body.ai_provider else tenant_config.default_provider
         model_name = body.model_name or tenant_config.default_model
 
         if ai_provider not in tenant_config.enabled_providers:

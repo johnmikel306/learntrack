@@ -11,12 +11,18 @@ from fastapi import HTTPException, status, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import structlog
 from pydantic import BaseModel, EmailStr
+from cachetools import TTLCache
 
 from app.core.config import settings
 from app.models.user import UserRole, AdminPermission
 from app.core.database import get_database
 
 logger = structlog.get_logger()
+
+# Cache for user sync status - avoids syncing on every request
+# Key: clerk_id, Value: last sync timestamp
+# TTL of 5 minutes means we'll re-sync at most once every 5 minutes per user
+_user_sync_cache: TTLCache = TTLCache(maxsize=10000, ttl=300)
 
 
 class ClerkUserContext(BaseModel):
@@ -351,9 +357,15 @@ class EnhancedClerkJWTBearer:
             logger.error("Failed to get user from database", error=str(e), clerk_id=clerk_id)
             return None
 
-    async def _sync_user_to_database(self, user_context: ClerkUserContext):
-        """Sync user information to database"""
+    async def _sync_user_to_database(self, user_context: ClerkUserContext, force: bool = False):
+        """Sync user information to database with caching to avoid syncing on every request"""
         try:
+            # Check if we've recently synced this user (within TTL)
+            cache_key = user_context.clerk_id
+            if not force and cache_key in _user_sync_cache:
+                logger.debug("Skipping user sync (cached)", user_id=user_context.user_id)
+                return
+
             # Import here to avoid circular import
             from app.services.user_service import UserService
 
@@ -364,13 +376,16 @@ class EnhancedClerkJWTBearer:
             existing_user = await user_service.get_user_by_clerk_id(user_context.clerk_id)
 
             if not existing_user:
-                # Create new user
+                # Create new user - always sync new users
                 await user_service.create_user_from_clerk(user_context)
                 logger.info("Created new user from Clerk", user_id=user_context.user_id)
             else:
                 # Update existing user
                 await user_service.update_user_from_clerk(user_context)
                 logger.debug("Updated existing user from Clerk", user_id=user_context.user_id)
+
+            # Mark user as synced in cache
+            _user_sync_cache[cache_key] = datetime.now(timezone.utc)
 
         except Exception as e:
             logger.error("Failed to sync user to database", error=str(e))

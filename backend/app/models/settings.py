@@ -2,7 +2,7 @@
 Settings models for configuration management
 """
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from enum import Enum
 
 
@@ -11,7 +11,14 @@ class AIProvider(str, Enum):
     GROQ = "groq"
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
-    GOOGLE = "google"
+    GEMINI = "gemini"
+
+    @classmethod
+    def _missing_(cls, value):
+        """Handle legacy 'google' value by mapping to 'gemini'"""
+        if value == "google":
+            return cls.GEMINI
+        return None
 
 
 class AIProviderConfig(BaseModel):
@@ -24,16 +31,41 @@ class AIProviderConfig(BaseModel):
     max_tokens: int = 4000
     temperature: float = 0.7
 
+    @field_validator('provider', mode='before')
+    @classmethod
+    def normalize_provider(cls, v):
+        """Normalize 'google' to 'gemini' for backwards compatibility"""
+        if v == "google":
+            return "gemini"
+        return v
+
 
 class AISettings(BaseModel):
     """AI configuration settings"""
     providers: Dict[str, AIProviderConfig] = {}
     default_provider: AIProvider = AIProvider.GROQ
-    
+
+    @field_validator('providers', mode='before')
+    @classmethod
+    def normalize_providers_dict(cls, v):
+        """Normalize 'google' key to 'gemini' in providers dict"""
+        if isinstance(v, dict) and 'google' in v:
+            v = dict(v)  # Make a copy
+            v['gemini'] = v.pop('google')
+        return v
+
+    @field_validator('default_provider', mode='before')
+    @classmethod
+    def normalize_default_provider(cls, v):
+        """Normalize 'google' to 'gemini' for backwards compatibility"""
+        if v == "google":
+            return "gemini"
+        return v
+
     def get_provider_config(self, provider: AIProvider) -> Optional[AIProviderConfig]:
         """Get configuration for a specific provider"""
         return self.providers.get(provider.value)
-    
+
     def is_provider_enabled(self, provider: AIProvider) -> bool:
         """Check if a provider is enabled and configured"""
         config = self.get_provider_config(provider)

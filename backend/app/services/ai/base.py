@@ -16,9 +16,10 @@ class AIProvider(str, Enum):
     """Available AI providers"""
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
-    GOOGLE = "google"
     GROQ = "groq"
     GEMINI = "gemini"
+    # Legacy alias
+    GOOGLE = "gemini"
 
 
 class BaseAIProvider(ABC):

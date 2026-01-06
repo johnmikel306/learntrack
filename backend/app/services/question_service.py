@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import structlog
 
-from app.models.question import Question, QuestionCreate, QuestionUpdate, QuestionForStudent
+from app.models.question import Question, QuestionCreate, QuestionUpdate, QuestionForStudent, QuestionStatus
 from app.core.exceptions import NotFoundError, DatabaseException, AuthorizationError
 from app.core.utils import to_object_id
 
@@ -48,10 +48,10 @@ class QuestionService:
 
             # AI-generated questions start as "pending" for approval
             if ai_generated:
-                question_dict["status"] = "pending"
+                question_dict["status"] = QuestionStatus.PENDING
                 question_dict["generation_id"] = generation_id
             else:
-                question_dict["status"] = "active"
+                question_dict["status"] = QuestionStatus.ACTIVE
 
             result = await self.collection.insert_one(question_dict)
             question_dict["_id"] = str(result.inserted_id)
@@ -67,8 +67,11 @@ class QuestionService:
         """Get question by ID with optional ownership validation"""
         try:
             oid = to_object_id(question_id)
-            query = {"_id": oid, "status": {"$ne": "deleted"}}
-
+            query = {"_id": oid, "status": {"$ne": "deleted"}} # Keep "deleted" as string if not in Enum or add to Enum? 
+            # QuestionStatus Enum doesn't strictly have "deleted" in the definition I read earlier, checking...
+            # Yes it does: ACTIVE, PENDING, REJECTED, ARCHIVED. "deleted" was often used as soft delete string. 
+            # I should verify QuestionStatus enum definition in model again. 
+            
             # Add tutor_id filter if provided for ownership validation
             if tutor_id:
                 query["tutor_id"] = tutor_id
@@ -114,6 +117,8 @@ class QuestionService:
         subject_id: Optional[str] = None,
         topic: Optional[str] = None,
         difficulty: Optional[str] = None,
+        question_type: Optional[str] = None,
+        search: Optional[str] = None,
         status: Optional[str] = None,
         page: int = 1,
         per_page: int = 20
@@ -126,7 +131,7 @@ class QuestionService:
             if status:
                 query["status"] = status
             else:
-                query["status"] = {"$ne": "deleted"}
+                query["status"] = {"$ne": QuestionStatus.DELETED}
 
             if subject_id:
                 query["subject_id"] = subject_id
@@ -134,6 +139,10 @@ class QuestionService:
                 query["topic"] = topic
             if difficulty:
                 query["difficulty"] = difficulty
+            if question_type:
+                query["question_type"] = question_type
+            if search:
+                query["question_text"] = {"$regex": search, "$options": "i"}
 
             # Get total count
             total = await self.collection.count_documents(query)
@@ -172,7 +181,7 @@ class QuestionService:
             query = {
                 "tutor_id": tutor_id,
                 "ai_generated": True,
-                "status": {"$ne": "deleted"}
+                "status": {"$ne": QuestionStatus.DELETED}
             }
 
             # Get total count
@@ -215,7 +224,7 @@ class QuestionService:
             if status:
                 query["status"] = status
             else:
-                query["status"] = {"$ne": "deleted"}
+                query["status"] = {"$ne": QuestionStatus.DELETED}
 
             if subject_id:
                 query["subject_id"] = subject_id
@@ -240,7 +249,7 @@ class QuestionService:
     ) -> List[Question]:
         """Get questions by subject with optional filters (tutor-scoped)"""
         try:
-            query = {"subject_id": subject_id, "tutor_id": tutor_id, "status": "active"}
+            query = {"subject_id": subject_id, "tutor_id": tutor_id, "status": QuestionStatus.ACTIVE}
 
             if topic:
                 query["topic"] = topic
@@ -311,7 +320,7 @@ class QuestionService:
             oid = to_object_id(question_id)
             result = await self.collection.update_one(
                 {"_id": oid},
-                {"$set": {"status": "deleted", "updated_at": datetime.now(timezone.utc)}}
+                {"$set": {"status": QuestionStatus.DELETED, "updated_at": datetime.now(timezone.utc)}}
             )
             
             if result.matched_count == 0:

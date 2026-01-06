@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
 import { AdminMetrics } from '../../components/admin/AdminMetrics'
 import { Activity, RefreshCw } from 'lucide-react'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+import { API_BASE_URL } from '@/lib/config'
 
 interface SystemMetrics {
   total_tutors: number

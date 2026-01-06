@@ -9,16 +9,18 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from app.services.ai.base import BaseAIProvider
 from app.models.question import QuestionCreate, QuestionDifficulty, QuestionType
 from app.agents.prompts import get_prompt
+from app.core.ai_models_config import get_default_model
 
 logger = structlog.get_logger()
 
 class GeminiProvider(BaseAIProvider):
     """Google Gemini AI provider using LangChain"""
 
-    def __init__(self, api_key: str, model: str = "gemini-3-flash"):
+    def __init__(self, api_key: str, model: str = None):
         super().__init__(api_key)
-        self.model = model
-        self.llm = ChatGoogleGenerativeAI(google_api_key=api_key, model=model, temperature=0.7)
+        # Use centralized config for default model
+        self.model = model or get_default_model("gemini") or "gemini-3-pro-preview"
+        self.llm = ChatGoogleGenerativeAI(google_api_key=api_key, model=self.model, temperature=0.7)
 
     def set_model(self, model: str):
         """Change the active model"""

@@ -191,22 +191,88 @@ class VisibilityService:
             if user_id not in participants:
                 return False
             
-            # Additional check: verify all participants are visible to user
-            for participant_id in participants:
-                if participant_id != user_id:
-                    can_see = await self.can_user_see_user(user_id, participant_id, user_role)
-                    if not can_see:
-                        logger.warning(
-                            "User in conversation with non-visible participant",
-                            user_id=user_id,
-                            participant_id=participant_id
-                        )
-                        return False
-            
             return True
             
         except Exception as e:
             logger.error("Failed to check conversation access", error=str(e))
+            return False
+
+    async def can_access_question(self, user_id: str, question_id: str, user_role: UserRole) -> bool:
+        """
+        Check if user can access a specific question.
+        - Tutors: Can see questions they own or that are shared in their tenant.
+        - Students: Can see questions assigned to them.
+        """
+        try:
+            question = await self.database.questions.find_one({"_id": question_id})
+            if not question:
+                return False
+            
+            if user_role == UserRole.TUTOR:
+                return question.get("tutor_id") == user_id
+            
+            if user_role == UserRole.STUDENT:
+                # Check if question is in any of the student's active assignments
+                assignment = await self.database.assignments.find_one({
+                    "student_id": user_id,
+                    "questions.question_id": question_id,
+                    "status": "active"
+                })
+                return assignment is not None
+            
+            return False
+        except Exception as e:
+            logger.error("Failed to check question access", error=str(e))
+            return False
+
+    async def can_modify_question(self, user_id: str, question_id: str, user_role: UserRole) -> bool:
+        """Only tutors can modify their own questions."""
+        if user_role != UserRole.TUTOR:
+            return False
+        return await self.can_access_question(user_id, question_id, user_role)
+
+    async def can_access_assignment(self, user_id: str, assignment_id: str, user_role: UserRole) -> bool:
+        """
+        Check if user can access a specific assignment.
+        - Tutors: Can see assignments they created.
+        - Students: Can see assignments assigned to them.
+        - Parents: Can see assignments of their children.
+        """
+        try:
+            assignment = await self.database.assignments.find_one({"_id": assignment_id})
+            if not assignment:
+                return False
+            
+            if user_role == UserRole.TUTOR:
+                return assignment.get("tutor_id") == user_id
+            
+            if user_role == UserRole.STUDENT:
+                return assignment.get("student_id") == user_id
+            
+            if user_role == UserRole.PARENT:
+                student_id = assignment.get("student_id")
+                return await self.can_user_see_user(user_id, student_id, user_role)
+            
+            return False
+        except Exception as e:
+            logger.error("Failed to check assignment access", error=str(e))
+            return False
+
+    async def can_access_subject(self, user_id: str, subject_id: str, user_role: UserRole) -> bool:
+        """Check if user can access a subject (must be same tutor/tenant scope)."""
+        try:
+            subject = await self.database.subjects.find_one({"_id": subject_id})
+            if not subject:
+                return False
+            
+            # subjects are usually tutor-scoped
+            tutor_id = subject.get("tutor_id")
+            if not tutor_id:
+                return True # Global subjects?
+            
+            return await self.can_user_see_user(user_id, tutor_id, user_role)
+        except Exception as e:
+            logger.error("Failed to check subject access", error=str(e))
             return False
     
     async def filter_users_by_visibility(

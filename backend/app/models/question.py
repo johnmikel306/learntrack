@@ -32,6 +32,7 @@ class QuestionStatus(str, Enum):
     ACTIVE = "active"
     REJECTED = "rejected"  # Rejected during review
     ARCHIVED = "archived"
+    DELETED = "deleted"
 
 
 class QuestionOption(BaseModel):

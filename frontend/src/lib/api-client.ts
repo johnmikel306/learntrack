@@ -1,10 +1,9 @@
 import React from 'react'
 import { useAuth } from '@clerk/clerk-react'
+import { API_BASE_URL } from './config'
 
-const RAW_API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000'
-// Normalize base and ensure exactly one /api/v1 prefix
-const NORMALIZED_BASE = RAW_API_BASE_URL.replace(/\/+$/, '')
-const API_ROOT = NORMALIZED_BASE.match(/\/api\/v\d+$/) ? NORMALIZED_BASE : `${NORMALIZED_BASE}/api/v1`
+// Use centralized API configuration
+const API_ROOT = API_BASE_URL
 
 export interface ApiResponse<T = any> {
   data?: T

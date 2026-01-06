@@ -41,6 +41,8 @@ async def get_questions(
     subject_id: Optional[str] = Query(None, description="Filter by subject ID"),
     topic: Optional[str] = Query(None, description="Filter by topic"),
     difficulty: Optional[str] = Query(None, description="Filter by difficulty"),
+    question_type: Optional[str] = Query(None, description="Filter by question type"),
+    search: Optional[str] = Query(None, description="Search in question text"),
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(20, ge=1, le=100, description="Items per page"),
     current_user: ClerkUserContext = Depends(require_tutor),
@@ -53,6 +55,8 @@ async def get_questions(
             subject_id=subject_id,
             topic=topic,
             difficulty=difficulty,
+            question_type=question_type,
+            search=search,
             page=page,
             per_page=per_page
         )

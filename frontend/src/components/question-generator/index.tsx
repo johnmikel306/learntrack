@@ -20,8 +20,7 @@ import { toast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
 import { useMaterials } from '@/hooks/useQueries'
 import { useIsMobile } from '@/hooks/use-mobile'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+import { API_BASE_URL } from '@/lib/config'
 
 // Mapping functions
 const mapQuestionType = (type: string): string => {

@@ -3,9 +3,7 @@
  * Uses fetch with Clerk authentication
  */
 
-const RAW_API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000'
-const NORMALIZED_BASE = RAW_API_BASE_URL.replace(/\/+$/, '')
-const API_BASE_URL = NORMALIZED_BASE.match(/\/api\/v\d+$/) ? NORMALIZED_BASE : `${NORMALIZED_BASE}/api/v1`
+import { API_BASE_URL } from './config'
 
 // Token getter - will be set by the provider
 let tokenGetter: (() => Promise<string | null>) | null = null
