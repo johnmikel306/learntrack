@@ -4,9 +4,11 @@ Shared enumerations and normalization utilities.
 This module centralizes the definitions and normalization logic for
 enums like QuestionType and Difficulty to avoid duplication across the codebase.
 """
-from typing import Optional, Any
+from typing import Optional, Any, TYPE_CHECKING
 from app.models.question import QuestionType, QuestionDifficulty
-from app.agents.graph.state import BloomsLevel
+
+if TYPE_CHECKING:
+    from app.agents.graph.state import BloomsLevel
 
 # Provider name aliases - normalizes variations to canonical names
 # The backend uses "gemini" but some legacy code/settings use "google"
@@ -121,11 +123,14 @@ BLOOMS_LEVEL_ALIASES = {
 }
 
 
-def normalize_blooms_level(value: Optional[str]) -> BloomsLevel:
+def normalize_blooms_level(value: Optional[str]) -> "BloomsLevel":
     """Normalize various string inputs into a valid BloomsLevel enum.
 
     Handles case variations like 'Apply', 'apply', 'APPLY', 'Application' etc.
     """
+    # Lazy import to avoid circular dependency
+    from app.agents.graph.state import BloomsLevel
+
     if isinstance(value, BloomsLevel):
         return value
     if not value:
