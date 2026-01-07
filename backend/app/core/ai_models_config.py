@@ -33,6 +33,13 @@ GROQ_MODELS: List[AIModelConfig] = [
         is_default=True
     ),
     AIModelConfig(
+        id="openai/gpt-oss-20b",
+        name="GPT-OSS 20B",
+        description="Open source GPT model via Groq",
+        context_window=131072,
+        is_active=True
+    ),
+    AIModelConfig(
         id="llama-3.1-8b-instant",
         name="Llama 3.1 8B",
         description="Fast responses, lower cost",
@@ -57,15 +64,16 @@ GROQ_MODELS: List[AIModelConfig] = [
 ]
 
 # =============================================================================
-# OPENAI MODELS
+# OPENAI MODELS (Disabled - no valid API key)
 # =============================================================================
 OPENAI_MODELS: List[AIModelConfig] = [
+    # All OpenAI models disabled - set is_active=False
     AIModelConfig(
         id="gpt-4o",
         name="GPT-4o",
         description="Most capable multimodal model",
         context_window=128000,
-        is_active=True,
+        is_active=False,  # Disabled
         is_default=True,
         supports_vision=True
     ),
@@ -74,14 +82,14 @@ OPENAI_MODELS: List[AIModelConfig] = [
         name="GPT-4o Mini",
         description="Fast and affordable",
         context_window=128000,
-        is_active=True
+        is_active=False  # Disabled
     ),
     AIModelConfig(
         id="gpt-4-turbo",
         name="GPT-4 Turbo",
         description="High performance",
         context_window=128000,
-        is_active=True,
+        is_active=False,  # Disabled
         supports_vision=True
     ),
     AIModelConfig(
@@ -89,7 +97,7 @@ OPENAI_MODELS: List[AIModelConfig] = [
         name="o1",
         description="Advanced reasoning model",
         context_window=128000,
-        is_active=False,  # Expensive, disable by default
+        is_active=False,  # Disabled
         supports_tools=False
     ),
 ]

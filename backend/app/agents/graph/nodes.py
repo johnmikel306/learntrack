@@ -24,7 +24,7 @@ from app.agents.graph.state import (
 from app.agents.prompts import get_prompt
 from app.agents.streaming.sse_handler import SSEHandler
 from app.agents.tools.material_retriever import retrieve_materials
-from app.utils.enums import normalize_question_type, normalize_difficulty
+from app.utils.enums import normalize_question_type, normalize_difficulty, normalize_blooms_level
 
 logger = structlog.get_logger()
 
@@ -371,7 +371,7 @@ Enhanced Prompt: {state.get('enhanced_prompt', state['original_prompt'])}
                     question_id=item.get("question_id", f"q{i+1}"),
                     type=normalize_question_type(raw_type),
                     difficulty=normalize_difficulty(raw_difficulty),
-                    blooms_level=BloomsLevel(item.get("blooms_level", "UNDERSTAND")),
+                    blooms_level=normalize_blooms_level(item.get("blooms_level", "UNDERSTAND")),
                     question_text=item.get("question_text", ""),
                     options=item.get("options"),
                     correct_answer=item.get("correct_answer", ""),
@@ -496,7 +496,7 @@ Apply the edit and return the updated question as JSON.
                 question_id=original.question_id,
                 type=normalize_question_type(edited_data.get("type") or edited_data.get("question_type") or original.type.value),
                 difficulty=normalize_difficulty(edited_data.get("difficulty", original.difficulty.value)),
-                blooms_level=BloomsLevel(edited_data.get("blooms_level", original.blooms_level.value)),
+                blooms_level=normalize_blooms_level(edited_data.get("blooms_level", original.blooms_level.value)),
                 question_text=edited_data.get("question_text", original.question_text),
                 options=edited_data.get("options", original.options),
                 correct_answer=edited_data.get("correct_answer", original.correct_answer),
@@ -831,7 +831,7 @@ Output as a single JSON object (not an array).
                 question_id=item.get("question_id", f"q{question_number}"),
                 type=normalize_question_type(raw_type),
                 difficulty=normalize_difficulty(raw_difficulty),
-                blooms_level=BloomsLevel(item.get("blooms_level", "UNDERSTAND")),
+                blooms_level=normalize_blooms_level(item.get("blooms_level", "UNDERSTAND")),
                 question_text=item.get("question_text", ""),
                 options=item.get("options"),
                 correct_answer=item.get("correct_answer", ""),
@@ -895,7 +895,7 @@ Output as a single JSON object (not an array).
                     question_id=item.get("question_id", f"q{i+1}"),
                     type=normalize_question_type(raw_type),
                     difficulty=normalize_difficulty(raw_difficulty),
-                    blooms_level=BloomsLevel(item.get("blooms_level", "UNDERSTAND")),
+                    blooms_level=normalize_blooms_level(item.get("blooms_level", "UNDERSTAND")),
                     question_text=item.get("question_text", ""),
                     options=item.get("options"),
                     correct_answer=item.get("correct_answer", ""),
@@ -1012,7 +1012,7 @@ Apply the edit and return the updated question as JSON.
                 question_id=original.question_id,
                 type=normalize_question_type(edited_data.get("type") or edited_data.get("question_type") or original.type.value),
                 difficulty=normalize_difficulty(edited_data.get("difficulty", original.difficulty.value)),
-                blooms_level=BloomsLevel(edited_data.get("blooms_level", original.blooms_level.value)),
+                blooms_level=normalize_blooms_level(edited_data.get("blooms_level", original.blooms_level.value)),
                 question_text=edited_data.get("question_text", original.question_text),
                 options=edited_data.get("options", original.options),
                 correct_answer=edited_data.get("correct_answer", original.correct_answer),
@@ -1138,7 +1138,7 @@ Output a single question as JSON.
                 question_id=original.question_id,  # Keep same ID
                 type=normalize_question_type(data.get("type") or data.get("question_type") or original.type.value),
                 difficulty=normalize_difficulty(data.get("difficulty", original.difficulty.value)),
-                blooms_level=BloomsLevel(data.get("blooms_level", original.blooms_level.value)),
+                blooms_level=normalize_blooms_level(data.get("blooms_level", original.blooms_level.value)),
                 question_text=data.get("question_text", ""),
                 options=data.get("options"),
                 correct_answer=data.get("correct_answer", ""),
@@ -1272,7 +1272,7 @@ Output as JSON.
                 question_id=original.question_id,
                 type=normalize_question_type(raw_type),
                 difficulty=normalize_difficulty(raw_difficulty),
-                blooms_level=BloomsLevel(new_theme.get("blooms_level", data.get("blooms_level", original.blooms_level.value))),
+                blooms_level=normalize_blooms_level(new_theme.get("blooms_level", data.get("blooms_level", original.blooms_level.value))),
                 question_text=data.get("question_text", ""),
                 options=data.get("options"),
                 correct_answer=data.get("correct_answer", ""),

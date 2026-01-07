@@ -6,6 +6,7 @@ enums like QuestionType and Difficulty to avoid duplication across the codebase.
 """
 from typing import Optional, Any
 from app.models.question import QuestionType, QuestionDifficulty
+from app.agents.graph.state import BloomsLevel
 
 # Provider name aliases - normalizes variations to canonical names
 # The backend uses "gemini" but some legacy code/settings use "google"
@@ -91,3 +92,60 @@ def normalize_provider(value: Optional[str]) -> str:
 
     raw = str(value).strip().lower()
     return PROVIDER_ALIASES.get(raw, raw)
+
+
+# Bloom's Taxonomy level aliases - handles case variations from LLM output
+BLOOMS_LEVEL_ALIASES = {
+    "remember": "REMEMBER",
+    "remembering": "REMEMBER",
+    "knowledge": "REMEMBER",
+    "recall": "REMEMBER",
+    "understand": "UNDERSTAND",
+    "understanding": "UNDERSTAND",
+    "comprehension": "UNDERSTAND",
+    "comprehend": "UNDERSTAND",
+    "apply": "APPLY",
+    "applying": "APPLY",
+    "application": "APPLY",
+    "analyze": "ANALYZE",
+    "analyse": "ANALYZE",
+    "analyzing": "ANALYZE",
+    "analysis": "ANALYZE",
+    "evaluate": "EVALUATE",
+    "evaluating": "EVALUATE",
+    "evaluation": "EVALUATE",
+    "create": "CREATE",
+    "creating": "CREATE",
+    "synthesis": "CREATE",
+    "synthesize": "CREATE",
+}
+
+
+def normalize_blooms_level(value: Optional[str]) -> BloomsLevel:
+    """Normalize various string inputs into a valid BloomsLevel enum.
+
+    Handles case variations like 'Apply', 'apply', 'APPLY', 'Application' etc.
+    """
+    if isinstance(value, BloomsLevel):
+        return value
+    if not value:
+        return BloomsLevel.UNDERSTAND  # Default
+
+    raw = str(value).strip()
+    # Try direct uppercase match first
+    try:
+        return BloomsLevel(raw.upper())
+    except ValueError:
+        pass
+
+    # Try alias lookup
+    key = raw.lower()
+    alias = BLOOMS_LEVEL_ALIASES.get(key)
+    if alias:
+        try:
+            return BloomsLevel(alias)
+        except ValueError:
+            pass
+
+    # Default fallback
+    return BloomsLevel.UNDERSTAND
